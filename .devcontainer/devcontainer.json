@@ -1,0 +1,23 @@
+{
+    "build": {
+        "dockerfile": "Dockerfile"
+    },
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "prettier.prettier-vscode",
+                "tamasfe.even-better-toml",
+                "gleam.gleam",
+                "samuelcolvin.jinjahtml",
+                "ms-python.python",
+                "ms-python.black-formatter",
+                "ms-python.isort"
+            ]
+        }
+    },
+    "postCreateCommand": "/workspaces/ticketing/scripts/install_zsh.sh -t robbyrussell && cd /workspaces/ticketing/vite && npm install",
+    "forwardPorts": [
+        5000,
+        3000
+    ]
+}
