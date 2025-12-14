@@ -2,6 +2,11 @@ from enum import Enum
 from typing import TypeVar, cast
 
 
+class Type(Enum):
+    INT = "INT"
+    TEXT = "TEXT"
+
+
 class Column:
     def __init__(self, type: Type):
         self.type = type
@@ -100,7 +105,7 @@ def table(schema: T) -> T:
     return schema
 
 
-def table_to_sql_schema(named_table) -> str:
+def _table_to_sql_schema(named_table) -> str:
     primary_key_schema = named_table.primary_key()
 
     columns = [
@@ -119,15 +124,13 @@ def table_to_sql_schema(named_table) -> str:
 )"""
 
 
-def to_create_query(self) -> str:
-    return "CREATE TABLE IF NOT EXISTS " + self.to_sql_schema()
-
-
-class Type(Enum):
-    INT = "INT"
-    TEXT = "TEXT"
+def _table_to_create_query(table: Table) -> str:
+    return "CREATE TABLE IF NOT EXISTS " + _table_to_sql_schema(table) + ";"
 
 
 class Schema:
     def __init__(self, tables: list[Table]):
         self.tables = tables
+
+    def to_create_query(self) -> str:
+        return "\n".join([_table_to_create_query(table) for table in self.tables])
