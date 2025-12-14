@@ -3,7 +3,7 @@ from typing import TypeVar, cast
 
 
 class Type(Enum):
-    INT = "INT"
+    INT = "INTEGER"
     TEXT = "TEXT"
 
 
@@ -26,7 +26,7 @@ class NamedColumn:
         self.column = column
 
     def to_sql_schema(self) -> str:
-        return f"{self.name} {self.column.type} {"AUTOINCREMENT" if self.column.is_autoincrement else ""} {"" if self.column.is_nullable else "NON NULL"}"
+        return f"{self.name} {self.column.type.value} {"AUTOINCREMENT" if self.column.is_autoincrement else ""} {"" if self.column.is_nullable else "NOT NULL"}"
 
 
 class PrimaryKey:
@@ -34,8 +34,9 @@ class PrimaryKey:
         self.type = type
         self.is_autoincrement = False
 
-    def autoincrement(self):
+    def autoincrement(self) -> PrimaryKey:
         self.is_autoincrement = True
+        return self
 
 
 class NamedPrimaryKey:
@@ -44,7 +45,7 @@ class NamedPrimaryKey:
         self.primary_key = primary_key
 
     def to_sql_schema(self) -> str:
-        return f"{self.name} {self.primary_key.type} PRIMARY KEY {"AUTOINCREMENT" if self.primary_key.is_autoincrement else ""}"
+        return f"{self.name} {self.primary_key.type.value} PRIMARY KEY {"AUTOINCREMENT" if self.primary_key.is_autoincrement else ""} NOT NULL"
 
 
 class Table:
@@ -55,7 +56,7 @@ T = TypeVar("T", bound=type[Table])
 
 
 def table(schema: T) -> T:
-    if getattr(schema, "primary_key", None) is not None:
+    if getattr(schema, "_primary_key", None) is not None:
         raise ValueError(
             "The provided table schema cannot contain a field named `primary_key`."
         )
@@ -97,7 +98,7 @@ def table(schema: T) -> T:
     def get_primary_key(self) -> NamedPrimaryKey:
         return cast(NamedPrimaryKey, getattr(self, primary_key_name))
 
-    setattr(schema, "primary_key", get_primary_key)
+    setattr(schema, "_primary_key", get_primary_key)
 
     for property_name, column in columns:
         setattr(schema, property_name, column)
@@ -106,30 +107,28 @@ def table(schema: T) -> T:
 
 
 def _table_to_sql_schema(named_table) -> str:
-    primary_key_schema = named_table.primary_key()
+    primary_key_schema: NamedPrimaryKey = named_table._primary_key(named_table)
 
     columns = [
         column
         for column_name in dir(named_table)
-        if isinstance((column := getattr(named_table, column_name)), Column)
+        if isinstance((column := getattr(named_table, column_name)), NamedColumn)
     ]
-    column_schemas = ",\n    ".join(
-        [cast(NamedColumn, column).to_sql_schema() for column in columns]
-    )
+    column_schemas = ",\n    ".join([column.to_sql_schema() for column in columns])
 
     return f"""
 {named_table.table_name}(
-{primary_key_schema},
+{primary_key_schema.to_sql_schema()},
 {column_schemas}
 )"""
 
 
-def _table_to_create_query(table: Table) -> str:
+def _table_to_create_query(table: type[Table]) -> str:
     return "CREATE TABLE IF NOT EXISTS " + _table_to_sql_schema(table) + ";"
 
 
 class Schema:
-    def __init__(self, tables: list[Table]):
+    def __init__(self, tables: list[type[Table]]):
         self.tables = tables
 
     def to_create_query(self) -> str:
