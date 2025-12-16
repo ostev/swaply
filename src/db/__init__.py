@@ -11,6 +11,9 @@ class LockedConnection:
         self.db_conn = sqlite3.connect(path, check_same_thread=False)
         self.lock = Lock()
 
+        # Enable checking foreign key constraints
+        self.db_conn.execute("PRAGMA foreign_keys = 1")
+
 
 class Database:
     def __init__(self, path: str, schema: Schema, number_of_connections=8) -> None:
@@ -19,6 +22,25 @@ class Database:
         self._connections = [
             LockedConnection(path) for _ in range(number_of_connections)
         ]
+
+    def contains(self, column, value) -> bool:
+        def does_table_contain(
+            conn: sqlite3.Connection, cursor: sqlite3.Cursor
+        ) -> bool:
+            return (
+                cursor.execute(
+                    "SELECT ? FROM ? WHERE ? = ?",
+                    (column.name, column.table.table_name, column.name, value),
+                ).fetchone()
+                is not None
+            )
+
+        return self.run(does_table_contain)
+
+    def close(self):
+        for conn in self._connections:
+            with conn.lock:
+                conn.db_conn.close()
 
     def create(self):
         def create_db(conn: sqlite3.Connection, cursor: sqlite3.Cursor):
