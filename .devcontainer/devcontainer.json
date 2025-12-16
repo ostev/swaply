@@ -15,7 +15,7 @@
             ]
         }
     },
-    "postCreateCommand": "/workspaces/ticketing/scripts/install_zsh.sh -t robbyrussell && cd /workspaces/ticketing/vite && npm install",
+    "postCreateCommand": "/workspaces/ticketing/scripts/install_zsh.sh -t robbyrussell && echo export UV_LINK_MODE=copy >> ~/.zshrc && cd /workspaces/ticketing/vite && npm install",
     "forwardPorts": [
         5000,
         3000
