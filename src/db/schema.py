@@ -1,10 +1,14 @@
 from enum import Enum
-from typing import TypeVar, cast
+from typing import Protocol, Self, TypeVar, cast
 
 
 class Type(Enum):
-    INT = "INTEGER"
+    INTEGER = "INTEGER"
     TEXT = "TEXT"
+    BLOB = "BLOB"
+
+
+type ForeignReference = NamedColumn | NamedPrimaryKey
 
 
 class Column:
@@ -12,21 +16,57 @@ class Column:
         self.type = type
         self.is_autoincrement = False
         self.is_nullable = False
+        self.foreign_reference: ForeignReference | None = None
 
-    def autoincrement(self):
+    def autoincrement(self) -> Self:
         self.is_autoincrement = True
+        return self
 
-    def nullable(self):
+    def nullable(self) -> Self:
         self.is_nullable = True
+        return self
+
+    def references(self, column) -> Self:
+        if not isinstance(column, NamedColumn) and not isinstance(
+            column, NamedPrimaryKey
+        ):
+            raise ValueError("Column in foreign reference must be named.")
+
+        self.foreign_reference = column
+        return self
+
+    @classmethod
+    def integer(cls) -> Self:
+        return cls(Type.INTEGER)
+
+    @classmethod
+    def text(cls) -> Self:
+        return cls(Type.TEXT)
+
+    @classmethod
+    def blob(cls) -> Self:
+        return cls(Type.BLOB)
+
+    @classmethod
+    def foreign(cls, named_column) -> Self:
+        return cls(named_column.column.type).references(named_column)
 
 
 class NamedColumn:
-    def __init__(self, name: str, column: Column):
+    def __init__(self, name: str, column: Column, table: type[Table]):
         self.name = name
         self.column = column
+        self.table = table
 
     def to_sql_schema(self) -> str:
-        return f"{self.name} {self.column.type.value} {"AUTOINCREMENT" if self.column.is_autoincrement else ""} {"" if self.column.is_nullable else "NOT NULL"}"
+        autoincrement = " AUTOINCREMENT" if self.column.is_autoincrement else ""
+        nullable = "" if self.column.is_nullable else "NOT NULL"
+
+        if self.column.foreign_reference is None:
+            foreign_reference = ""
+        else:
+            foreign_reference = f" REFERENCES {self.column.foreign_reference.table.table_name}({self.column.foreign_reference.name})"
+        return f"{self.name} {self.column.type.value}{autoincrement}{nullable}{foreign_reference}"
 
 
 class PrimaryKey:
@@ -34,28 +74,38 @@ class PrimaryKey:
         self.type = type
         self.is_autoincrement = False
 
-    def autoincrement(self) -> PrimaryKey:
+    def autoincrement(self) -> Self:
         self.is_autoincrement = True
         return self
 
+    @classmethod
+    def integer(cls) -> Self:
+        return cls(Type.INTEGER)
+
+    @classmethod
+    def text(cls) -> Self:
+        return cls(Type.TEXT)
+
+    @classmethod
+    def blob(cls) -> Self:
+        return cls(Type.BLOB)
+
 
 class NamedPrimaryKey:
-    def __init__(self, name: str, primary_key: PrimaryKey):
+    def __init__(self, name: str, primary_key: PrimaryKey, table: type[Table]):
         self.name = name
         self.primary_key = primary_key
+        self.table = table
 
     def to_sql_schema(self) -> str:
         return f"{self.name} {self.primary_key.type.value} PRIMARY KEY {"AUTOINCREMENT" if self.primary_key.is_autoincrement else ""} NOT NULL"
 
 
-class Table:
+class Table(Protocol):
     table_name: str
 
 
-T = TypeVar("T", bound=type[Table])
-
-
-def table(schema: T) -> T:
+def table[T: type[Table]](schema: T) -> T:
     if getattr(schema, "_primary_key", None) is not None:
         raise ValueError(
             "The provided table schema cannot contain a field named `primary_key`."
@@ -78,7 +128,7 @@ def table(schema: T) -> T:
     if isinstance(primary_key, NamedPrimaryKey):
         named_primary_key = primary_key
     else:
-        named_primary_key = NamedPrimaryKey(primary_key_name, primary_key)
+        named_primary_key = NamedPrimaryKey(primary_key_name, primary_key, schema)
 
     columns: list[tuple[str, NamedColumn]] = [
         (
@@ -86,7 +136,7 @@ def table(schema: T) -> T:
             (
                 column
                 if isinstance(column, NamedColumn)
-                else (NamedColumn(name, column))
+                else (NamedColumn(name, column, schema))
             ),
         )
         for name in dir(schema)
