@@ -1,9 +1,13 @@
 from datetime import UTC, datetime
+from enum import Enum
 from sqlite3 import Connection, Cursor
 from flask import Blueprint, request
-from auth.session import protected
+from auth.session import authenticated, protected
 from globals import g
 import json
+
+from model import Event
+from utils import normalise_json_str_array, result
 
 API_PREFIX = "/api/v1"
 
@@ -11,41 +15,111 @@ api = Blueprint("api", __name__, url_prefix=API_PREFIX)
 
 
 @api.route("/events")
-def search_events():
+@authenticated
+def search_events(user_id: int | None):
     search_query = request.args.get("q", None)
 
     def retrieve_events(conn: Connection, cursor: Cursor):
-        if search_query is None:
-            return cursor.execute("SELECT * FROM events").fetchall()
+        if user_id is None:
+            if search_query is None:
+                return cursor.execute(
+                    "SELECT id, name, date, manager FROM events WHERE is_published = 1"
+                ).fetchall()
+            else:
+                return cursor.execute(
+                    "SELECT id, name, date, manager FROM events WHERE name LIKE %?% AND is_published = 1",
+                    (search_query,),
+                ).fetchall()
         else:
-            return cursor.execute(
-                "SELECT id, name FROM events WHERE name LIKE %?%", (search_query,)
-            ).fetchall()
+            if search_query is None:
+                return cursor.execute(
+                    "SELECT id, name, date, manager FROM events WHERE is_published = 1 OR manager = ?",
+                    (user_id,),
+                ).fetchall()
+            else:
+                return cursor.execute(
+                    "SELECT id, name, date, manager FROM events WHERE name LIKE %?% AND (is_published = 1 OR manager = ?)",
+                    (search_query, user_id),
+                ).fetchall()
 
     events = g.db.run(retrieve_events)
 
     return events
 
 
-@api.route("/events/create", methods=["POST"])
+@api.route("/events", methods=["POST"])
 @protected
 def create_event(user_id: int):
     name = str(request.form["name"])
     date = datetime.fromisoformat(str(request.form["date"])).astimezone(UTC)
 
+    is_published = bool(request.form.get("is_published", False))
+    ticket_types = normalise_json_str_array(
+        request.form.get("ticket_types", "Standard")
+    )
+
     def insert_event(conn: Connection, cursor: Cursor):
-        cursor.execute("INSERT INTO events (name) VALUES (?)", (name,))
+        cursor.execute(
+            "INSERT INTO events (name, date, is_published, ticket_types, manager) VALUES (?, ?, ?)",
+            (name, date, is_published, ticket_types, user_id),
+        )
         conn.commit()
 
     g.db.run(insert_event)
 
-    return search_events()
+    return result(EventResult.SUCCESS)
 
 
-@api.route("/events/update", methods=["POST", "PATCH"])
+class EventResult(Enum):
+    SUCCESS = 200
+    NOT_FOUND = 404
+    UNAUTHORISED = 401
+
+
+@api.route("/events/<event_id>", methods=["GET"])
+@authenticated
+def get_event(user_id: int | None, event_id: int):
+    maybe_event = g.db.retrieve(
+        [Event.manager, Event.date, Event.is_published, Event.ticket_types],
+        Event.id,
+        event_id,
+    )
+
+    if maybe_event is not None:
+        manager, date, is_published, ticket_types = maybe_event
+
+        if is_published or (int(manager) == user_id and user_id is not None):
+            return result(
+                EventResult.SUCCESS,
+                {
+                    "manager": manager,
+                    "date": datetime.fromisoformat(date).isoformat(),
+                    "is_published": bool(is_published),
+                    "ticket_types": map(str, json.loads(ticket_types)),
+                },
+            )
+        else:
+            return result(EventResult.UNAUTHORISED)
+    else:
+        return result(EventResult.NOT_FOUND)
+
+
+@api.route("/events/<event_id>/update", methods=["POST", "PATCH"])
 @protected
-def update_event(user_id: int):
-    fields = {}
+def update_event(user_id: int, event_id: int):
+    manager_id: int | None = g.db.run(
+        lambda conn, cursor: cursor.execute(
+            "SELECT manager FROM events WHERE event_id = ?", (event_id,)
+        ).fetchone()
+    )
+
+    if manager_id == None:
+        return result(EventResult.NOT_FOUND)
+
+    if user_id != manager_id:
+        return result(EventResult.UNAUTHORISED)
+
+    fields: dict[str, str | int] = {"event_id": event_id}
 
     if (name := request.form.get("name", None)) is not None:
         fields["name"] = name
@@ -54,18 +128,14 @@ def update_event(user_id: int):
         fields["date"] = str(datetime.fromisoformat(form_date).astimezone(UTC))
 
     if (ticket_types := request.form.get("name", None)) is not None:
-        fields["ticket_types"] = json.dumps(map(str, json.loads(ticket_types)))
+        fields["ticket_types"] = normalise_json_str_array(ticket_types)
 
-    columns = ", ".join(fields.keys())
-    value_placeholders = "?, " * (len(fields) - 1) + "?"
+    placeholders = ", ".join([f"{column} = :{column}" for column in fields.keys()])
 
     def insert_event(conn: Connection, cursor: Cursor):
-        cursor.execute(
-            f"UPDATE events SET ({value_placeholders})",
-            tuple(fields.values()),
-        )
+        cursor.execute(f"UPDATE events SET {placeholders} WHERE id = :event_id", fields)
         conn.commit()
 
     g.db.run(insert_event)
 
-    return search_events()
+    return result(EventResult.SUCCESS)

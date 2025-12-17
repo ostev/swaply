@@ -10,6 +10,10 @@ class Event:
     id = PrimaryKey.integer().autoincrement()
     manager = Column.foreign(User.id)
 
+    # 0 is not published, 1 is published
+    # (since SQLLite doesn't have a boolean type)
+    is_published = Column.integer()
+
     name = Column.text()
     date = Column.text()
 

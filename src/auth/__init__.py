@@ -33,7 +33,7 @@ def login():
 
     def get_user(conn: Connection, cursor: Cursor) -> tuple[int, str] | None:
         return cursor.execute(
-            "SELECT id, hashed_password FROM users WHERE email = ?", normalized_email
+            "SELECT id, hashed_password FROM users WHERE email = ?", (normalized_email,)
         ).fetchone()
 
     maybe_user = g.db.run(get_user)

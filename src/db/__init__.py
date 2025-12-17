@@ -1,9 +1,11 @@
 import sqlite3
-from typing import Callable
+from typing import Any, Callable
 
 from db import schema
 from db.schema import Schema
 from threading import Lock
+
+from utils import check_sql_identifier
 
 
 class LockedConnection:
@@ -23,14 +25,56 @@ class Database:
             LockedConnection(path) for _ in range(number_of_connections)
         ]
 
+    # def retrieve_all(self, column, value) -> list[Any]:
+    #     column_name = check_sql_identifier(column.name)
+    #     table_name = check_sql_identifier(column.table.table_name)
+
+    #     return self.run(
+    #         lambda conn, cursor: cursor.execute(
+    #             f"SELECT * FROM {table_name} WHERE {column_name} = ?", value
+    #         ).fetchall()
+    #     )
+    def retrieve_all(self, select_columns, where_column, value) -> list[Any]:
+        column_name = check_sql_identifier(where_column.name)
+        table_name = check_sql_identifier(where_column.table.table_name)
+
+        select_columns_list = ", ".join(
+            [check_sql_identifier(column.name) for column in select_columns]
+        )
+
+        return self.run(
+            lambda conn, cursor: cursor.execute(
+                f"SELECT ({select_columns_list}) FROM {table_name} WHERE {column_name} = ?",
+                (value,),
+            ).fetchall()
+        )
+
+    def retrieve(self, select_columns, where_column, value) -> Any | None:
+        column_name = check_sql_identifier(where_column.name)
+        table_name = check_sql_identifier(where_column.table.table_name)
+
+        select_columns_list = ", ".join(
+            [check_sql_identifier(column.name) for column in select_columns]
+        )
+
+        return self.run(
+            lambda conn, cursor: cursor.execute(
+                f"SELECT ({select_columns_list}) FROM {table_name} WHERE {column_name} = ?",
+                (value,),
+            ).fetchone()
+        )
+
     def contains(self, column, value) -> bool:
+        column_name = check_sql_identifier(column.name)
+        table_name = (check_sql_identifier(column.table.table_name),)
+
         def does_table_contain(
             conn: sqlite3.Connection, cursor: sqlite3.Cursor
         ) -> bool:
             return (
                 cursor.execute(
-                    "SELECT ? FROM ? WHERE ? = ?",
-                    (column.name, column.table.table_name, column.name, value),
+                    f"SELECT {column_name} FROM {table_name} WHERE {column_name} = ?",
+                    (value,),
                 ).fetchone()
                 is not None
             )

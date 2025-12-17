@@ -62,7 +62,7 @@ def get_user_id() -> int | None:
         ) -> tuple[int, bytes, bytes, str] | None:
             return cursor.execute(
                 "SELECT user_id, hashed_token, token_salt, expiry_datetime FROM sessions WHERE id = ?",
-                session_id,
+                (session_id,),
             ).fetchone()
 
         maybe_session = g.db.run(get_session)
@@ -93,7 +93,7 @@ def logout():
     if session_id is not None:
 
         def delete_session(conn: Connection, cursor: Cursor):
-            cursor.execute("DELETE FROM sessions WHERE id = ?", session_id)
+            cursor.execute("DELETE FROM sessions WHERE id = ?", (session_id,))
             conn.commit()
 
         g.db.run(delete_session)
@@ -108,5 +108,15 @@ def protected(route):
             return {"error": "invalid_session"}, 403
         else:
             return route(user_id, *args, **kwargs)
+
+    return protected_route
+
+
+def authenticated(route):
+    @wraps(route)
+    def protected_route(*args, **kwargs):
+        user_id = get_user_id()
+
+        return route(user_id, *args, **kwargs)
 
     return protected_route

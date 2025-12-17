@@ -111,6 +111,11 @@ def table[T: type[Table]](schema: T) -> T:
             "The provided table schema cannot contain a field named `primary_key`."
         )
 
+    if getattr(schema, "_columns", None) is not None:
+        raise ValueError(
+            "The provided table schema cannot contain a field named `columns`."
+        )
+
     properties = dir(schema)
 
     try:
@@ -130,7 +135,7 @@ def table[T: type[Table]](schema: T) -> T:
     else:
         named_primary_key = NamedPrimaryKey(primary_key_name, primary_key, schema)
 
-    columns: list[tuple[str, NamedColumn]] = [
+    columns_with_property_names: list[tuple[str, NamedColumn]] = [
         (
             name,
             (
@@ -150,8 +155,11 @@ def table[T: type[Table]](schema: T) -> T:
 
     setattr(schema, "_primary_key", get_primary_key)
 
-    for property_name, column in columns:
+    for property_name, column in columns_with_property_names:
         setattr(schema, property_name, column)
+
+    columns = [column for _, column in columns_with_property_names]
+    setattr(schema, "_columns", columns)
 
     return schema
 
