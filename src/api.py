@@ -104,7 +104,7 @@ def get_event(user_id: int | None, event_id: int):
         return result(EventResult.NOT_FOUND)
 
 
-@api.route("/events/<event_id>/update", methods=["POST", "PATCH"])
+@api.route("/events/<event_id>", methods=["PATCH"])
 @protected
 def update_event(user_id: int, event_id: int):
     manager_id: int | None = g.db.run(
