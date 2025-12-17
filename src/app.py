@@ -42,6 +42,7 @@ def teardown_db(exception):
         db.close()
 
 
-@app.route("/")
-def home():
+@app.route("/", defaults={"path": ""})
+@app.route("/<path:path>")
+def client_routed():
     return render_template("index.jinja")
