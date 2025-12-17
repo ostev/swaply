@@ -28,10 +28,10 @@ def set_secrets():
 
 set_secrets()
 
-
-if "db" not in g:
-    g.db = Database("db.sqlite3", schema)
-    g.db.create()
+with app.app_context():
+    if "db" not in g:
+        g.db = Database("db.sqlite3", schema)
+        g.db.create()
 
 
 @app.teardown_appcontext

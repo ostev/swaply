@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Protocol, Self, TypeVar, cast
+from typing import Protocol, Self, cast
 
 
 class Type(Enum):
@@ -94,11 +94,11 @@ class PrimaryKey:
 class NamedPrimaryKey:
     def __init__(self, name: str, primary_key: PrimaryKey, table: type[Table]):
         self.name = name
-        self.primary_key = primary_key
+        self.column = primary_key
         self.table = table
 
     def to_sql_schema(self) -> str:
-        return f"{self.name} {self.primary_key.type.value} PRIMARY KEY {"AUTOINCREMENT" if self.primary_key.is_autoincrement else ""} NOT NULL"
+        return f"{self.name} {self.column.type.value} PRIMARY KEY {"AUTOINCREMENT" if self.column.is_autoincrement else ""} NOT NULL"
 
 
 class Table(Protocol):

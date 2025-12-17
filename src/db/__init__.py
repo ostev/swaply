@@ -89,7 +89,7 @@ class Database:
     def create(self):
         def create_db(conn: sqlite3.Connection, cursor: sqlite3.Cursor):
             print(self._schema.to_create_query())
-            cursor.execute(self._schema.to_create_query())
+            cursor.executescript(self._schema.to_create_query())
             conn.commit()
 
         self.run(create_db)
