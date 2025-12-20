@@ -18,7 +18,7 @@ def normalise_json_str_array(input: str) -> str:
 
 
 def check_sql_identifier(name: str) -> str:
-    if len(re.findall(r"""^([[:alpha:]_][[:alnum:]_]*|("[^"]*")+)$""", name)) == 1:
+    if len(re.findall(r"^([a-zA-Z]|_)([a-zA-z]|\d|_)*$", name)) > 0:
         return name
     else:
         raise ValueError(f"Illegal SQL identifier: {name}")
