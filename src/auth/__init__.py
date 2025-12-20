@@ -6,11 +6,11 @@ from email_validator import EmailNotValidError, validate_email
 
 from auth.hasher import ArgonHasher
 from auth.user import PrivilegeLevel, User
-from globals import g
+import auth.session
 
 from api import API_PREFIX
-import auth.session
 from utils import result
+import globals
 
 auth_api = Blueprint("auth", __name__, url_prefix=API_PREFIX + "/auth")
 
@@ -23,8 +23,8 @@ class LoginResult(Enum):
 
 @auth_api.route("/login", methods=["POST"])
 def login():
-    email = request.form["email"]
-    password = request.form["password"]
+    email = request.json["email"]
+    password = request.json["password"]
 
     try:
         normalized_email = validate_email(email, check_deliverability=False).normalized
@@ -36,7 +36,7 @@ def login():
             "SELECT id, hashed_password FROM users WHERE email = ?", (normalized_email,)
         ).fetchone()
 
-    maybe_user = g.db.run(get_user)
+    maybe_user = globals.db.run(get_user)
 
     if maybe_user is not None:
         user_id, hashed_password = maybe_user
@@ -60,8 +60,8 @@ MIN_PASSWORD_LENGTH = 8
 
 @auth_api.route("/signup", methods=["POST"])
 def signup():
-    email = request.form["email"]
-    password = request.form["password"]
+    email = request.json["email"]
+    password = request.json["password"]
 
     try:
         normalized_email = validate_email(email, check_deliverability=True).normalized
@@ -71,7 +71,7 @@ def signup():
     if len(password) < MIN_PASSWORD_LENGTH:
         return result(SignupResult.INVALID_PASSWORD)
 
-    if g.db.contains(User.email, normalized_email):
+    if globals.db.contains(User.email, normalized_email):
         # Just say that the email is invalid to avoid
         # leaking information about which emails correspond
         # users in a potential enumeration attack.
@@ -88,7 +88,7 @@ def signup():
             (normalized_email, hashed_password, PrivilegeLevel.NORMAL.value),
         )
 
-    g.db.run(insert_user)
+    globals.db.run(insert_user)
 
     return result(SignupResult.SUCCESS)
 

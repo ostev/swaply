@@ -9,7 +9,7 @@ from flask import session
 from auth.hasher import BlakeHasher, SaltedHash
 from db.schema import Column, PrimaryKey, table
 from auth.user import User
-from globals import g
+import globals
 
 
 @table
@@ -46,7 +46,7 @@ def register(user_id: int, expiry_days: int = 14):
         )
         conn.commit()
 
-    g.db.run(insert_session)
+    globals.db.run(insert_session)
 
     session["auth_token"] = token
     session["auth_session_id"] = session_id
@@ -65,7 +65,7 @@ def get_user_id() -> int | None:
                 (session_id,),
             ).fetchone()
 
-        maybe_session = g.db.run(get_session)
+        maybe_session = globals.db.run(get_session)
 
         if maybe_session is not None:
             user_id, hashed_token, token_salt, expiry_datetime = maybe_session
@@ -96,7 +96,7 @@ def logout():
             cursor.execute("DELETE FROM sessions WHERE id = ?", (session_id,))
             conn.commit()
 
-        g.db.run(delete_session)
+        globals.db.run(delete_session)
 
 
 def protected(route):

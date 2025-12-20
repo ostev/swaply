@@ -11,6 +11,7 @@ from utils import check_sql_identifier
 class LockedConnection:
     def __init__(self, path: str):
         self.db_conn = sqlite3.connect(path, check_same_thread=False)
+
         self.lock = Lock()
 
         # Enable checking foreign key constraints
@@ -59,7 +60,7 @@ class Database:
 
         return self.run(
             lambda conn, cursor: cursor.execute(
-                f"SELECT ({select_columns_list}) FROM {table_name} WHERE {column_name} = ?",
+                f"SELECT {select_columns_list} FROM {table_name} WHERE {column_name} = ?",
                 (value,),
             ).fetchone()
         )
