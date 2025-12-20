@@ -1,13 +1,63 @@
 from pathlib import Path
 import secrets
+import sqlite3
 
 from flask import Flask, g, render_template, request
 from flask_vite import Vite
 
 from db import Database
 from model import schema
+import event
+import auth
+import globals
+import model
 
 app = Flask(__name__, template_folder="templates")
+app.register_blueprint(event.event_api)
+app.register_blueprint(auth.auth_api)
+# with app.app_context():
+# if "db" not in g:
+#     g.db = Database("db.sqlite3", schema)
+#     g.db.create()
+globals.db = Database("db.sqlite3", model.schema)
+globals.db.create()
+
+
+def create_search_index(conn: sqlite3.Connection, cursor: sqlite3.Cursor):
+    cursor.executescript(
+        """
+        CREATE VIRTUAL TABLE IF NOT EXISTS event_search_index
+            USING fts5(
+                name,
+                tags,
+                ticket_types,
+                content="events",
+                content_rowid="id"
+            );
+
+        CREATE TRIGGER IF NOT EXISTS event_insert_trigger AFTER INSERT ON events BEGIN
+            INSERT INTO event_search_index(rowid, name, tags, ticket_types)
+                VALUES (NEW.id, NEW.name, NEW.tags, NEW.ticket_types);
+        END;
+
+        CREATE TRIGGER IF NOT EXISTS event_delete_trigger AFTER DELETE ON events BEGIN
+            INSERT INTO event_search_index(fts_idx, rowid, name, tags, ticket_types)
+                VALUES ("delete", OLD.id, OLD.name, OLD.tags, OLD.ticket_types);
+        END;
+
+        CREATE TRIGGER IF NOT EXISTS event_update_trigger AFTER UPDATE ON events BEGIN
+            INSERT INTO event_search_index(fts_idx, rowid, name, tags, ticket_types)
+                VALUES ("delete", OLD.id, OLD.name, OLD.tags, OLD.ticket_types);
+
+            INSERT INTO event_search_index(rowid, name, tags, ticket_types)
+                VALUES (NEW.id, NEW.name, NEW.tags, NEW.ticket_types);
+        END;
+        """
+    )
+    conn.commit()
+
+
+globals.db.run(create_search_index)
 vite = Vite(app)
 
 
@@ -27,11 +77,6 @@ def set_secrets():
 
 
 set_secrets()
-
-with app.app_context():
-    if "db" not in g:
-        g.db = Database("db.sqlite3", schema)
-        g.db.create()
 
 
 @app.teardown_appcontext
