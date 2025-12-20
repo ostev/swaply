@@ -1,13 +1,10 @@
 import api
 import extra/decode as decode_extra
-import gleam/dynamic
 import gleam/dynamic/decode
 import gleam/http
 import gleam/http/request
 import gleam/int
 import gleam/json.{type Json}
-import gleam/list
-import gleam/result
 import gleam/uri
 import lustre/effect.{type Effect}
 import rsvp
@@ -100,7 +97,7 @@ pub fn update_event(to updated_event: Event, with handler) {
   )
 }
 
-pub fn get_user_events(user_id: String, handler) {
+pub fn get_user_events(handler) {
   let url = api_prefix <> "/managing"
 
   let decoder = decode.list(of: decoder())
