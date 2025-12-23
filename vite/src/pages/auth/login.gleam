@@ -38,23 +38,26 @@ pub type Msg {
 
 pub type LoginResponse {
   Success
-  InvalidPassword
+  IncorrectCredentials
   InvalidEmail
 }
 
 fn login_response_decoder() -> decode.Decoder(LoginResponse) {
-  use variant <- decode.then(decode.string)
+  use variant <- decode.field("result", decode.string)
   case variant {
     "success" -> decode.success(Success)
-    "invalid_password" -> decode.success(InvalidPassword)
+    "incorrect_credentials" -> decode.success(IncorrectCredentials)
     "invalid_email" -> decode.success(InvalidEmail)
-    _ -> decode.failure(InvalidPassword, "LoginResponse")
+    _ -> decode.failure(IncorrectCredentials, "LoginResponse")
   }
 }
 
 pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
   case msg {
-    LoginResponseReceived(Ok(_)) -> #(model, modem.load(model.origin))
+    LoginResponseReceived(Ok(_)) -> #(
+      model,
+      modem.push(model.origin.path, model.origin.query, model.origin.fragment),
+    )
     LoginResponseReceived(Error(error)) -> #(
       Model(..model, error: option.Some(error)),
       effect.none(),
@@ -75,7 +78,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
   }
 }
 
-pub fn login(form: Form) -> Effect(Msg) {
+fn login(form: Form) -> Effect(Msg) {
   let url = auth.api_prefix <> "/login"
   let body =
     json.object([
@@ -97,7 +100,7 @@ pub fn view(model: Model) -> Element(Msg) {
         type_: "text",
         label: "Email",
         name: "email",
-        value: model.form.email,
+        value: option.Some(model.form.email),
         on_input: UpdatedEmail,
         is_valid: model.form.email |> string.contains("@"),
       ),
@@ -105,7 +108,7 @@ pub fn view(model: Model) -> Element(Msg) {
         type_: "password",
         label: "Password",
         name: "password",
-        value: model.form.password,
+        value: option.Some(model.form.password),
         on_input: UpdatedPassword,
         is_valid: string.length(model.form.password) >= 8,
       ),

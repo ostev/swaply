@@ -7,6 +7,7 @@ import lustre/element.{type Element}
 import lustre/element/html as h
 import lustre/event as e
 import rsvp
+import shared.{type Shared}
 
 pub type Model {
   Model(search_query: String, events: Option(List(event.Event)))
@@ -50,9 +51,18 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
   }
 }
 
-pub fn view(model: Model) -> Element(Msg) {
+pub fn view(model: Model, shared: Shared) -> Element(Msg) {
   h.div([], [
     h.h1([], [h.text("Events")]),
+    h.h2([], [
+      h.text(
+        "Hello there! "
+        <> case shared.user {
+          option.Some(user) -> "Your name is " <> user.name
+          option.None -> "You have not signed in."
+        },
+      ),
+    ]),
     h.input([
       a.value(model.search_query),
       a.placeholder("Search for events..."),
