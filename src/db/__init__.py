@@ -67,7 +67,7 @@ class Database:
 
     def contains(self, column, value) -> bool:
         column_name = check_sql_identifier(column.name)
-        table_name = (check_sql_identifier(column.table.table_name),)
+        table_name = check_sql_identifier(column.table.table_name)
 
         def does_table_contain(
             conn: sqlite3.Connection, cursor: sqlite3.Cursor
