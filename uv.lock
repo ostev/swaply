@@ -3,6 +3,14 @@ revision = 3
 requires-python = ">=3.14"
 
 [[package]]
+name = "aenum"
+version = "3.1.16"
+source = { registry = "https://pypi.org/simple" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/e3/52/6ad8f63ec8da1bf40f96996d25d5b650fdd38f5975f8c813732c47388f18/aenum-3.1.16-py3-none-any.whl", hash = "sha256:9035092855a98e41b66e3d0998bd7b96280e85ceb3a04cc035636138a1943eaf", size = 165627, upload-time = "2025-04-25T03:17:58.89Z" },
+]
+
+[[package]]
 name = "argon2-cffi"
 version = "25.1.0"
 source = { registry = "https://pypi.org/simple" }
@@ -233,6 +241,7 @@ name = "ticketing"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
+    { name = "aenum" },
     { name = "argon2-cffi" },
     { name = "email-validator" },
     { name = "flask" },
@@ -241,6 +250,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
+    { name = "aenum", specifier = ">=3.1.16" },
     { name = "argon2-cffi", specifier = ">=25.1.0" },
     { name = "email-validator", specifier = ">=2.3.0" },
     { name = "flask", specifier = ">=3.1.2" },
