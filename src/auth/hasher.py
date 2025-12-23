@@ -49,6 +49,5 @@ class BlakeHasher:
 
     def verify(self, value: bytes, salted_hash: SaltedHash) -> bool:
         return (
-            hashlib.blake2b(value, salt=salted_hash.salt).hexdigest()
-            == salted_hash.hash
+            hashlib.blake2b(value, salt=salted_hash.salt).digest() == salted_hash.hash
         )

@@ -1,12 +1,9 @@
-from enum import Enum
 import json
 import re
 from typing import Any
 
 
-def result(
-    result: Enum, json_response: dict[str, Any] = {}
-) -> tuple[dict[str, Any], int]:
+def result(result, json_response: dict[str, Any] = {}) -> tuple[dict[str, Any], int]:
     message = result.name.lower()
     status_code = int(result.value)
 

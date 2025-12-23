@@ -30,27 +30,26 @@ def create_search_index(conn: sqlite3.Connection, cursor: sqlite3.Cursor):
             USING fts5(
                 name,
                 tags,
-                ticket_types,
                 content="events",
                 content_rowid="id"
             );
 
         CREATE TRIGGER IF NOT EXISTS event_insert_trigger AFTER INSERT ON events BEGIN
-            INSERT INTO event_search_index(rowid, name, tags, ticket_types)
-                VALUES (NEW.id, NEW.name, NEW.tags, NEW.ticket_types);
+            INSERT INTO event_search_index(rowid, name, tags)
+                VALUES (NEW.id, NEW.name, NEW.tags);
         END;
 
         CREATE TRIGGER IF NOT EXISTS event_delete_trigger AFTER DELETE ON events BEGIN
-            INSERT INTO event_search_index(fts_idx, rowid, name, tags, ticket_types)
-                VALUES ("delete", OLD.id, OLD.name, OLD.tags, OLD.ticket_types);
+            INSERT INTO event_search_index(fts_idx, rowid, name, tags)
+                VALUES ("delete", OLD.id, OLD.name, OLD.tags);
         END;
 
         CREATE TRIGGER IF NOT EXISTS event_update_trigger AFTER UPDATE ON events BEGIN
-            INSERT INTO event_search_index(fts_idx, rowid, name, tags, ticket_types)
-                VALUES ("delete", OLD.id, OLD.name, OLD.tags, OLD.ticket_types);
+            INSERT INTO event_search_index(fts_idx, rowid, name, tags)
+                VALUES ("delete", OLD.id, OLD.name, OLD.tags);
 
-            INSERT INTO event_search_index(rowid, name, tags, ticket_types)
-                VALUES (NEW.id, NEW.name, NEW.tags, NEW.ticket_types);
+            INSERT INTO event_search_index(rowid, name, tags)
+                VALUES (NEW.id, NEW.name, NEW.tags);
         END;
         """
     )

@@ -1,6 +1,7 @@
-from enum import Enum
+import aenum
 
 from sqlite3 import Connection, Cursor
+import sys
 from flask import Blueprint, make_response, request, session
 from email_validator import EmailNotValidError, validate_email
 
@@ -15,7 +16,9 @@ import globals
 auth_api = Blueprint("auth", __name__, url_prefix=API_PREFIX + "/auth")
 
 
-class LoginResult(Enum):
+class LoginResult(aenum.Enum):  # type: ignore
+    _settings_ = aenum.NoAlias
+
     SUCCESS = 201
     INCORRECT_CREDENTIALS = 401
     INVALID_EMAIL = 422
@@ -49,10 +52,20 @@ def login():
     return result(LoginResult.INCORRECT_CREDENTIALS)
 
 
-class SignupResult(Enum):
+@auth_api.route("/logout", methods=["POST"])
+def logout():
+    auth.session.logout()
+
+    return "", 204
+
+
+class SignupResult(aenum.Enum):  # type: ignore
+    _settings_ = aenum.NoAlias
+
     SUCCESS = 201
     INVALID_PASSWORD = 422
     INVALID_EMAIL = 422
+    EMAIL_ALREADY_USED = 422
 
 
 MIN_PASSWORD_LENGTH = 8
@@ -61,6 +74,7 @@ MIN_PASSWORD_LENGTH = 8
 @auth_api.route("/signup", methods=["POST"])
 def signup():
     email = request.json["email"]
+    name = request.json["name"]
     password = request.json["password"]
 
     try:
@@ -72,20 +86,17 @@ def signup():
         return result(SignupResult.INVALID_PASSWORD)
 
     if globals.db.contains(User.email, normalized_email):
-        # Just say that the email is invalid to avoid
-        # leaking information about which emails correspond
-        # users in a potential enumeration attack.
-        return result(SignupResult.INVALID_EMAIL)
+        return result(SignupResult.EMAIL_ALREADY_USED)
 
     hashed_password = ArgonHasher().hash(password)
 
     def insert_user(conn: Connection, cursor: Cursor):
         cursor.execute(
             """
-            INSERT INTO users (email, hashed_password, privilege_level)
-            VALUES (?, ?, ?)
+            INSERT INTO users (email, name, hashed_password, privilege_level)
+            VALUES (?, ?, ?, ?)
             """,
-            (normalized_email, hashed_password, PrivilegeLevel.NORMAL.value),
+            (normalized_email, name, hashed_password, PrivilegeLevel.NORMAL.value),
         )
 
     globals.db.run(insert_user)
@@ -96,3 +107,21 @@ def signup():
 @auth_api.route("/login/status")
 def login_status():
     return {"is_logged_in": auth.session.get_user_id() is not None}
+
+
+@auth_api.route("/user")
+def get_current_user():
+    user_id = auth.session.get_user_id()
+
+    if user_id is None:
+        return {"is_logged_in": False}
+    else:
+        user = globals.db.retrieve([User.id, User.email, User.name], User.id, user_id)
+
+        if user is None:
+            auth.session.logout()
+            return {"is_logged_in": False}
+        else:
+            id, email, name = user
+
+            return {"is_logged_in": True, "email": email, "name": name, "id": str(id)}

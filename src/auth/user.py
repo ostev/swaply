@@ -8,6 +8,7 @@ class User:
     id = PrimaryKey.integer().autoincrement()
 
     email = Column.text()
+    name = Column.text()
     hashed_password = Column.text()
 
     privilege_level = Column.integer()
