@@ -95,11 +95,22 @@ def signup():
             """
             INSERT INTO users (email, name, hashed_password, privilege_level)
             VALUES (?, ?, ?, ?)
+            RETURNING id
             """,
             (normalized_email, name, hashed_password, PrivilegeLevel.NORMAL.value),
         )
 
-    globals.db.run(insert_user)
+        user_id = cursor.fetchone()
+
+        if user_id is None:
+            raise ValueError("Failed to create user")
+
+        conn.commit()
+        return user_id
+
+    user_id = globals.db.run(insert_user)
+
+    auth.session.register(user_id)
 
     return result(SignupResult.SUCCESS)
 
