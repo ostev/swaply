@@ -6,6 +6,7 @@ class Type(Enum):
     INTEGER = "INTEGER"
     TEXT = "TEXT"
     BLOB = "BLOB"
+    NUMERIC = "NUMERIC"
 
 
 type ForeignReference = NamedColumn | NamedPrimaryKey
@@ -46,6 +47,10 @@ class Column:
     @classmethod
     def blob(cls) -> Self:
         return cls(Type.BLOB)
+
+    @classmethod
+    def numeric(cls) -> Self:
+        return cls(Type.NUMERIC)
 
     @classmethod
     def foreign(cls, named_column) -> Self:
