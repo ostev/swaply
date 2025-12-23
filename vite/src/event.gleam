@@ -7,6 +7,7 @@ import gleam/int
 import gleam/json.{type Json}
 import gleam/uri
 import lustre/effect.{type Effect}
+import lustre/element.{type Element}
 import rsvp
 import tempo.{type DateTime}
 import tempo/datetime
@@ -20,8 +21,28 @@ pub type Event {
     is_published: Bool,
     name: String,
     date: DateTime,
-    ticket_types: List(String),
+    ticket_types: List(TicketType),
   )
+}
+
+pub type TicketType {
+  TicketType(name: String, price: Float, allotted: Int)
+}
+
+pub fn ticket_type_to_json(ticket_type: TicketType) -> Json {
+  let TicketType(name:, price:, allotted:) = ticket_type
+  json.object([
+    #("name", json.string(name)),
+    #("price", json.float(price)),
+    #("allotted", json.int(allotted)),
+  ])
+}
+
+fn ticket_type_decoder() -> decode.Decoder(TicketType) {
+  use name <- decode.field("name", decode.string)
+  use price <- decode.field("price", decode.float)
+  use allotted <- decode.field("allotted", decode.int)
+  decode.success(TicketType(name:, price:, allotted:))
 }
 
 pub fn decoder() -> decode.Decoder(Event) {
@@ -30,7 +51,10 @@ pub fn decoder() -> decode.Decoder(Event) {
   use is_published <- decode.field("is_published", decode.bool)
   use name <- decode.field("name", decode.string)
   use date <- decode.field("date", decode_extra.datetime())
-  use ticket_types <- decode.field("ticket_types", decode.list(decode.string))
+  use ticket_types <- decode.field(
+    "ticket_types",
+    decode.list(ticket_type_decoder()),
+  )
 
   decode.success(Event(
     id:,
@@ -49,7 +73,10 @@ pub fn encode(event: Event) -> Json {
     #("is_published", json.bool(event.is_published)),
     #("name", json.string(event.name)),
     #("date", json.string(event.date |> datetime.format(tempo.ISO8601Seconds))),
-    #("ticket_types", json.array(event.ticket_types, json.string)),
+    #(
+      "ticket_types",
+      json.array(from: event.ticket_types, of: ticket_type_to_json),
+    ),
   ])
 }
 
