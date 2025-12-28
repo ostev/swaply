@@ -45,7 +45,7 @@ class Database:
 
         return self.run(
             lambda conn, cursor: cursor.execute(
-                f"SELECT ({select_columns_list}) FROM {table_name} WHERE {column_name} = ?",
+                f"SELECT {select_columns_list} FROM {table_name} WHERE {column_name} = ?",
                 (value,),
             ).fetchall()
         )

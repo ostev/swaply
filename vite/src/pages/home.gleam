@@ -8,6 +8,7 @@ import lustre/element/html as h
 import lustre/event as e
 import rsvp
 import shared.{type Shared}
+import ui
 
 pub type Model {
   Model(search_query: String, events: Option(List(event.Event)))
@@ -74,7 +75,7 @@ pub fn view(model: Model, shared: Shared) -> Element(Msg) {
         h.ol(
           [],
           events
-            |> list.map(fn(event) { h.li([], [h.text(event.name)]) }),
+            |> list.map(fn(event) { h.li([], [ui.event_card_view(event)]) }),
         )
       }
       option.None -> {

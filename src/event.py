@@ -1,5 +1,6 @@
 from datetime import UTC, datetime
 from enum import Enum
+from functools import reduce
 import json
 from sqlite3 import Connection, Cursor
 import aenum
@@ -25,6 +26,12 @@ class Event:
 
     name = Column.text()
     date = Column.text()
+
+    short_description = Column.text()
+    description = Column.text()
+
+    # "" represents no location
+    location = Column.text()
 
     # Stored as a comma-seperated list
     tags = Column.text()
@@ -58,34 +65,113 @@ class EventResult(aenum.Enum):  # type: ignore
 @authenticated
 def search_events(user_id: int | None):
     search_query = request.args.get("q", None)
+    page = request.args.get("p", 0)
 
-    def retrieve_events(conn: Connection, cursor: Cursor):
-        if user_id is None:
-            if search_query is None or len(search_query) == 0:
-                return cursor.execute(
-                    "SELECT id, name, date, manager, tags FROM events WHERE is_published = 1"
-                ).fetchall()
-            else:
-                return cursor.execute(
-                    "SELECT id, name, date, manager, tags FROM events WHERE name MATCH ? AND is_published = 1 ORDER BY bm25(name) DESC",
-                    (search_query,),
-                ).fetchall()
+    results_per_page = 10
+
+    is_authorized_expr = (
+        "(e.is_published = 1 OR manager = :user_id)"
+        if user_id is not None
+        else "e.is_published = 1"
+    )
+
+    search_query_expr = (
+        "event_search_index MATCH :query AND"
+        if search_query is None or len(search_query) >= 3
+        else ""
+    )
+
+    def retrieve_events_with_ticket_types(conn: Connection, cursor: Cursor):
+        return cursor.execute(
+            # SELECT e.id, e.name, e.manager, e.date, e.is_published, e.tags
+            f"""
+            SELECT
+                e.id,
+                e.name,
+                e.manager,
+                e.date,
+                e.is_published,
+                e.tags,
+                e.short_description,
+                e.description,
+                e.location,
+                t.name,
+                t.price,
+                t.allotted
+            FROM events AS e
+            JOIN event_search_index
+                ON event_search_index.ROWID = e.id
+            LEFT JOIN ticket_types as t
+                ON t.event = e.id
+            WHERE {search_query_expr} {is_authorized_expr}
+            LIMIT :results_per_page OFFSET :offset
+            """,
+            {
+                "query": search_query,
+                "results_per_page": results_per_page,
+                "offset": page * results_per_page,
+            }
+            | ({"user_id": user_id} if user_id is not None else {}),
+        ).fetchall()
+
+    events_with_ticket_types = globals.db.run(retrieve_events_with_ticket_types)
+
+    events = []
+
+    for event_with_ticket_type in events_with_ticket_types:
+        (
+            id,
+            name,
+            manager,
+            date,
+            is_published,
+            tags,
+            short_description,
+            description,
+            location,
+            ticket_name,
+            ticket_price,
+            ticket_allotted,
+        ) = event_with_ticket_type
+
+        last_index = len(events) - 1
+
+        if ticket_name is not None:
+            ticket = {
+                "name": str(ticket_name),
+                "price": float(ticket_price),
+                "allotted": int(ticket_allotted),
+            }
         else:
-            if search_query is None or len(search_query) == 0:
-                return cursor.execute(
-                    "SELECT id, name, date, manager, tags FROM events WHERE is_published = 1 OR manager = ?",
-                    (user_id,),
-                ).fetchall()
-            else:
-                return cursor.execute(
-                    "SELECT * FROM event_search_index WHERE name MATCH ?",
-                    (search_query,),
-                ).fetchall()
+            ticket = None
 
-    events = globals.db.run(retrieve_events)
-    print(events)
+        if len(events) == 0 or str(id) != events[last_index]["id"]:
+            events.append(
+                {
+                    "id": str(id),
+                    "name": str(name),
+                    "manager": str(manager),
+                    "date": datetime.fromisoformat(date).isoformat(),
+                    "is_published": bool(is_published),
+                    "tags": tags_from_csv(tags),
+                    "ticket_types": [] if ticket is None else [ticket],
+                    "short_description": str(short_description),
+                    "description": str(description),
+                    "location": str(location),
+                }
+            )
+        else:
+            events[last_index]["ticket_types"].append(ticket)
 
     return events
+
+
+def tags_from_csv(tag_string: str) -> list[str]:
+    return [
+        stripped_tag
+        for tag in str(tag_string).split(",")
+        if (stripped_tag := tag.strip())
+    ]
 
 
 def get_ticket_types() -> list[tuple[str, float, int]]:
@@ -131,10 +217,24 @@ def create_event(user_id: int):
     tags = [str(tag) for tag in request.json.get("tags", [])]
     tag_string = ",".join(tags)
 
+    short_description = request.json["short_description"]
+    description = request.json["description"]
+
+    location = request.json["location"]
+
     def insert_event(conn: Connection, cursor: Cursor):
         cursor.execute(
-            "INSERT INTO events (name, date, is_published, manager, tags) VALUES (?, ?, ?, ?, ?)",
-            (name, date, is_published, user_id, tag_string),
+            "INSERT INTO events (name, date, is_published, manager, tags, short_description, description, location) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            (
+                name,
+                date,
+                is_published,
+                user_id,
+                tag_string,
+                short_description,
+                description,
+                location,
+            ),
         )
 
         if cursor.lastrowid is None:
@@ -154,34 +254,54 @@ def create_event(user_id: int):
 @authenticated
 def get_event(user_id: int | None, event_id: int):
     maybe_event = globals.db.retrieve(
-        [Event.manager, Event.date, Event.is_published, Event.tags],
+        [
+            Event.name,
+            Event.manager,
+            Event.date,
+            Event.is_published,
+            Event.tags,
+            Event.short_description,
+            Event.description,
+            Event.location,
+        ],
         Event.id,
         event_id,
     )
 
     if maybe_event is not None:
-        manager, date, is_published, tag_string = maybe_event
+        (
+            name,
+            manager,
+            date,
+            is_published,
+            tag_string,
+            short_description,
+            description,
+            location,
+        ) = maybe_event
 
         ticket_types = [
             {"name": str(name), "price": float(price), "allotted": int(allotted)}
             for (name, price, allotted) in globals.db.retrieve_all(
                 [TicketType.name, TicketType.price, TicketType.allotted],
-                TicketType.id,
+                TicketType.event,
                 event_id,
             )
         ]
 
         if is_published or (int(manager) == user_id and user_id is not None):
-            return result(
-                EventResult.SUCCESS,
-                {
-                    "manager": manager,
-                    "date": datetime.fromisoformat(date).isoformat(),
-                    "is_published": bool(is_published),
-                    "ticket_types": ticket_types,
-                    "tags": [tag.strip() for tag in tag_string.split(",")],
-                },
-            )
+            return {
+                "id": str(id),
+                "name": str(name),
+                "manager": str(manager),
+                "date": datetime.fromisoformat(date).isoformat(),
+                "is_published": bool(is_published),
+                "tags": tags_from_csv(tag_string),
+                "short_description": str(short_description),
+                "description": str(description),
+                "location": str(location),
+                "ticket_types": ticket_types,
+            }
         else:
             return result(EventResult.UNAUTHORISED)
     else:

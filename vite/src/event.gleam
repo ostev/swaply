@@ -10,21 +10,29 @@ import gleam/list
 import gleam/result
 import gleam/uri
 import lenient_parse
+import lustre/attribute as a
 import lustre/effect.{type Effect}
 import lustre/element.{type Element}
+import lustre/element/html as h
+import lustre/event as e
 import rsvp
 import tempo.{type DateTime}
 import tempo/datetime
+import tempo/instant
 
 pub const api_prefix = api.prefix <> "/events"
 
 pub type Event {
   Event(
     id: String,
-    manager_id: String,
+    short_description: String,
+    description: String,
+    location: String,
+    manager: String,
     is_published: Bool,
     name: String,
     date: DateTime,
+    tags: List(String),
     ticket_types: List(TicketType),
   )
 }
@@ -44,7 +52,13 @@ pub fn ticket_type_to_json(ticket_type: TicketType) -> Json {
 
 fn ticket_type_decoder() -> decode.Decoder(TicketType) {
   use name <- decode.field("name", decode.string)
-  use price <- decode.field("price", decode.float)
+  use price <- decode.field(
+    "price",
+    decode.one_of(decode.float, or: [
+      decode.int
+      |> decode.map(int.to_float),
+    ]),
+  )
   use allotted <- decode.field("allotted", decode.int)
   decode.success(TicketType(name:, price:, allotted:))
 }
@@ -62,29 +76,37 @@ pub fn parse_ticket_type(ticket_type_input: TicketTypeInput) {
 
 pub fn decoder() -> decode.Decoder(Event) {
   use id <- decode.field("id", decode.string)
-  use manager_id <- decode.field("manager_id", decode.string)
+  use manager <- decode.field("manager", decode.string)
   use is_published <- decode.field("is_published", decode.bool)
   use name <- decode.field("name", decode.string)
   use date <- decode.field("date", decode_extra.datetime())
   use ticket_types <- decode.field(
     "ticket_types",
-    decode.list(ticket_type_decoder()),
+    decode.list(of: ticket_type_decoder()),
   )
+  use tags <- decode.field("tags", decode.list(of: decode.string))
+  use short_description <- decode.field("short_description", decode.string)
+  use description <- decode.field("description", decode.string)
+  use location <- decode.field("location", decode.string)
 
   decode.success(Event(
     id:,
-    manager_id:,
+    manager:,
     is_published:,
     name:,
     date:,
     ticket_types:,
+    tags:,
+    short_description:,
+    description:,
+    location:,
   ))
 }
 
 pub fn encode(event: Event) -> Json {
   json.object([
     #("id", json.string(event.id)),
-    #("manager_id", json.string(event.manager_id)),
+    #("manager", json.string(event.manager)),
     #("is_published", json.bool(event.is_published)),
     #("name", json.string(event.name)),
     #("date", json.string(event.date |> datetime.format(tempo.ISO8601Seconds))),

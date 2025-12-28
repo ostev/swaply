@@ -1,4 +1,4 @@
-import event
+import event.{type Event}
 import gleam/dynamic/decode
 import gleam/float
 import gleam/int
@@ -89,8 +89,33 @@ pub fn number_input(
   ])
 }
 
-fn tag(text: String, on_remove: fn(String) -> msg) -> Element(msg) {
-  h.button([a.type_("button"), e.on_click(on_remove(text))], [h.text(text)])
+pub fn textarea(
+  name name: String,
+  label label: String,
+  value value: String,
+  on_input on_input: fn(String) -> msg,
+  is_valid is_valid: Bool,
+) -> Element(msg) {
+  h.div([], [
+    h.label([a.for(name)], [h.text(label)]),
+    h.textarea(
+      [
+        a.name(name),
+        a.id(name),
+        a.classes([#("invalid", !is_valid)]),
+        e.on_input(on_input),
+      ],
+      value,
+    ),
+  ])
+}
+
+pub fn tag(text: String) -> Element(msg) {
+  h.span([], [h.text(text)])
+}
+
+fn tag_button(text: String, on_remove: fn(String) -> msg) -> Element(msg) {
+  h.button([a.type_("button"), e.on_click(on_remove(text))], [tag(text)])
 }
 
 pub fn sort_tags(unsorted: Set(String)) -> List(String) {
@@ -122,7 +147,7 @@ pub fn tags_input(
     h.span(
       [],
       tags
-        |> list.map(tag(_, on_remove_tag)),
+        |> list.map(tag_button(_, on_remove_tag)),
     ),
     h.div([], [
       h.input([
@@ -203,5 +228,18 @@ pub fn ticket_type_input(
       max: 1_000_000.0,
       step: 1.0,
     ),
+  ])
+}
+
+pub fn event_card_view(event: Event) {
+  h.div([], [
+    h.h3([], [h.text(event.name)]),
+    h.p([], [h.text(event.location)]),
+    h.ul(
+      [],
+      event.tags
+        |> list.map(fn(text) { h.li([], [tag(text)]) }),
+    ),
+    h.p([], [h.text(event.short_description)]),
   ])
 }

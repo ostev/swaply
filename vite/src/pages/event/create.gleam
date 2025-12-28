@@ -47,6 +47,9 @@ pub type Form {
     current_tag: String,
     ticket_types: iv.Array(event.TicketTypeInput),
     is_published: Bool,
+    description: String,
+    short_description: String,
+    location: String,
   )
 }
 
@@ -90,6 +93,9 @@ pub fn init(shared_model: Shared) -> #(Model, Effect(msg)) {
         ]),
         current_tag: "",
         is_published: False,
+        short_description: "",
+        description: "",
+        location: "",
       ),
       error: option.None,
     ),
@@ -102,6 +108,10 @@ pub type Msg {
   UpdatedName(String)
   UpdatedDate(String)
   UpdatedTime(String)
+  UpdatedShortDescription(String)
+  UpdatedDescription(String)
+  UpdatedLocation(String)
+
   CreatedTags(List(String))
   DeletedTag(String)
   UpdatedTicketType(event.TicketTypeInput, index: Int)
@@ -196,6 +206,21 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
         |> iv.append(ticket_type)
 
       #(Model(..model, form: Form(..model.form, ticket_types:)), effect.none())
+    }
+
+    UpdatedShortDescription(short_description) -> {
+      #(
+        Model(..model, form: Form(..model.form, short_description:)),
+        effect.none(),
+      )
+    }
+
+    UpdatedDescription(description) -> {
+      #(Model(..model, form: Form(..model.form, description:)), effect.none())
+    }
+
+    UpdatedLocation(location) -> {
+      #(Model(..model, form: Form(..model.form, location:)), effect.none())
     }
 
     SubmitForm -> {
@@ -297,10 +322,20 @@ fn create(form: Form) -> Result(Effect(Msg), CreationError) {
 
   let body =
     json.object([
-      #("is_published", json.bool(form.is_published)),
       #("name", json.string(form.name)),
       #("date", json.string(datetime |> datetime.format(tempo.ISO8601Seconds))),
+      #("is_published", json.bool(form.is_published)),
       #("ticket_types", json.preprocessed_array(json_ticket_types)),
+      #(
+        "tags",
+        json.array(
+          set.to_list(form.tags) |> list.sort(string.compare),
+          json.string,
+        ),
+      ),
+      #("short_description", json.string(form.short_description)),
+      #("description", json.string(form.description)),
+      #("location", json.string(form.location)),
     ])
   let handler = rsvp.expect_ok_response(CreateResponseReceived)
 
@@ -359,6 +394,32 @@ pub fn view(model: Model) -> Element(Msg) {
             |> option.map(is_time_valid)
             |> option.unwrap(False),
         ),
+
+        ui.input(
+          type_: "text",
+          label: "Location",
+          name: "location",
+          value: option.Some(model.form.location),
+          on_input: UpdatedLocation,
+          is_valid: True,
+        ),
+
+        ui.textarea(
+          label: "Short description",
+          name: "short_description",
+          value: model.form.short_description,
+          on_input: UpdatedShortDescription,
+          is_valid: True,
+        ),
+
+        ui.textarea(
+          label: "Description",
+          name: "description",
+          value: model.form.description,
+          on_input: UpdatedDescription,
+          is_valid: True,
+        ),
+
         ui.tags_input(
           label: "Tags",
           name: "tags",

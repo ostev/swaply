@@ -31,7 +31,8 @@ def create_search_index(conn: sqlite3.Connection, cursor: sqlite3.Cursor):
                 name,
                 tags,
                 content="events",
-                content_rowid="id"
+                content_rowid="id",
+                tokenize="trigram"
             );
 
         CREATE TRIGGER IF NOT EXISTS event_insert_trigger AFTER INSERT ON events BEGIN
