@@ -4,7 +4,7 @@
   "description": "",
   "type": "module",
   "scripts": {
-    "dev": "concurrently 'vite dev' 'cd .. && flask --app src/app.py --debug run'"
+    "dev": "concurrently 'vite dev' 'cd .. && flask --app src/app.py --debug run --cert=secrets/cert.pem --key=secrets/key.pem'"
   },
   "keywords": [],
   "author": "",

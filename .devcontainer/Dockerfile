@@ -11,7 +11,7 @@ ARG CONTAINER_GROUP=dev
 RUN apk update
 
 # Install dependencies
-RUN apk add nodejs npm gleam git curl zsh sqlite
+RUN apk add nodejs npm gleam git curl zsh sqlite openssl
 
 # Set users
 RUN adduser --disabled-password --gecos "" ${CONTAINER_USER} -s /bin/zsh
