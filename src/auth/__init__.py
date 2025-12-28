@@ -100,10 +100,11 @@ def signup():
             (normalized_email, name, hashed_password, PrivilegeLevel.NORMAL.value),
         )
 
-        user_id = cursor.fetchone()
+        user_id_tuple = cursor.fetchone()
 
-        if user_id is None:
+        if user_id_tuple is None:
             raise ValueError("Failed to create user")
+        user_id = user_id_tuple[0]
 
         conn.commit()
         return user_id

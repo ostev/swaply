@@ -1,11 +1,15 @@
 import api
 import extra/decode as decode_extra
 import gleam/dynamic/decode
+import gleam/float
 import gleam/http
 import gleam/http/request
 import gleam/int
 import gleam/json.{type Json}
+import gleam/list
+import gleam/result
 import gleam/uri
+import lenient_parse
 import lustre/effect.{type Effect}
 import lustre/element.{type Element}
 import rsvp
@@ -43,6 +47,17 @@ fn ticket_type_decoder() -> decode.Decoder(TicketType) {
   use price <- decode.field("price", decode.float)
   use allotted <- decode.field("allotted", decode.int)
   decode.success(TicketType(name:, price:, allotted:))
+}
+
+pub type TicketTypeInput {
+  TicketTypeInput(name: String, price: String, allotted: String)
+}
+
+pub fn parse_ticket_type(ticket_type_input: TicketTypeInput) {
+  use price <- result.try(lenient_parse.to_float(ticket_type_input.price))
+  use allotted <- result.try(lenient_parse.to_int(ticket_type_input.allotted))
+
+  Ok(TicketType(name: ticket_type_input.name, price:, allotted:))
 }
 
 pub fn decoder() -> decode.Decoder(Event) {

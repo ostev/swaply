@@ -58,8 +58,9 @@ pub fn view(model: Model, shared: Shared) -> Element(Msg) {
       h.text(
         "Hello there! "
         <> case shared.user {
-          option.Some(user) -> "Your name is " <> user.name
-          option.None -> "You have not signed in."
+          shared.Authenticated(user) -> "Your name is " <> user.name
+          shared.Unauthenticated -> "You have not signed in."
+          shared.Unknown -> ""
         },
       ),
     ]),

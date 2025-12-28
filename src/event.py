@@ -2,6 +2,7 @@ from datetime import UTC, datetime
 from enum import Enum
 import json
 from sqlite3 import Connection, Cursor
+import aenum
 from flask import Blueprint, request
 
 from api import API_PREFIX
@@ -43,11 +44,14 @@ class TicketType:
 event_api = Blueprint("events", __name__, url_prefix=API_PREFIX + "/events")
 
 
-class EventResult(Enum):
+class EventResult(aenum.Enum):  # type: ignore
+    _settings_ = aenum.NoAlias
+
     SUCCESS = 200
     NOT_FOUND = 404
     UNAUTHORISED = 401
     INVALID_NAME = 400
+    NAME_ALREADY_USED = 400
 
 
 @event_api.route("/search")
@@ -67,15 +71,15 @@ def search_events(user_id: int | None):
                     (search_query,),
                 ).fetchall()
         else:
-            if search_query is None:
+            if search_query is None or len(search_query) == 0:
                 return cursor.execute(
                     "SELECT id, name, date, manager, tags FROM events WHERE is_published = 1 OR manager = ?",
                     (user_id,),
                 ).fetchall()
             else:
                 return cursor.execute(
-                    "SELECT id, name, date, manager, tags FROM events WHERE name MATCH ? AND (is_published = 1 OR manager = ?) ORDER BY bm25(name) DESC",
-                    (search_query, user_id),
+                    "SELECT * FROM event_search_index WHERE name MATCH ?",
+                    (search_query,),
                 ).fetchall()
 
     events = globals.db.run(retrieve_events)
@@ -110,6 +114,15 @@ def create_event(user_id: int):
     name = str(request.json["name"])
     if len(name) < 3:
         return result(EventResult.INVALID_NAME)
+
+    if globals.db.run(
+        lambda _, cursor: cursor.execute(
+            "SELECT id FROM events WHERE name LIKE ?", (name,)
+        ).fetchone()
+        is not None
+    ):
+        return result(EventResult.NAME_ALREADY_USED)
+
     date = datetime.fromisoformat(str(request.json["date"])).astimezone(UTC)
 
     is_published = bool(request.json.get("is_published", False))
