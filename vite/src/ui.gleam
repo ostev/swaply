@@ -231,15 +231,19 @@ pub fn ticket_type_input(
   ])
 }
 
+pub fn tags(tags: List(String)) {
+  h.ul(
+    [],
+    tags
+      |> list.map(fn(text) { h.li([], [tag(text)]) }),
+  )
+}
+
 pub fn event_card_view(event: Event) {
   h.div([], [
-    h.h3([], [h.text(event.name)]),
+    h.h3([], [h.a([a.href("/event/" <> event.id)], [h.text(event.name)])]),
     h.p([], [h.text(event.location)]),
-    h.ul(
-      [],
-      event.tags
-        |> list.map(fn(text) { h.li([], [tag(text)]) }),
-    ),
+    tags(event.tags),
     h.p([], [h.text(event.short_description)]),
   ])
 }
