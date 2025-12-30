@@ -2,6 +2,7 @@ from datetime import UTC, datetime
 from enum import Enum
 from functools import reduce
 import json
+from multiprocessing import Value
 from sqlite3 import Connection, Cursor
 import aenum
 from flask import Blueprint, request
@@ -66,6 +67,7 @@ class EventResult(aenum.Enum):  # type: ignore
 def search_events(user_id: int | None):
     search_query = request.args.get("q", None)
     page = request.args.get("p", 0)
+    filter_owned = request.args.get("filter_owned", "false").lower() == "true"
 
     results_per_page = 10
 
@@ -75,8 +77,12 @@ def search_events(user_id: int | None):
         else "e.is_published = 1"
     )
 
+    filter_expr = (
+        "manager = :user_id AND" if (user_id is not None) and filter_owned else ""
+    )
+
     search_query_expr = (
-        "event_search_index MATCH :query AND"
+        f"event_search_index MATCH :query AND"
         if search_query is None or len(search_query) >= 3
         else ""
     )
@@ -103,7 +109,7 @@ def search_events(user_id: int | None):
                 ON event_search_index.ROWID = e.id
             LEFT JOIN ticket_types as t
                 ON t.event = e.id
-            WHERE {search_query_expr} {is_authorized_expr}
+            WHERE {search_query_expr} {filter_expr} {is_authorized_expr}
             LIMIT :results_per_page OFFSET :offset
             """,
             {

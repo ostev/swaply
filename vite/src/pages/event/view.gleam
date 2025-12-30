@@ -33,40 +33,12 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
 }
 
 fn view_event(event: Event) -> Element(Msg) {
-  let date =
-    event.date
-    |> datetime.to_offset(offset.local())
-  let day =
-    date
-    |> datetime.get_date
-    |> date.get_day
-
   h.div([], [
     h.div([], [
       h.h2([], [h.text(event.name)]),
       ui.tags(event.tags),
       h.div([], [
-        h.p([], [
-          h.text(
-            date
-            |> datetime.format(tempo.Custom("h:mma on dddd")),
-          ),
-          h.text(
-            " "
-            <> int.to_string(day)
-            <> case day {
-              1 -> "st"
-              2 -> "nd"
-              3 -> "rd"
-              _ -> "th"
-            }
-            <> " ",
-          ),
-          h.text(
-            date
-            |> datetime.format(tempo.Custom("MMMM YYYY")),
-          ),
-        ]),
+        h.p([], [ui.datetime_view(event.date)]),
         case event.location {
           "" -> element.none()
           _ -> h.p([], [h.text(event.location)])

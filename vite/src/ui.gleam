@@ -14,6 +14,10 @@ import lustre/attribute as a
 import lustre/element.{type Element}
 import lustre/element/html as h
 import lustre/event as e
+import tempo
+import tempo/date
+import tempo/datetime
+import tempo/offset
 
 pub fn input(
   type_ type_: String,
@@ -258,15 +262,60 @@ pub fn tags(tags: List(String)) {
   )
 }
 
-pub fn event_card_view(event: Event) {
+pub fn event_card_view(event: Event, is_editable is_editable: Bool) {
   h.div([], [
     h.h3([], [
       h.a([a.href("/event/" <> uri.percent_encode(event.id))], [
         h.text(event.name),
       ]),
     ]),
-    h.p([], [h.text(event.location)]),
     tags(event.tags),
+    h.p([], [h.text(event.location)]),
+    h.p([], [datetime_view(event.date)]),
+
+    case is_editable {
+      True ->
+        h.a(
+          [
+            a.href("/event/" <> uri.percent_encode(event.id) <> "/edit"),
+          ],
+          [h.text("Edit")],
+        )
+      False -> element.none()
+    },
+
     h.p([], [h.text(event.short_description)]),
+  ])
+}
+
+pub fn datetime_view(datetime: tempo.DateTime) -> Element(msg) {
+  let date =
+    datetime
+    |> datetime.to_offset(offset.local())
+  let day =
+    datetime
+    |> datetime.get_date
+    |> date.get_day
+
+  h.span([], [
+    h.text(
+      date
+      |> datetime.format(tempo.Custom("h:mma on dddd")),
+    ),
+    h.text(
+      " "
+      <> int.to_string(day)
+      <> case day {
+        1 -> "st"
+        2 -> "nd"
+        3 -> "rd"
+        _ -> "th"
+      }
+      <> " ",
+    ),
+    h.text(
+      date
+      |> datetime.format(tempo.Custom("MMMM YYYY")),
+    ),
   ])
 }

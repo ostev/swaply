@@ -20,3 +20,10 @@ pub fn check_authentication(shared: Shared) {
     Unauthenticated -> modem.push("/login", option.None, option.None)
   }
 }
+
+pub fn get_user(shared: Shared) -> Option(User) {
+  case shared.user {
+    Authenticated(user) -> option.Some(user)
+    Unauthenticated | Unknown -> option.None
+  }
+}

@@ -1,5 +1,6 @@
 import api
 import extra/decode as decode_extra
+import gleam/bool
 import gleam/dynamic/decode
 import gleam/float
 import gleam/http
@@ -8,6 +9,7 @@ import gleam/int
 import gleam/json.{type Json}
 import gleam/list
 import gleam/result
+import gleam/string
 import gleam/uri
 import lenient_parse
 import lustre/attribute as a
@@ -131,14 +133,23 @@ pub type SearchResults {
   EventSearchResults(events: List(Event), timestamp: tempo.Instant)
 }
 
+pub type SearchFilter {
+  SearchFilter(only_owned: Bool)
+}
+
 pub fn search_events(
   query query: String,
   page page: Int,
+  filter filter: SearchFilter,
   timestamp timestamp: tempo.Instant,
   handler handler: fn(Result(SearchResults, rsvp.Error)) -> msg,
 ) -> Effect(msg) {
   let query_string =
-    uri.query_to_string([#("q", query), #("p", int.to_string(page))])
+    uri.query_to_string([
+      #("q", query),
+      #("p", int.to_string(page)),
+      #("filter_owned", bool.to_string(filter.only_owned) |> string.lowercase),
+    ])
   let url = api_prefix <> "/search?" <> query_string
 
   let decoder = decode.list(of: decoder())

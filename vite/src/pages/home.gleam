@@ -13,23 +13,43 @@ import tempo/instant
 import ui
 
 pub type Model {
-  Model(search_query: String, events: Option(event.SearchResults))
+  Model(
+    search_query: String,
+    filter: event.SearchFilter,
+    page: Int,
+    events: Option(event.SearchResults),
+  )
 }
 
 pub type Msg {
   UpdateSearchQuery(String)
+  UpdatedFilter(event.SearchFilter)
   FetchedSearchResults(Result(event.SearchResults, rsvp.Error))
 }
 
 pub fn init() -> #(Model, Effect(Msg)) {
+  let filter = event.SearchFilter(only_owned: False)
+  let page = 0
+
   #(
-    Model(search_query: "", events: option.None),
+    Model(search_query: "", filter:, page:, events: option.None),
     event.search_events(
       query: "",
-      page: 0,
+      page:,
+      filter:,
       timestamp: instant.now(),
       handler: FetchedSearchResults,
     ),
+  )
+}
+
+fn search(model: Model) -> Effect(Msg) {
+  event.search_events(
+    query: model.search_query,
+    page: model.page,
+    filter: model.filter,
+    timestamp: instant.now(),
+    handler: FetchedSearchResults,
   )
 }
 
@@ -41,15 +61,20 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
           #(model, effect.none())
         }
         False -> {
-          #(
-            Model(..model, search_query: new_query),
-            event.search_events(
-              query: new_query,
-              page: 0,
-              timestamp: instant.now(),
-              handler: FetchedSearchResults,
-            ),
-          )
+          let new_model = Model(..model, search_query: new_query)
+          #(new_model, search(new_model))
+        }
+      }
+    }
+
+    UpdatedFilter(new_filter) -> {
+      case new_filter == model.filter {
+        True -> {
+          #(model, effect.none())
+        }
+        False -> {
+          let new_model = Model(..model, filter: new_filter)
+          #(new_model, search(new_model))
         }
       }
     }
@@ -77,7 +102,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       )
     }
 
-    FetchedSearchResults(Error(error)) -> {
+    FetchedSearchResults(Error(_error)) -> {
       #(Model(..model, events: option.None), effect.none())
     }
   }
@@ -101,12 +126,35 @@ pub fn view(model: Model, shared: Shared) -> Element(Msg) {
       a.placeholder("Search for events..."),
       e.debounce(e.on_input(UpdateSearchQuery), 100),
     ]),
+    case shared.user {
+      shared.Authenticated(_) -> {
+        ui.toggle_input(
+          label: "Only your events?",
+          name: "filter_owned",
+          is_checked: model.filter.only_owned,
+          on_input: fn(is_checked) {
+            UpdatedFilter(event.SearchFilter(is_checked))
+          },
+        )
+      }
+      shared.Unknown | shared.Unauthenticated -> element.none()
+    },
     case model.events {
       option.Some(search_result) -> {
         h.ol(
           [],
           search_result.events
-            |> list.map(fn(event) { h.li([], [ui.event_card_view(event)]) }),
+            |> list.map(fn(event) {
+              h.li([], [
+                ui.event_card_view(
+                  event,
+                  is_editable: shared
+                    |> shared.get_user
+                    |> option.map(fn(user) { user.id == event.manager })
+                    |> option.unwrap(False),
+                ),
+              ])
+            }),
         )
       }
       option.None -> {
