@@ -3,6 +3,8 @@ import atto/ops
 import atto/text
 import gleam/int
 import gleam/result
+import gleam/string
+import tempo
 import tempo/error as tempo_error
 import tempo/time
 
@@ -44,5 +46,17 @@ pub fn parse(time: String) {
   case atto.run(parser(), text.new(time), Nil) {
     Ok(result) -> result |> result.map_error(OutOfBoundsError)
     Error(parse_error) -> Error(ParseError(parse_error))
+  }
+}
+
+pub fn format_as_24hr(time: tempo.Time) {
+  int.to_string(time.get_hour(time))
+  <> ":"
+  <> {
+    int.to_string(time.get_minute(time)) |> string.pad_start(to: 2, with: "0")
+  }
+  <> ":"
+  <> {
+    int.to_string(time.get_second(time)) |> string.pad_start(to: 2, with: "0")
   }
 }

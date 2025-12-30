@@ -30,27 +30,94 @@ def create_search_index(conn: sqlite3.Connection, cursor: sqlite3.Cursor):
             USING fts5(
                 name,
                 tags,
+                description,
+                short_description,
+                location,
                 content="events",
                 content_rowid="id",
                 tokenize="trigram"
             );
 
         CREATE TRIGGER IF NOT EXISTS event_insert_trigger AFTER INSERT ON events BEGIN
-            INSERT INTO event_search_index(rowid, name, tags)
-                VALUES (NEW.id, NEW.name, NEW.tags);
+            INSERT INTO
+                event_search_index(
+                    rowid,
+                    name,
+                    tags,
+                    description,
+                    short_description,
+                    location
+                )
+                VALUES (
+                    NEW.id,
+                    NEW.name,
+                    NEW.tags,
+                    NEW.description,
+                    NEW.short_description,
+                    NEW.location
+                );
         END;
 
         CREATE TRIGGER IF NOT EXISTS event_delete_trigger AFTER DELETE ON events BEGIN
-            INSERT INTO event_search_index(fts_idx, rowid, name, tags)
-                VALUES ("delete", OLD.id, OLD.name, OLD.tags);
+            INSERT INTO
+                event_search_index(
+                    event_search_index,
+                    rowid,
+                    name,
+                    tags,
+                    description,
+                    short_description,
+                    location
+                )
+                VALUES (
+                    "delete",
+                    OLD.id,
+                    OLD.name,
+                    OLD.tags,
+                    OLD.description,
+                    OLD.short_description,
+                    OLD.location
+                );
         END;
 
         CREATE TRIGGER IF NOT EXISTS event_update_trigger AFTER UPDATE ON events BEGIN
-            INSERT INTO event_search_index(fts_idx, rowid, name, tags)
-                VALUES ("delete", OLD.id, OLD.name, OLD.tags);
+            INSERT INTO
+                event_search_index(
+                    event_search_index,
+                    rowid,
+                    name,
+                    tags,
+                    description,
+                    short_description,
+                    location
+                )
+                VALUES (
+                    "delete",
+                    OLD.id,
+                    OLD.name,
+                    OLD.tags,
+                    OLD.description,
+                    OLD.short_description,
+                    OLD.location
+                );
 
-            INSERT INTO event_search_index(rowid, name, tags)
-                VALUES (NEW.id, NEW.name, NEW.tags);
+            INSERT INTO
+                event_search_index(
+                    rowid,
+                    name,
+                    tags,
+                    description,
+                    short_description,
+                    location
+                )
+                VALUES (
+                    NEW.id,
+                    NEW.name,
+                    NEW.tags,
+                    NEW.description,
+                    NEW.short_description,
+                    NEW.location
+                );
         END;
         """
     )

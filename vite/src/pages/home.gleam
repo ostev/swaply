@@ -1,6 +1,7 @@
 import event
 import gleam/list
 import gleam/option.{type Option}
+import gleam/order
 import lustre/attribute as a
 import lustre/effect.{type Effect}
 import lustre/element.{type Element}
@@ -8,21 +9,27 @@ import lustre/element/html as h
 import lustre/event as e
 import rsvp
 import shared.{type Shared}
+import tempo/instant
 import ui
 
 pub type Model {
-  Model(search_query: String, events: Option(List(event.Event)))
+  Model(search_query: String, events: Option(event.SearchResults))
 }
 
 pub type Msg {
   UpdateSearchQuery(String)
-  FetchedSearchResults(Result(List(event.Event), rsvp.Error))
+  FetchedSearchResults(Result(event.SearchResults, rsvp.Error))
 }
 
 pub fn init() -> #(Model, Effect(Msg)) {
   #(
-    Model(search_query: "", events: option.Some([])),
-    event.search_events("", 0, FetchedSearchResults),
+    Model(search_query: "", events: option.None),
+    event.search_events(
+      query: "",
+      page: 0,
+      timestamp: instant.now(),
+      handler: FetchedSearchResults,
+    ),
   )
 }
 
@@ -36,14 +43,38 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
         False -> {
           #(
             Model(..model, search_query: new_query),
-            event.search_events(new_query, 0, FetchedSearchResults),
+            event.search_events(
+              query: new_query,
+              page: 0,
+              timestamp: instant.now(),
+              handler: FetchedSearchResults,
+            ),
           )
         }
       }
     }
 
     FetchedSearchResults(Ok(events)) -> {
-      #(Model(..model, events: option.Some(events)), effect.none())
+      #(
+        Model(..model, events: case model.events {
+          option.Some(previous) -> {
+            option.Some(
+              // If we've received the new search results after the previous ones,
+              // update the page. Otherwise, use the old results.
+              case events.timestamp |> instant.compare(previous.timestamp) {
+                order.Gt | order.Eq -> {
+                  events
+                }
+                _ -> {
+                  previous
+                }
+              },
+            )
+          }
+          option.None -> option.Some(events)
+        }),
+        effect.none(),
+      )
     }
 
     FetchedSearchResults(Error(error)) -> {
@@ -68,18 +99,20 @@ pub fn view(model: Model, shared: Shared) -> Element(Msg) {
     h.input([
       a.value(model.search_query),
       a.placeholder("Search for events..."),
-      e.on_input(UpdateSearchQuery),
+      e.debounce(e.on_input(UpdateSearchQuery), 100),
     ]),
     case model.events {
-      option.Some(events) -> {
+      option.Some(search_result) -> {
         h.ol(
           [],
-          events
+          search_result.events
             |> list.map(fn(event) { h.li([], [ui.event_card_view(event)]) }),
         )
       }
       option.None -> {
-        h.text("Error fetching events")
+        h.text(
+          "An error occurred while searching for events. Please try again.",
+        )
       }
     },
   ])

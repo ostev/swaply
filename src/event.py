@@ -245,9 +245,11 @@ def create_event(user_id: int):
 
         conn.commit()
 
-    globals.db.run(insert_event)
+        return event_id
 
-    return result(EventResult.SUCCESS)
+    event_id = globals.db.run(insert_event)
+
+    return get_event(event_id)  # type: ignore
 
 
 @event_api.route("/<event_id>", methods=["GET"])
@@ -308,16 +310,16 @@ def get_event(user_id: int | None, event_id: int):
         return result(EventResult.NOT_FOUND)
 
 
-@event_api.route("/<event_id>", methods=["PUT"])
+@event_api.route("/<event_id>", methods=["PATCH"])
 @protected
-def update_event(user_id: int, event_id_str: str):
-    event_id = int(event_id_str)
+def update_event(user_id: int, event_id: str):
+    event_id_parsed = int(event_id)
 
     manager_id: int | None = globals.db.run(
         lambda conn, cursor: cursor.execute(
-            "SELECT manager FROM events WHERE event_id = ?", (event_id,)
+            "SELECT manager FROM events WHERE id = ?", (event_id_parsed,)
         ).fetchone()
-    )
+    )[0]
 
     if manager_id == None:
         return result(EventResult.NOT_FOUND)
@@ -325,33 +327,50 @@ def update_event(user_id: int, event_id_str: str):
     if user_id != manager_id:
         return result(EventResult.UNAUTHORISED)
 
-    name = str(request.json["name"])
+    if "name" in request.json:
+        name = str(request.json["name"])
 
-    if len(name) < 3:
-        return result(EventResult.INVALID_NAME)
+        if len(name) < 3:
+            return result(EventResult.INVALID_NAME)
+    else:
+        name = None
 
-    fields: dict[str, str | int] = {
-        "event_id": event_id,
-        "name": name,
-        "date": str(datetime.fromisoformat(str(request.json["date"])).astimezone(UTC)),
-    }
+    if "date" in request.json:
+        date = str(datetime.fromisoformat(str(request.json["date"])).astimezone(UTC))
+    else:
+        date = None
 
-    if request.json.get("ticket_types", None) is not None:
+    if "is_published" in request.json:
+        is_published = bool(request.json["is_published"])
+    else:
+        is_published = None
+
+    fields: dict[str, str | int] = (
+        {
+            "id": event_id_parsed,
+        }
+        | ({"name": name} if name is not None else {})
+        | ({"date": date} if date is not None else {})
+        | ({"is_published": is_published} if is_published is not None else {})
+    )
+
+    if "ticket_types" in request.json:
         ticket_types = get_ticket_types()
     else:
-        ticket_types = []
+        ticket_types = None
 
     placeholders = ", ".join([f"{column} = :{column}" for column in fields.keys()])
 
     def insert_event(conn: Connection, cursor: Cursor):
-        cursor.execute(f"UPDATE events SET {placeholders} WHERE id = :event_id", fields)
+        cursor.execute(f"UPDATE events SET {placeholders} WHERE id = :id", fields)
 
-        cursor.execute("DELETE FROM ticket_types WHERE event = ?", (event_id,))
-        if len(ticket_types) > 0:
-            insert_ticket_types(cursor, event_id, ticket_types)
+        if ticket_types is not None:
+            cursor.execute("DELETE FROM ticket_types WHERE event = ?", (event_id,))
+            if len(ticket_types) > 0:
+                insert_ticket_types(cursor, event_id_parsed, ticket_types)
 
         conn.commit()
 
     globals.db.run(insert_event)
 
-    return result(EventResult.SUCCESS)
+    return get_event(event_id_parsed)  # type: ignore

@@ -1,36 +1,17 @@
 import event.{type Event}
-import extra/list as extra_list
-import extra/time
-import gleam/dynamic/decode
-import gleam/http
-import gleam/http/request
-import gleam/http/response.{type Response}
 import gleam/int
-import gleam/io
-import gleam/json
-import gleam/list
 import gleam/option.{type Option}
-import gleam/result
-import gleam/set.{type Set}
-import gleam/string
-import gleam/uri.{type Uri}
-import iv
+import gleam/uri
 import lustre/attribute as a
 import lustre/effect.{type Effect}
 import lustre/element.{type Element}
 import lustre/element/html as h
-import lustre/event as e
-import modem
-import pages/auth
-import pages/auth/user.{type User}
 import rsvp
 import shared.{type Shared}
 import tempo
 import tempo/date
 import tempo/datetime
-import tempo/error as tempo_error
 import tempo/offset
-import tempo/time as tempo_time
 import ui
 
 pub type Model {
@@ -38,7 +19,7 @@ pub type Model {
 }
 
 pub fn init(event_id: String) -> #(Model, Effect(Msg)) {
-  #(Model(event: option.None), event.get_event(event_id, EventReceived))
+  #(Model(event: option.None), event.get(event_id, EventReceived))
 }
 
 pub type Msg {
@@ -47,15 +28,54 @@ pub type Msg {
 
 pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
   case msg {
-    _ -> #(model, effect.none())
+    EventReceived(event) -> #(Model(event: option.Some(event)), effect.none())
   }
 }
 
 fn view_event(event: Event) -> Element(Msg) {
+  let date =
+    event.date
+    |> datetime.to_offset(offset.local())
+  let day =
+    date
+    |> datetime.get_date
+    |> date.get_day
+
   h.div([], [
     h.div([], [
       h.h2([], [h.text(event.name)]),
       ui.tags(event.tags),
+      h.div([], [
+        h.p([], [
+          h.text(
+            date
+            |> datetime.format(tempo.Custom("h:mma on dddd")),
+          ),
+          h.text(
+            " "
+            <> int.to_string(day)
+            <> case day {
+              1 -> "st"
+              2 -> "nd"
+              3 -> "rd"
+              _ -> "th"
+            }
+            <> " ",
+          ),
+          h.text(
+            date
+            |> datetime.format(tempo.Custom("MMMM YYYY")),
+          ),
+        ]),
+        case event.location {
+          "" -> element.none()
+          _ -> h.p([], [h.text(event.location)])
+        },
+      ]),
+      case event.is_published {
+        False -> h.span([], [h.text("Private")])
+        True -> element.none()
+      },
       case event.short_description {
         "" -> element.none()
         _ -> h.p([], [h.text(event.short_description)])
@@ -74,26 +94,54 @@ fn view_event(event: Event) -> Element(Msg) {
   ])
 }
 
-pub fn view(model: Model) -> Element(Msg) {
-  h.div([], [
-    case model.event {
-      option.Some(result) -> {
-        case result {
-          Ok(event) -> {
-            view_event(event)
-          }
-          Error(error) -> {
+pub fn view(model: Model, shared: Shared) -> Element(Msg) {
+  h.div([], case model.event {
+    option.Some(result) -> {
+      case result {
+        Ok(event) -> {
+          [
+            case shared.user {
+              shared.Authenticated(_) -> {
+                h.a(
+                  [
+                    a.href("/event/" <> uri.percent_encode(event.id) <> "/edit"),
+                  ],
+                  [h.text("Edit")],
+                )
+              }
+              _ -> {
+                element.none()
+              }
+            },
+            view_event(event),
+          ]
+        }
+        Error(error) -> {
+          [
             h.p([], [
-              h.text(
-                "An error occurred while loading the event. Please try again.",
-              ),
-            ])
-          }
+              case error {
+                rsvp.HttpError(response) -> {
+                  case response.status {
+                    404 -> h.text("This event does not exist.")
+                    _ ->
+                      h.text(
+                        "An error occurred while loading the event. Please try again.",
+                      )
+                  }
+                }
+                _ -> {
+                  h.text(
+                    "An error occurred while loading the event. Please try again.",
+                  )
+                }
+              },
+            ]),
+          ]
         }
       }
-      option.None -> {
-        element.none()
-      }
-    },
-  ])
+    }
+    option.None -> {
+      [element.none()]
+    }
+  })
 }

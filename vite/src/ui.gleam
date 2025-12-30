@@ -8,6 +8,7 @@ import gleam/option.{type Option}
 import gleam/result
 import gleam/set.{type Set}
 import gleam/string
+import gleam/uri
 import lenient_parse
 import lustre/attribute as a
 import lustre/element.{type Element}
@@ -31,6 +32,24 @@ pub fn input(
       a.value(value |> option.unwrap("")),
       a.classes([#("invalid", !is_valid)]),
       e.on_input(on_input),
+    ]),
+  ])
+}
+
+pub fn toggle_input(
+  label label: String,
+  name name: String,
+  is_checked is_checked: Bool,
+  on_input on_input: fn(Bool) -> msg,
+) -> Element(msg) {
+  h.div([], [
+    h.label([a.for(name)], [h.text(label)]),
+    h.input([
+      a.type_("checkbox"),
+      a.name(name),
+      a.id(name),
+      a.checked(is_checked),
+      e.on_check(on_input),
     ]),
   ])
 }
@@ -241,7 +260,11 @@ pub fn tags(tags: List(String)) {
 
 pub fn event_card_view(event: Event) {
   h.div([], [
-    h.h3([], [h.a([a.href("/event/" <> event.id)], [h.text(event.name)])]),
+    h.h3([], [
+      h.a([a.href("/event/" <> uri.percent_encode(event.id))], [
+        h.text(event.name),
+      ]),
+    ]),
     h.p([], [h.text(event.location)]),
     tags(event.tags),
     h.p([], [h.text(event.short_description)]),

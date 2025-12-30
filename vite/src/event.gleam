@@ -117,30 +117,38 @@ pub fn encode(event: Event) -> Json {
   ])
 }
 
-pub fn event_url(id: String) -> String {
-  api_prefix <> "/" <> id
+pub fn url(id: String) -> String {
+  api_prefix <> "/" <> uri.percent_encode(id)
 }
 
-pub fn get_event(
-  id: String,
-  handler: fn(Result(Event, rsvp.Error)) -> a,
-) -> Effect(a) {
+pub fn get(id: String, handler: fn(Result(Event, rsvp.Error)) -> a) -> Effect(a) {
   let rsvp_handler = rsvp.expect_json(decoder(), handler)
 
-  rsvp.get(event_url(id), rsvp_handler)
+  rsvp.get(url(id), rsvp_handler)
+}
+
+pub type SearchResults {
+  EventSearchResults(events: List(Event), timestamp: tempo.Instant)
 }
 
 pub fn search_events(
-  query: String,
-  page: Int,
-  handler: fn(Result(List(Event), rsvp.Error)) -> a,
-) -> Effect(a) {
+  query query: String,
+  page page: Int,
+  timestamp timestamp: tempo.Instant,
+  handler handler: fn(Result(SearchResults, rsvp.Error)) -> msg,
+) -> Effect(msg) {
   let query_string =
     uri.query_to_string([#("q", query), #("p", int.to_string(page))])
   let url = api_prefix <> "/search?" <> query_string
 
   let decoder = decode.list(of: decoder())
-  let rsvp_handler = rsvp.expect_json(decoder, handler)
+
+  let rsvp_handler =
+    rsvp.expect_json(decoder, fn(events_result) {
+      events_result
+      |> result.map(EventSearchResults(events: _, timestamp:))
+      |> handler
+    })
 
   rsvp.get(url, rsvp_handler)
 }
@@ -153,7 +161,13 @@ pub fn update_event(to updated_event: Event, with handler) {
 
   rsvp.send(
     request.new()
-      |> request.set_path(event_url(updated_event.id))
+      |> request.set_path(
+        // Create an absolute URL from a relative one, causing the request
+        // to fail if it is not parseable
+        rsvp.parse_relative_uri(url(updated_event.id))
+        |> result.map(uri.to_string)
+        |> result.unwrap(""),
+      )
       |> request.set_method(http.Patch)
       |> request.set_body(json_string)
       |> request.set_header("content-type", "application/json"),

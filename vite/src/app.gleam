@@ -16,7 +16,8 @@ import pages/auth
 import pages/auth/login
 import pages/auth/sign_up
 import pages/auth/user.{type User}
-import pages/event/create as create_event
+import pages/event/edit as edit_event
+import pages/event/view as view_event
 import pages/home
 import pages/not_found
 import rsvp
@@ -35,9 +36,14 @@ type Model {
 
 type Page {
   Home(home.Model)
+
   Login(login.Model)
   SignUp(sign_up.Model)
-  CreateEvent(create_event.Model)
+
+  CreateEvent(edit_event.Model)
+  UpdateEvent(edit_event.Model)
+  ViewEvent(view_event.Model)
+
   NotFound(not_found.Model)
 }
 
@@ -64,12 +70,43 @@ fn change_page(
         _ -> old_url
       })
       |> update_page_with(SignUp, GotSignUpMsg)
+
     ["event", "create"] ->
-      create_event.init(shared)
+      edit_event.init(shared, edit_event.Create)
       |> update_page_with(CreateEvent, GotCreateEventMsg)
+
+    ["event", id_url_string] -> {
+      parse_percent_encoded_id(id_url_string, fn(id) {
+        view_event.init(id)
+        |> update_page_with(ViewEvent, GotViewEventMsg)
+      })
+    }
+
+    ["event", id_url_string, "edit"] -> {
+      parse_percent_encoded_id(id_url_string, fn(id) {
+        edit_event.init(shared, edit_event.Update(id))
+        |> update_page_with(UpdateEvent, GotUpdateEventMsg)
+      })
+    }
+
     _ ->
       not_found.init()
       |> update_page_with(NotFound, GotNotFoundMsg)
+  }
+}
+
+fn parse_percent_encoded_id(
+  encoded_id: String,
+  f: fn(String) -> #(Page, Effect(Msg)),
+) -> #(Page, Effect(Msg)) {
+  case uri.percent_decode(encoded_id) {
+    Ok(id) -> {
+      f(id)
+    }
+    Error(_) -> {
+      not_found.init()
+      |> update_page_with(NotFound, GotNotFoundMsg)
+    }
   }
 }
 
@@ -106,7 +143,10 @@ type Msg {
   GotNotFoundMsg(not_found.Msg)
   GotLoginMsg(login.Msg)
   GotSignUpMsg(sign_up.Msg)
-  GotCreateEventMsg(create_event.Msg)
+
+  GotCreateEventMsg(edit_event.Msg)
+  GotUpdateEventMsg(edit_event.Msg)
+  GotViewEventMsg(view_event.Msg)
 }
 
 fn init(_) -> #(Model, Effect(Msg)) {
@@ -199,8 +239,16 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       |> update_with(SignUp, GotSignUpMsg, model)
 
     GotCreateEventMsg(sub_msg), CreateEvent(sub_model) ->
-      create_event.update(sub_model, sub_msg)
+      edit_event.update(sub_model, sub_msg)
       |> update_with(CreateEvent, GotCreateEventMsg, model)
+
+    GotUpdateEventMsg(sub_msg), UpdateEvent(sub_model) ->
+      edit_event.update(sub_model, sub_msg)
+      |> update_with(UpdateEvent, GotUpdateEventMsg, model)
+
+    GotViewEventMsg(sub_msg), ViewEvent(sub_model) ->
+      view_event.update(sub_model, sub_msg)
+      |> update_with(ViewEvent, GotViewEventMsg, model)
 
     _, _ -> todo
   }
@@ -211,6 +259,7 @@ fn view_page(page: Page, shared: Shared) {
     Home(sub_model) ->
       home.view(sub_model, shared)
       |> element.map(GotHomeMsg)
+
     NotFound(sub_model) ->
       not_found.view(sub_model)
       |> element.map(GotNotFoundMsg)
@@ -223,8 +272,16 @@ fn view_page(page: Page, shared: Shared) {
       |> element.map(GotLoginMsg)
 
     CreateEvent(sub_model) ->
-      create_event.view(sub_model)
+      edit_event.view(sub_model)
       |> element.map(GotCreateEventMsg)
+
+    UpdateEvent(sub_model) ->
+      edit_event.view(sub_model)
+      |> element.map(GotUpdateEventMsg)
+
+    ViewEvent(sub_model) ->
+      view_event.view(sub_model, shared)
+      |> element.map(GotViewEventMsg)
   }
 }
 
