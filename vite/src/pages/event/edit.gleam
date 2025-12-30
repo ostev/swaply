@@ -1,12 +1,9 @@
 import event.{type Event}
-import extra/list as extra_list
 import extra/time as extra_time
-import extra/time
 import gleam/dynamic/decode
 import gleam/float
 import gleam/http
 import gleam/http/request
-import gleam/http/response.{type Response}
 import gleam/int
 import gleam/io
 import gleam/json
@@ -15,7 +12,7 @@ import gleam/option.{type Option}
 import gleam/result
 import gleam/set.{type Set}
 import gleam/string
-import gleam/uri.{type Uri}
+import gleam/uri
 import iv
 import lustre/attribute as a
 import lustre/effect.{type Effect}
@@ -23,8 +20,6 @@ import lustre/element.{type Element}
 import lustre/element/html as h
 import lustre/event as e
 import modem
-import pages/auth
-import pages/auth/user.{type User}
 import rsvp
 import shared.{type Shared}
 import tempo
@@ -32,7 +27,6 @@ import tempo/date
 import tempo/datetime
 import tempo/error as tempo_error
 import tempo/offset
-import tempo/time as tempo_time
 import ui
 
 pub type Model {
@@ -65,7 +59,7 @@ pub type EditError {
   NoDateProvided
   NoTimeProvided
   DateParseError(tempo_error.DateParseError)
-  TimeParseError(time.ParseError)
+  TimeParseError(extra_time.ParseError)
   IncompleteTicketType
   ServerCreationError(ServerResponse)
   AttemptedToEditNonexistentEvent
@@ -372,7 +366,7 @@ fn is_date_valid(date_string: Option(String)) -> Bool {
 }
 
 fn is_time_valid(time_string: String) -> Bool {
-  case time.parse(time_string) {
+  case extra_time.parse(time_string) {
     Ok(_) -> True
     Error(_) -> False
   }
@@ -397,7 +391,7 @@ fn get_datetime(
     |> option.to_result(NoTimeProvided),
   )
   use time <- result.try(
-    time.parse(time_string)
+    extra_time.parse(time_string)
     |> result.map_error(TimeParseError),
   )
   Ok(datetime.new(date, time, offset.local()))
