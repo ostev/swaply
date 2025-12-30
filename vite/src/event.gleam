@@ -1,5 +1,6 @@
 import api
-import extra/decode as decode_extra
+import extra/decode as extra_decode
+import extra/list as extra_list
 import gleam/bool
 import gleam/dynamic/decode
 import gleam/float
@@ -8,6 +9,7 @@ import gleam/http/request
 import gleam/int
 import gleam/json.{type Json}
 import gleam/list
+import gleam/option.{type Option}
 import gleam/result
 import gleam/string
 import gleam/uri
@@ -19,8 +21,11 @@ import lustre/element/html as h
 import lustre/event as e
 import rsvp
 import tempo.{type DateTime}
+import tempo/date
 import tempo/datetime
 import tempo/instant
+import tempo/offset
+import tempo/time
 
 pub const api_prefix = api.prefix <> "/events"
 
@@ -81,7 +86,7 @@ pub fn decoder() -> decode.Decoder(Event) {
   use manager <- decode.field("manager", decode.string)
   use is_published <- decode.field("is_published", decode.bool)
   use name <- decode.field("name", decode.string)
-  use date <- decode.field("date", decode_extra.datetime())
+  use date <- decode.field("date", extra_decode.datetime())
   use ticket_types <- decode.field(
     "ticket_types",
     decode.list(of: ticket_type_decoder()),
@@ -134,10 +139,14 @@ pub type SearchResults {
 }
 
 pub type SearchFilter {
-  SearchFilter(only_owned: Bool)
+  SearchFilter(
+    only_owned: Bool,
+    start_date: Option(tempo.Date),
+    end_date: Option(tempo.Date),
+  )
 }
 
-pub fn search_events(
+pub fn search(
   query query: String,
   page page: Int,
   filter filter: SearchFilter,
@@ -149,6 +158,27 @@ pub fn search_events(
       #("q", query),
       #("p", int.to_string(page)),
       #("filter_owned", bool.to_string(filter.only_owned) |> string.lowercase),
+      ..{
+        [
+          filter.start_date
+            |> option.map(fn(date) {
+              #(
+                "start_date",
+                datetime.new(date, time.start_of_day, offset.local())
+                  |> datetime.format(tempo.ISO8601Seconds),
+              )
+            }),
+          filter.end_date
+            |> option.map(fn(date) {
+              #(
+                "end_date",
+                datetime.new(date, time.start_of_day, offset.local())
+                  |> datetime.format(tempo.ISO8601Seconds),
+              )
+            }),
+        ]
+        |> list.filter_map(option.to_result(_, Nil))
+      }
     ])
   let url = api_prefix <> "/search?" <> query_string
 

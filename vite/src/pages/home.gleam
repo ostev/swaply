@@ -2,6 +2,7 @@ import event
 import gleam/list
 import gleam/option.{type Option}
 import gleam/order
+import gleam/string
 import lustre/attribute as a
 import lustre/effect.{type Effect}
 import lustre/element.{type Element}
@@ -9,6 +10,8 @@ import lustre/element/html as h
 import lustre/event as e
 import rsvp
 import shared.{type Shared}
+import tempo
+import tempo/date
 import tempo/instant
 import ui
 
@@ -28,12 +31,17 @@ pub type Msg {
 }
 
 pub fn init() -> #(Model, Effect(Msg)) {
-  let filter = event.SearchFilter(only_owned: False)
+  let filter =
+    event.SearchFilter(
+      only_owned: False,
+      start_date: option.None,
+      end_date: option.None,
+    )
   let page = 0
 
   #(
     Model(search_query: "", filter:, page:, events: option.None),
-    event.search_events(
+    event.search(
       query: "",
       page:,
       filter:,
@@ -44,7 +52,7 @@ pub fn init() -> #(Model, Effect(Msg)) {
 }
 
 fn search(model: Model) -> Effect(Msg) {
-  event.search_events(
+  event.search(
     query: model.search_query,
     page: model.page,
     filter: model.filter,
@@ -108,6 +116,22 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
   }
 }
 
+fn date_filter_control(
+  label: String,
+  name: String,
+  value: Option(tempo.Date),
+  on_input: fn(Option(tempo.Date)) -> msg,
+) -> Element(msg) {
+  h.div([], [
+    ui.toggle_input(
+      label: "Filter by " <> string.lowercase(label) <> "?",
+      name: "toggle_" <> name,
+      is_checked: option.is_some(value),
+      on_input: todo,
+    ),
+  ])
+}
+
 pub fn view(model: Model, shared: Shared) -> Element(Msg) {
   h.div([], [
     h.h1([], [h.text("Events")]),
@@ -133,7 +157,9 @@ pub fn view(model: Model, shared: Shared) -> Element(Msg) {
           name: "filter_owned",
           is_checked: model.filter.only_owned,
           on_input: fn(is_checked) {
-            UpdatedFilter(event.SearchFilter(is_checked))
+            UpdatedFilter(
+              event.SearchFilter(..model.filter, only_owned: is_checked),
+            )
           },
         )
       }
