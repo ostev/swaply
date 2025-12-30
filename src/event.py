@@ -291,7 +291,7 @@ def get_event(user_id: int | None, event_id: int):
 
         if is_published or (int(manager) == user_id and user_id is not None):
             return {
-                "id": str(id),
+                "id": str(event_id),
                 "name": str(name),
                 "manager": str(manager),
                 "date": datetime.fromisoformat(date).isoformat(),
