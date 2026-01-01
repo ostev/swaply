@@ -2,7 +2,7 @@ import aenum
 
 from sqlite3 import Connection, Cursor
 import sys
-from flask import Blueprint, make_response, request, session
+from flask import Blueprint, current_app, make_response, request, session
 from email_validator import EmailNotValidError, validate_email
 
 from auth.hasher import ArgonHasher
@@ -78,7 +78,9 @@ def signup():
     password = request.json["password"]
 
     try:
-        normalized_email = validate_email(email, check_deliverability=True).normalized
+        normalized_email = validate_email(
+            email, check_deliverability=not current_app.debug
+        ).normalized
     except EmailNotValidError:
         return result(SignupResult.INVALID_EMAIL)
 
@@ -119,21 +121,3 @@ def signup():
 @auth_api.route("/login/status")
 def login_status():
     return {"is_logged_in": auth.session.get_user_id() is not None}
-
-
-@auth_api.route("/user")
-def get_current_user():
-    user_id = auth.session.get_user_id()
-
-    if user_id is None:
-        return {"is_logged_in": False}
-    else:
-        user = globals.db.retrieve([User.id, User.email, User.name], User.id, user_id)
-
-        if user is None:
-            auth.session.logout()
-            return {"is_logged_in": False}
-        else:
-            id, email, name = user
-
-            return {"is_logged_in": True, "email": email, "name": name, "id": str(id)}

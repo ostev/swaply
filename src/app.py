@@ -5,6 +5,7 @@ import sqlite3
 from flask import Flask, g, render_template, request
 from flask_vite import Vite
 
+import auth.user_api
 from db import Database
 from model import schema
 import event
@@ -15,6 +16,7 @@ import model
 app = Flask(__name__, template_folder="templates")
 app.register_blueprint(event.event_api)
 app.register_blueprint(auth.auth_api)
+app.register_blueprint(auth.user_api.user_api)
 # with app.app_context():
 # if "db" not in g:
 #     g.db = Database("db.sqlite3", schema)

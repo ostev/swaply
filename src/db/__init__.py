@@ -16,6 +16,7 @@ class LockedConnection:
 
         # Enable checking foreign key constraints
         self.db_conn.execute("PRAGMA foreign_keys = 1")
+        self.db_conn.execute("PRAGMA journal_mode=WAL")
 
 
 class Database:

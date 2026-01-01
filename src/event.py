@@ -65,8 +65,8 @@ class EventResult(aenum.Enum):  # type: ignore
 @event_api.route("/search")
 @authenticated
 def search_events(user_id: int | None):
-    search_query = request.args.get("q", None)
-    page = request.args.get("p", 0)
+    search_query = request.args.get("q", "")
+    page = int(request.args.get("p", 0))
     filter_owned = request.args.get("filter_owned", "false").lower() == "true"
 
     results_per_page = 10
@@ -82,49 +82,57 @@ def search_events(user_id: int | None):
     )
 
     search_query_expr = (
-        f"event_search_index MATCH :query AND"
-        if search_query is None or len(search_query) >= 3
-        else ""
+        f"event_search_index MATCH :query AND" if len(search_query) >= 3 else ""
     )
 
-    def retrieve_events_with_ticket_types(conn: Connection, cursor: Cursor):
-        return cursor.execute(
-            # SELECT e.id, e.name, e.manager, e.date, e.is_published, e.tags
-            f"""
-            SELECT
-                e.id,
-                e.name,
-                e.manager,
-                e.date,
-                e.is_published,
-                e.tags,
-                e.short_description,
-                e.description,
-                e.location,
-                t.name,
-                t.price,
-                t.allotted
-            FROM events AS e
-            JOIN event_search_index
-                ON event_search_index.ROWID = e.id
-            LEFT JOIN ticket_types as t
-                ON t.event = e.id
-            WHERE {search_query_expr} {filter_expr} {is_authorized_expr}
-            LIMIT :results_per_page OFFSET :offset
-            """,
-            {
-                "query": search_query,
-                "results_per_page": results_per_page,
-                "offset": page * results_per_page,
-            }
-            | ({"user_id": user_id} if user_id is not None else {}),
-        ).fetchall()
+    where_expr = f"WHERE {search_query_expr} {filter_expr} {is_authorized_expr}"
+    params = {
+        "query": search_query,
+        "results_per_page": results_per_page,
+        "offset": page * results_per_page,
+    } | ({"user_id": user_id} if user_id is not None else {})
 
-    events_with_ticket_types = globals.db.run(retrieve_events_with_ticket_types)
+    def retrieve_events_with_ticket_types(conn: Connection, cursor: Cursor):
+
+        return (
+            cursor.execute(
+                f"""
+                SELECT
+                    e.id,
+                    e.name,
+                    e.manager,
+                    e.date,
+                    e.is_published,
+                    e.tags,
+                    e.short_description,
+                    e.description,
+                    e.location
+                FROM events AS e
+                JOIN event_search_index
+                    ON event_search_index.ROWID = e.id
+                {where_expr}
+                ORDER BY rank
+                LIMIT :results_per_page OFFSET :offset
+                """,
+                params,
+            ).fetchall(),
+            cursor.execute(
+                f"""
+                SELECT COUNT(*)
+                    FROM events AS e
+                    JOIN event_search_index
+                        ON event_search_index.ROWID = e.id
+                    {where_expr}
+                """,
+                params,
+            ).fetchone()[0],
+        )
+
+    (event_tuples, count) = globals.db.run(retrieve_events_with_ticket_types)
 
     events = []
 
-    for event_with_ticket_type in events_with_ticket_types:
+    for event in event_tuples:
         (
             id,
             name,
@@ -135,41 +143,37 @@ def search_events(user_id: int | None):
             short_description,
             description,
             location,
-            ticket_name,
-            ticket_price,
-            ticket_allotted,
-        ) = event_with_ticket_type
+        ) = event
 
-        last_index = len(events) - 1
-
-        if ticket_name is not None:
-            ticket = {
+        tickets = [
+            {
                 "name": str(ticket_name),
                 "price": float(ticket_price),
                 "allotted": int(ticket_allotted),
             }
-        else:
-            ticket = None
-
-        if len(events) == 0 or str(id) != events[last_index]["id"]:
-            events.append(
-                {
-                    "id": str(id),
-                    "name": str(name),
-                    "manager": str(manager),
-                    "date": datetime.fromisoformat(date).isoformat(),
-                    "is_published": bool(is_published),
-                    "tags": tags_from_csv(tags),
-                    "ticket_types": [] if ticket is None else [ticket],
-                    "short_description": str(short_description),
-                    "description": str(description),
-                    "location": str(location),
-                }
+            for ticket_name, ticket_price, ticket_allotted in globals.db.retrieve_all(
+                [TicketType.name, TicketType.price, TicketType.allotted],
+                TicketType.event,
+                id,
             )
-        else:
-            events[last_index]["ticket_types"].append(ticket)
+        ]
 
-    return events
+        events.append(
+            {
+                "id": str(id),
+                "name": str(name),
+                "manager": str(manager),
+                "date": datetime.fromisoformat(date).isoformat(),
+                "is_published": bool(is_published),
+                "tags": tags_from_csv(tags),
+                "ticket_types": tickets,
+                "short_description": str(short_description),
+                "description": str(description),
+                "location": str(location),
+            }
+        )
+
+    return {"events": events, "number_of_pages": count // results_per_page}
 
 
 def tags_from_csv(tag_string: str) -> list[str]:

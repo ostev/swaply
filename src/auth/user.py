@@ -1,4 +1,5 @@
 from enum import Enum
+
 from db.schema import Column, PrimaryKey, table
 
 
