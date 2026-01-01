@@ -1,5 +1,3 @@
-import gleam/http
-import gleam/http/request
 import gleam/http/response.{type Response}
 import gleam/json
 import gleam/option.{type Option}
@@ -15,13 +13,13 @@ import modem
 import pages/auth
 import pages/auth/login
 import pages/auth/sign_up
-import pages/auth/user.{type User}
 import pages/event/edit as edit_event
 import pages/event/view as view_event
 import pages/home
 import pages/not_found
 import rsvp
 import shared.{type Shared, Shared}
+import user.{type User}
 
 pub fn main() {
   let app = lustre.application(init, update, view)
@@ -136,7 +134,7 @@ fn update_page_with(
 
 type Msg {
   UrlChanged(Uri)
-  CurrentUserReceived(Option(User))
+  CurrentUserReceived(Result(User, rsvp.Error))
   UserRequestedLogout
   LogoutResponseReceived(Result(Response(String), rsvp.Error))
   GotHomeMsg(home.Msg)
@@ -153,7 +151,7 @@ fn init(_) -> #(Model, Effect(Msg)) {
   let url =
     modem.initial_uri()
     |> result.unwrap(uri.empty)
-  let shared = Shared(current_url: url, user: shared.Unknown)
+  let shared = Shared(current_url: url, user: user.Unknown)
 
   let #(page, page_effect) = change_page(from: uri.empty, to: url, with: shared)
 
@@ -191,13 +189,19 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       )
     }
 
-    CurrentUserReceived(user), _ -> {
+    CurrentUserReceived(response), _ -> {
       #(
         Model(
           ..model,
-          shared: Shared(..model.shared, user: case user {
-            option.Some(user) -> shared.Authenticated(user)
-            option.None -> shared.Unauthenticated
+          shared: Shared(..model.shared, user: case response {
+            Ok(user) ->
+              case user.is_logged_in {
+                True -> user.Authenticated(user)
+                False -> user.Unauthenticated
+              }
+            Error(error) -> {
+              user.Unauthenticated
+            }
           }),
         ),
         effect.none(),
@@ -212,7 +216,7 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       #(
         Model(
           ..model,
-          shared: Shared(..model.shared, user: shared.Unauthenticated),
+          shared: Shared(..model.shared, user: user.Unauthenticated),
         ),
         effect.none(),
       )
@@ -250,7 +254,7 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       view_event.update(sub_model, sub_msg)
       |> update_with(ViewEvent, GotViewEventMsg, model)
 
-    _, _ -> todo
+    _, _ -> panic as "Mismatched page and msg!"
   }
 }
 
@@ -293,11 +297,11 @@ fn view(model: Model) -> Element(Msg) {
       h.a([a.href("/register")], [element.text("Sign up")]),
       h.a([a.href("/event/create")], [element.text("Create event")]),
       case model.shared.user {
-        shared.Authenticated(_) ->
+        user.Authenticated(_) ->
           h.button([event.on_click(UserRequestedLogout)], [
             element.text("Log out"),
           ])
-        shared.Unauthenticated | shared.Unknown -> element.none()
+        user.Unauthenticated | user.Unknown -> element.none()
       },
     ]),
     h.div([], [view_page(model.page, model.shared)]),

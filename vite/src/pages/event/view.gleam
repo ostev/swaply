@@ -13,6 +13,7 @@ import tempo/date
 import tempo/datetime
 import tempo/offset
 import ui
+import user
 
 pub type Model {
   Model(event: Option(Result(Event, rsvp.Error)))
@@ -73,7 +74,7 @@ pub fn view(model: Model, shared: Shared) -> Element(Msg) {
         Ok(event) -> {
           [
             case shared.user {
-              shared.Authenticated(_) -> {
+              user.Authenticated(_) -> {
                 h.a(
                   [
                     a.href("/event/" <> uri.percent_encode(event.id) <> "/edit"),
