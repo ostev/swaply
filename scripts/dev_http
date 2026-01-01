@@ -1,0 +1,4 @@
+#!/bin/sh
+
+cd ./vite
+npm run dev_http
