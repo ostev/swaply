@@ -5,7 +5,7 @@ import tempo/datetime
 pub fn datetime() {
   use raw_string <- decode.then(decode.string)
 
-  case datetime.parse(raw_string, tempo.ISO8601Seconds) {
+  case datetime.parse_any(raw_string) {
     Ok(datetime) -> decode.success(datetime)
     Error(error) ->
       decode.failure(
