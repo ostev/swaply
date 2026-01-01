@@ -11,9 +11,9 @@ import lustre/event as e
 import rsvp
 import shared.{type Shared}
 import tempo
-import tempo/date
 import tempo/instant
 import ui
+import user
 
 pub type Model {
   Model(
@@ -28,6 +28,7 @@ pub type Msg {
   UpdateSearchQuery(String)
   UpdatedFilter(event.SearchFilter)
   FetchedSearchResults(Result(event.SearchResults, rsvp.Error))
+  ChangePage(Int)
 }
 
 pub fn init() -> #(Model, Effect(Msg)) {
@@ -69,7 +70,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
           #(model, effect.none())
         }
         False -> {
-          let new_model = Model(..model, search_query: new_query)
+          let new_model = Model(..model, search_query: new_query, page: 0)
           #(new_model, search(new_model))
         }
       }
@@ -85,6 +86,11 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
           #(new_model, search(new_model))
         }
       }
+    }
+
+    ChangePage(page) -> {
+      let new_model = Model(..model, page:)
+      #(new_model, search(new_model))
     }
 
     FetchedSearchResults(Ok(events)) -> {
@@ -139,9 +145,9 @@ pub fn view(model: Model, shared: Shared) -> Element(Msg) {
       h.text(
         "Hello there! "
         <> case shared.user {
-          shared.Authenticated(user) -> "Your name is " <> user.name
-          shared.Unauthenticated -> "You have not signed in."
-          shared.Unknown -> ""
+          user.Authenticated(user) -> "Your name is " <> user.name
+          user.Unauthenticated -> "You have not signed in."
+          user.Unknown -> ""
         },
       ),
     ]),
@@ -151,7 +157,7 @@ pub fn view(model: Model, shared: Shared) -> Element(Msg) {
       e.debounce(e.on_input(UpdateSearchQuery), 100),
     ]),
     case shared.user {
-      shared.Authenticated(_) -> {
+      user.Authenticated(_) -> {
         ui.toggle_input(
           label: "Only your events?",
           name: "filter_owned",
@@ -163,25 +169,35 @@ pub fn view(model: Model, shared: Shared) -> Element(Msg) {
           },
         )
       }
-      shared.Unknown | shared.Unauthenticated -> element.none()
+      user.Unknown | user.Unauthenticated -> element.none()
     },
     case model.events {
       option.Some(search_result) -> {
-        h.ol(
-          [],
-          search_result.events
-            |> list.map(fn(event) {
-              h.li([], [
-                ui.event_card_view(
-                  event,
-                  is_editable: shared
-                    |> shared.get_user
-                    |> option.map(fn(user) { user.id == event.manager })
-                    |> option.unwrap(False),
-                ),
-              ])
-            }),
-        )
+        h.div([], [
+          h.ol(
+            [],
+            search_result.events
+              |> list.map(fn(event) {
+                h.li([], [
+                  ui.event_card_view(
+                    event,
+                    is_editable: shared
+                      |> shared.get_user
+                      |> option.map(fn(user) { user.id == event.manager })
+                      |> option.unwrap(False),
+                  ),
+                ])
+              }),
+          ),
+
+          h.div([], [
+            ui.page_control(
+              page: model.page,
+              of: search_result.number_of_pages,
+              with: ChangePage,
+            ),
+          ]),
+        ])
       }
       option.None -> {
         h.text(

@@ -14,6 +14,8 @@ import lustre/attribute as a
 import lustre/element.{type Element}
 import lustre/element/html as h
 import lustre/event as e
+import phosphor
+import sequence
 import tempo
 import tempo/date
 import tempo/datetime
@@ -316,6 +318,42 @@ pub fn datetime_view(datetime: tempo.DateTime) -> Element(msg) {
     h.text(
       date
       |> datetime.format(tempo.Custom("MMMM YYYY")),
+    ),
+  ])
+}
+
+pub fn icon_button(attributes: List(a.Attribute(msg)), icon: Element(msg)) {
+  h.button(attributes, [icon])
+}
+
+pub fn page_control(
+  page page: Int,
+  of total_pages: Int,
+  with change_page: fn(Int) -> msg,
+) {
+  let page_buttons =
+    sequence.new(fn(index) {
+      Ok(
+        h.li([], [
+          h.button([e.on_click(change_page(index))], [
+            h.text(int.to_string(index + 1)),
+          ]),
+        ]),
+      )
+    })
+    |> sequence.limit(total_pages)
+    |> sequence.window(center: page, size: 6)
+    |> sequence.generate
+
+  h.div([], [
+    icon_button(
+      [e.on_click(change_page(page - 1)), a.disabled(page <= 0)],
+      phosphor.arrow_left_regular([]),
+    ),
+    h.ol([], page_buttons),
+    icon_button(
+      [e.on_click(change_page(page + 1)), a.disabled(page >= total_pages)],
+      phosphor.arrow_right_regular([]),
     ),
   ])
 }

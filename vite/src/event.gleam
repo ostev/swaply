@@ -135,7 +135,11 @@ pub fn get(id: String, handler: fn(Result(Event, rsvp.Error)) -> a) -> Effect(a)
 }
 
 pub type SearchResults {
-  EventSearchResults(events: List(Event), timestamp: tempo.Instant)
+  EventSearchResults(
+    events: List(Event),
+    number_of_pages: Int,
+    timestamp: tempo.Instant,
+  )
 }
 
 pub type SearchFilter {
@@ -182,12 +186,22 @@ pub fn search(
     ])
   let url = api_prefix <> "/search?" <> query_string
 
-  let decoder = decode.list(of: decoder())
+  let decoder = {
+    use events <- decode.field("events", decode.list(of: decoder()))
+    use number_of_pages <- decode.field("number_of_pages", decode.int)
+
+    decode.success(#(events, number_of_pages))
+  }
 
   let rsvp_handler =
     rsvp.expect_json(decoder, fn(events_result) {
       events_result
-      |> result.map(EventSearchResults(events: _, timestamp:))
+      |> result.map(fn(events_with_pages) {
+        case events_with_pages {
+          #(events, number_of_pages) ->
+            EventSearchResults(events:, number_of_pages:, timestamp:)
+        }
+      })
       |> handler
     })
 
