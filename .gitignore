@@ -6,5 +6,6 @@ __pycache__/
 .pdm-python
 
 db.sqlite3
+db.sqlite3-*
 
 secrets/
