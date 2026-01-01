@@ -23,6 +23,7 @@ packages = [
   { name = "lenient_parse", version = "3.0.1", build_tools = ["gleam"], requirements = ["bigi", "gleam_deque", "gleam_stdlib"], otp_app = "lenient_parse", source = "hex", outer_checksum = "9E502DCB8793FC3AA7771F145CF0B59CD17A9D8F62C762A36E8542ABD9D7D288" },
   { name = "lustre", version = "5.4.0", build_tools = ["gleam"], requirements = ["gleam_erlang", "gleam_json", "gleam_otp", "gleam_stdlib", "houdini"], otp_app = "lustre", source = "hex", outer_checksum = "40E097BABCE65FB7C460C073078611F7F5802EB07E1A9BFB5C229F71B60F8E50" },
   { name = "modem", version = "2.1.2", build_tools = ["gleam"], requirements = ["gleam_stdlib", "lustre"], otp_app = "modem", source = "hex", outer_checksum = "3F9682EBCBF4D26045F1038A7507E8C7967E49D43F9CA6BA68EF0C971B195A7F" },
+  { name = "phosphor_lustre", version = "1.0.1", build_tools = ["gleam"], requirements = ["gleam_stdlib", "lustre"], otp_app = "phosphor_lustre", source = "hex", outer_checksum = "DDC684FCAC93BB06F7CCCCD6F056C43583F074CC877BCA737896F1AEAD0CCB29" },
   { name = "rsvp", version = "1.1.3", build_tools = ["gleam"], requirements = ["gleam_erlang", "gleam_fetch", "gleam_http", "gleam_httpc", "gleam_javascript", "gleam_json", "gleam_stdlib", "lustre"], otp_app = "rsvp", source = "hex", outer_checksum = "4A582C9C49B4EC3197631E78FDB4D0A8703F14043EC12EAAC608E7B9347C2211" },
 ]
 
@@ -31,10 +32,12 @@ atto = { version = ">= 1.2.1 and < 2.0.0" }
 gleam_http = { version = ">= 4.3.0 and < 5.0.0" }
 gleam_json = { version = ">= 3.1.0 and < 4.0.0" }
 gleam_stdlib = { version = ">= 0.44.0 and < 2.0.0" }
+gleam_yielder = { version = ">= 1.1.0 and < 2.0.0" }
 gleeunit = { version = ">= 1.0.0 and < 2.0.0" }
 gtempo = { version = ">= 7.2.2 and < 8.0.0" }
 iv = { version = ">= 1.4.0 and < 2.0.0" }
 lenient_parse = { version = ">= 3.0.1 and < 4.0.0" }
 lustre = { version = ">= 5.4.0 and < 6.0.0" }
 modem = { version = ">= 2.1.2 and < 3.0.0" }
+phosphor_lustre = { version = ">= 1.0.1 and < 2.0.0" }
 rsvp = { version = ">= 1.1.3 and < 2.0.0" }
