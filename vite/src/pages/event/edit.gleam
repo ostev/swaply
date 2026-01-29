@@ -1,4 +1,5 @@
 import event.{type Event}
+import extra/rsvp as extra_rsvp
 import extra/time as extra_time
 import gleam/dynamic/decode
 import gleam/float
@@ -432,22 +433,8 @@ fn submit(form: Form, mode: Mode) -> Result(Effect(Msg), EditError) {
   case mode {
     Create -> Ok(rsvp.post(event.api_prefix, body, handler))
     Update(id) -> {
-      use uri <- result.try(
-        rsvp.parse_relative_uri(event.url(id))
-        |> result.replace_error(InvalidId),
-      )
-      use request <- result.try(
-        request.from_uri(uri)
-        |> result.replace_error(InvalidId),
-      )
-
-      Ok(rsvp.send(
-        request
-          |> request.set_method(http.Patch)
-          |> request.set_body(json.to_string(body))
-          |> request.set_header("content-type", "application/json"),
-        handler,
-      ))
+      extra_rsvp.send(body:, to: event.url(id), with: http.Patch, handler:)
+      |> result.replace_error(InvalidId)
     }
   }
 }

@@ -1,8 +1,12 @@
 import api
+import extra/rsvp as extra_rsvp
 import gleam/bool
 import gleam/dynamic/decode
+import gleam/http
 import gleam/int
 import gleam/io
+import gleam/json
+import gleam/list
 import gleam/option.{type Option}
 import gleam/result
 import gleam/uri
@@ -47,6 +51,17 @@ pub fn get_current_user(
   rsvp.get(url, rsvp.expect_json(decoder(), fn(response) { handler(response) }))
 }
 
+pub fn get(
+  id: String,
+  handler: fn(Result(User, rsvp.Error)) -> msg,
+) -> Effect(msg) {
+  echo api_prefix <> "/" <> uri.percent_encode(id)
+  rsvp.get(
+    api_prefix <> "/" <> uri.percent_encode(id),
+    rsvp.expect_json(decoder(), handler),
+  )
+}
+
 pub fn list_all(
   with_email email_filter: Option(String),
   page page: Int,
@@ -63,5 +78,81 @@ pub fn list_all(
       }
     ]),
     rsvp.expect_json(decode.list(of: decoder()), handler),
+  )
+}
+
+pub fn delete(
+  id: String,
+  handler: fn(Result(Nil, rsvp.Error)) -> msg,
+) -> Result(Effect(msg), Nil) {
+  extra_rsvp.send(
+    body: json.object([]),
+    to: api_prefix <> "/" <> uri.percent_encode(id),
+    with: http.Delete,
+    handler: rsvp.expect_ok_response(fn(response) {
+      response
+      |> result.replace(Nil)
+      |> handler
+    }),
+  )
+}
+
+pub type UpdateError {
+  InvalidEmail
+  EmailAlreadyUsed
+  RsvpError(rsvp.Error)
+}
+
+fn update_error_decoder() -> decode.Decoder(UpdateError) {
+  use variant <- decode.field("result", decode.string)
+  case variant {
+    "invalid_email" -> decode.success(InvalidEmail)
+    "email_already_used" -> decode.success(EmailAlreadyUsed)
+    _ -> decode.failure(InvalidEmail, "UpdateError")
+  }
+}
+
+pub fn update(
+  id id: String,
+  email email: Option(String),
+  is_admin is_admin: Option(Bool),
+  handler handler: fn(Result(User, UpdateError)) -> msg,
+) {
+  let body =
+    json.object(
+      []
+      |> list.append(case email {
+        option.Some(email) -> [#("email", json.string(email))]
+        option.None -> []
+      })
+      |> list.append(case is_admin {
+        option.Some(is_admin) -> [#("is_admin", json.bool(is_admin))]
+        option.None -> []
+      }),
+    )
+
+  extra_rsvp.send(
+    body:,
+    to: api_prefix <> "/" <> uri.percent_encode(id),
+    with: http.Patch,
+    handler: rsvp.expect_json(decoder(), fn(result) {
+      case result {
+        Ok(user) -> handler(Ok(user))
+        Error(error) ->
+          handler(
+            Error(case error {
+              rsvp.HttpError(response) if response.status == 422 -> {
+                case
+                  json.parse(from: response.body, using: update_error_decoder())
+                {
+                  Ok(update_error) -> update_error
+                  Error(_) -> RsvpError(error)
+                }
+              }
+              _ -> RsvpError(error)
+            }),
+          )
+      }
+    }),
   )
 }

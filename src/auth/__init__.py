@@ -71,6 +71,31 @@ class SignupResult(aenum.Enum):  # type: ignore
 MIN_PASSWORD_LENGTH = 8
 
 
+def create_user(email: str, name: str, password: str, is_admin: bool) -> int:
+    hashed_password = ArgonHasher().hash(password)
+
+    def insert_user(conn: Connection, cursor: Cursor):
+        cursor.execute(
+            """
+            INSERT INTO users (email, name, hashed_password, privilege_level)
+            VALUES (?, ?, ?, ?)
+            RETURNING id
+            """,
+            (email, name, hashed_password, int(is_admin)),
+        )
+
+        user_id_tuple = cursor.fetchone()
+
+        if user_id_tuple is None:
+            raise ValueError("Failed to create user")
+        user_id = user_id_tuple[0]
+
+        conn.commit()
+        return user_id
+
+    return globals.db.run(insert_user)
+
+
 @auth_api.route("/signup", methods=["POST"])
 def signup():
     email = request.json["email"]
@@ -90,28 +115,7 @@ def signup():
     if globals.db.contains(User.email, normalized_email):
         return result(SignupResult.EMAIL_ALREADY_USED)
 
-    hashed_password = ArgonHasher().hash(password)
-
-    def insert_user(conn: Connection, cursor: Cursor):
-        cursor.execute(
-            """
-            INSERT INTO users (email, name, hashed_password, privilege_level)
-            VALUES (?, ?, ?, ?)
-            RETURNING id
-            """,
-            (normalized_email, name, hashed_password, PrivilegeLevel.NORMAL.value),
-        )
-
-        user_id_tuple = cursor.fetchone()
-
-        if user_id_tuple is None:
-            raise ValueError("Failed to create user")
-        user_id = user_id_tuple[0]
-
-        conn.commit()
-        return user_id
-
-    user_id = globals.db.run(insert_user)
+    user_id = create_user(normalized_email, name, password, is_admin=False)
 
     auth.session.register(user_id)
 

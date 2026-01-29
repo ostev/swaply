@@ -2,7 +2,6 @@ import event.{type Event}
 import gleam/dynamic/decode
 import gleam/float
 import gleam/int
-import gleam/io
 import gleam/list
 import gleam/option.{type Option}
 import gleam/result
@@ -38,6 +37,24 @@ pub fn input(
       a.value(value |> option.unwrap("")),
       a.classes([#("invalid", !is_valid)]),
       e.on_input(on_input),
+    ]),
+  ])
+}
+
+pub fn search_input(
+  name name: String,
+  label label: String,
+  value value: Option(String),
+  on_input on_input: fn(String) -> msg,
+) -> Element(msg) {
+  h.div([], [
+    h.label([a.for(name)], [h.text(label)]),
+    h.input([
+      a.type_("text"),
+      a.name(name),
+      a.id(name),
+      a.value(value |> option.unwrap("")),
+      e.debounce(e.on_input(on_input), 100),
     ]),
   ])
 }

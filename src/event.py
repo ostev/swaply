@@ -4,12 +4,14 @@ from functools import reduce
 import json
 from multiprocessing import Value
 from sqlite3 import Connection, Cursor
+import timeit
 import aenum
-from flask import Blueprint, request
+from flask import Blueprint, current_app, request
 
 from api import API_PREFIX
 from auth.session import authenticated, protected
 from auth.user import User
+from auth.user_api import UserData, authenticated_with_user, protected_with_user
 from db.schema import Column, PrimaryKey, table
 from utils import normalise_json_str_array, result
 import globals
@@ -72,9 +74,9 @@ def search_events(user_id: int | None):
     results_per_page = 10
 
     is_authorized_expr = (
-        "(e.is_published = 1 OR manager = :user_id)"
+        "(events.is_published = 1 OR manager = :user_id)"
         if user_id is not None
-        else "e.is_published = 1"
+        else "events.is_published = 1"
     )
 
     filter_expr = (
@@ -85,7 +87,7 @@ def search_events(user_id: int | None):
         f"event_search_index MATCH :query AND" if len(search_query) >= 3 else ""
     )
 
-    where_expr = f"WHERE {search_query_expr} {filter_expr} {is_authorized_expr}"
+    condition_expr = f"{search_query_expr} {filter_expr} {is_authorized_expr}"
     params = {
         "query": search_query,
         "results_per_page": results_per_page,
@@ -98,31 +100,28 @@ def search_events(user_id: int | None):
             cursor.execute(
                 f"""
                 SELECT
-                    e.id,
-                    e.name,
-                    e.manager,
-                    e.date,
-                    e.is_published,
-                    e.tags,
-                    e.short_description,
-                    e.description,
-                    e.location
-                FROM events AS e
-                JOIN event_search_index
-                    ON event_search_index.ROWID = e.id
-                {where_expr}
-                ORDER BY rank
+                    events.id,
+                    events.name,
+                    events.manager,
+                    events.date,
+                    events.is_published,
+                    events.tags,
+                    events.short_description,
+                    events.description,
+                    events.location
+                FROM event_search_index
+                JOIN events
+                    ON event_search_index.ROWID = events.id AND ({condition_expr})
                 LIMIT :results_per_page OFFSET :offset
                 """,
                 params,
             ).fetchall(),
             cursor.execute(
                 f"""
-                SELECT COUNT(*)
-                    FROM events AS e
-                    JOIN event_search_index
-                        ON event_search_index.ROWID = e.id
-                    {where_expr}
+                SELECT COUNT(events.id)
+                FROM event_search_index
+                JOIN events
+                    ON event_search_index.ROWID = events.id AND ({condition_expr})
                 """,
                 params,
             ).fetchone()[0],
@@ -301,7 +300,7 @@ def get_event(user_id: int | None, event_id: int):
             )
         ]
 
-        if is_published or (int(manager) == user_id and user_id is not None):
+        if is_published or (user_id is not None and int(manager) == user_id):
             return {
                 "id": str(event_id),
                 "name": str(name),
@@ -321,20 +320,21 @@ def get_event(user_id: int | None, event_id: int):
 
 
 @event_api.route("/<event_id>", methods=["PATCH"])
-@protected
-def update_event(user_id: int, event_id: str):
+@protected_with_user
+def update_event(user: UserData, event_id: str):
     event_id_parsed = int(event_id)
 
-    manager_id: int | None = globals.db.run(
-        lambda conn, cursor: cursor.execute(
-            "SELECT manager FROM events WHERE id = ?", (event_id_parsed,)
-        ).fetchone()
-    )[0]
+    event_details = globals.db.retrieve(
+        [Event.manager, Event.is_published], Event.id, event_id_parsed
+    )
 
-    if manager_id == None:
+    if event_details == None:
         return result(EventResult.NOT_FOUND)
 
-    if user_id != manager_id:
+    manager_id, is_event_already_published = event_details
+
+    # Admins can only update published events
+    if user.id != manager_id and not (user.is_admin and is_event_already_published):
         return result(EventResult.UNAUTHORISED)
 
     if "name" in request.json:
@@ -384,3 +384,23 @@ def update_event(user_id: int, event_id: str):
     globals.db.run(insert_event)
 
     return get_event(event_id_parsed)  # type: ignore
+
+
+@event_api.route("/<event_id>", methods=["DELETE"])
+@protected_with_user
+def delete_event(user: UserData, event_id: str):
+    event_id_parsed = int(event_id)
+
+    manager = globals.db.retrieve([Event.manager], Event.id, event_id_parsed)
+
+    if manager is not None and (manager[0] == user.id or user.is_admin):
+        # TODO: check and refund transactions
+        def run_delete(conn: Connection, cursor: Cursor):
+            cursor.execute("DELETE FROM events WHERE event_id = ?", (event_id_parsed,))
+            conn.commit()
+
+        globals.db.run(run_delete)
+
+        return result(EventResult.SUCCESS)
+    else:
+        return result(EventResult.UNAUTHORISED)

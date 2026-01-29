@@ -10,9 +10,11 @@ import lustre/element.{type Element}
 import lustre/element/html as h
 import lustre/event
 import modem
+import pages/admin/users as manage_users
 import pages/auth
 import pages/auth/login
 import pages/auth/sign_up
+import pages/edit_user
 import pages/event/edit as edit_event
 import pages/event/view as view_event
 import pages/home
@@ -41,6 +43,9 @@ type Page {
   CreateEvent(edit_event.Model)
   UpdateEvent(edit_event.Model)
   ViewEvent(view_event.Model)
+
+  EditUser(edit_user.Model)
+  ManageUsers(manage_users.Model)
 
   NotFound(not_found.Model)
 }
@@ -85,6 +90,18 @@ fn change_page(
         edit_event.init(shared, edit_event.Update(id))
         |> update_page_with(UpdateEvent, GotUpdateEventMsg)
       })
+    }
+
+    ["user", id_url_string, "edit"] -> {
+      parse_percent_encoded_id(id_url_string, fn(id) {
+        edit_user.init(id, shared)
+        |> update_page_with(EditUser, GotEditUserMsg)
+      })
+    }
+
+    ["admin", "users"] -> {
+      manage_users.init(shared)
+      |> update_page_with(ManageUsers, GotManageUsersMsg)
     }
 
     _ ->
@@ -145,6 +162,9 @@ type Msg {
   GotCreateEventMsg(edit_event.Msg)
   GotUpdateEventMsg(edit_event.Msg)
   GotViewEventMsg(view_event.Msg)
+
+  GotEditUserMsg(edit_user.Msg)
+  GotManageUsersMsg(manage_users.Msg)
 }
 
 fn init(_) -> #(Model, Effect(Msg)) {
@@ -254,6 +274,14 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       view_event.update(sub_model, sub_msg)
       |> update_with(ViewEvent, GotViewEventMsg, model)
 
+    GotEditUserMsg(sub_msg), EditUser(sub_model) ->
+      edit_user.update(sub_model, sub_msg)
+      |> update_with(EditUser, GotEditUserMsg, model)
+
+    GotManageUsersMsg(sub_msg), ManageUsers(sub_model) ->
+      manage_users.update(sub_model, sub_msg)
+      |> update_with(ManageUsers, GotManageUsersMsg, model)
+
     _, _ -> panic as "Mismatched page and msg!"
   }
 }
@@ -286,6 +314,14 @@ fn view_page(page: Page, shared: Shared) {
     ViewEvent(sub_model) ->
       view_event.view(sub_model, shared)
       |> element.map(GotViewEventMsg)
+
+    EditUser(sub_model) ->
+      edit_user.view(sub_model)
+      |> element.map(GotEditUserMsg)
+
+    ManageUsers(sub_model) ->
+      manage_users.view(sub_model, shared)
+      |> element.map(GotManageUsersMsg)
   }
 }
 
@@ -293,15 +329,21 @@ fn view(model: Model) -> Element(Msg) {
   h.div([], [
     h.nav([], [
       h.a([a.href("/")], [element.text("Home")]),
-      h.a([a.href("/login")], [element.text("Login")]),
-      h.a([a.href("/register")], [element.text("Sign up")]),
       h.a([a.href("/event/create")], [element.text("Create event")]),
       case model.shared.user {
         user.Authenticated(_) ->
           h.button([event.on_click(UserRequestedLogout)], [
             element.text("Log out"),
           ])
-        user.Unauthenticated | user.Unknown -> element.none()
+        user.Unauthenticated | user.Unknown ->
+          element.fragment([
+            h.a([a.href("/login")], [element.text("Login")]),
+            h.a([a.href("/register")], [element.text("Sign up")]),
+          ])
+      },
+      case shared.is_admin(model.shared) {
+        True -> h.a([a.href("/admin/users")], [h.text("Manage users")])
+        False -> element.none()
       },
     ]),
     h.div([], [view_page(model.page, model.shared)]),

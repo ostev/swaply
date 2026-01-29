@@ -1,6 +1,7 @@
 import api
 import extra/decode as extra_decode
 import extra/list as extra_list
+import extra/rsvp as extra_rsvp
 import gleam/bool
 import gleam/dynamic/decode
 import gleam/float
@@ -134,6 +135,19 @@ pub fn get(id: String, handler: fn(Result(Event, rsvp.Error)) -> a) -> Effect(a)
   rsvp.get(url(id), rsvp_handler)
 }
 
+pub fn delete(id: String, handler: fn(Result(Nil, rsvp.Error)) -> msg) {
+  extra_rsvp.send(
+    body: json.object([]),
+    to: url(id),
+    with: http.Delete,
+    handler: rsvp.expect_ok_response(fn(result) {
+      result
+      |> result.replace(Nil)
+      |> handler
+    }),
+  )
+}
+
 pub type SearchResults {
   EventSearchResults(
     events: List(Event),
@@ -206,28 +220,6 @@ pub fn search(
     })
 
   rsvp.get(url, rsvp_handler)
-}
-
-pub fn update_event(to updated_event: Event, with handler) {
-  let json_string =
-    updated_event
-    |> encode
-    |> json.to_string
-
-  rsvp.send(
-    request.new()
-      |> request.set_path(
-        // Create an absolute URL from a relative one, causing the request
-        // to fail if it is not parseable
-        rsvp.parse_relative_uri(url(updated_event.id))
-        |> result.map(uri.to_string)
-        |> result.unwrap(""),
-      )
-      |> request.set_method(http.Patch)
-      |> request.set_body(json_string)
-      |> request.set_header("content-type", "application/json"),
-    handler,
-  )
 }
 
 pub fn get_user_events(handler) {

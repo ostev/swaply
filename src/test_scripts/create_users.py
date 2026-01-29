@@ -10,11 +10,14 @@ host = "http://localhost:5000"
 
 for i in range(1_000_000):
     print(i)
-    s.post(
+    response = s.post(
         host + "/api/v1/auth/signup",
         json={
             "name": fake.name(),
             "email": fake.email(),
-            "password": secrets.token_urlsafe(random.randint(3, 300)),
+            "password": secrets.token_urlsafe(random.randint(8, 300)),
         },
     )
+
+    if response.status_code != 201:
+        print(response.json())

@@ -21,3 +21,10 @@ pub fn get_user(shared: Shared) -> Option(User) {
     user.Unauthenticated | user.Unknown -> option.None
   }
 }
+
+pub fn is_admin(shared: Shared) -> Bool {
+  case get_user(shared) {
+    option.Some(user) -> user.is_admin
+    option.None -> False
+  }
+}

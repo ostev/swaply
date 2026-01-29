@@ -1,6 +1,7 @@
 from pathlib import Path
 import secrets
 import sqlite3
+import tomllib
 
 from flask import Flask, g, render_template, request
 from flask_vite import Vite
@@ -132,6 +133,7 @@ vite = Vite(app)
 
 def set_secrets():
     secret_key_path = Path("secrets/secret_key")
+
     try:
         with open(secret_key_path, "r") as file:
             app.secret_key = file.read()
@@ -146,6 +148,30 @@ def set_secrets():
 
 
 set_secrets()
+
+
+def create_default_admin():
+    default_admin_path = Path("secrets/default_admin.toml")
+
+    with open(default_admin_path, "rb") as file:
+        admin_details = tomllib.load(file)
+
+        email = str(admin_details["email"])
+        name = str(admin_details["name"])
+        password = str(admin_details["password"])
+
+    if (
+        globals.db.run(
+            lambda conn, cursor: cursor.execute(
+                "SELECT COUNT(id) FROM users WHERE privilege_level = 1"
+            ).fetchone()
+        )[0]
+        == 0
+    ):
+        auth.create_user(email, name, password, is_admin=True)
+
+
+create_default_admin()
 
 
 @app.teardown_appcontext

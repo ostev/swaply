@@ -7,6 +7,7 @@ import lustre/attribute as a
 import lustre/effect.{type Effect}
 import lustre/element.{type Element}
 import lustre/element/html as h
+import lustre/element/keyed
 import lustre/event as e
 import rsvp
 import shared.{type Shared}
@@ -154,7 +155,7 @@ pub fn view(model: Model, shared: Shared) -> Element(Msg) {
     h.input([
       a.value(model.search_query),
       a.placeholder("Search for events..."),
-      e.debounce(e.on_input(UpdateSearchQuery), 100),
+      e.debounce(e.on_input(UpdateSearchQuery), 200),
     ]),
     case shared.user {
       user.Authenticated(_) -> {
@@ -174,19 +175,22 @@ pub fn view(model: Model, shared: Shared) -> Element(Msg) {
     case model.events {
       option.Some(search_result) -> {
         h.div([], [
-          h.ol(
+          keyed.ol(
             [],
             search_result.events
               |> list.map(fn(event) {
-                h.li([], [
-                  ui.event_card_view(
-                    event,
-                    is_editable: shared
-                      |> shared.get_user
-                      |> option.map(fn(user) { user.id == event.manager })
-                      |> option.unwrap(False),
-                  ),
-                ])
+                #(
+                  event.id,
+                  h.li([], [
+                    ui.event_card_view(
+                      event,
+                      is_editable: shared
+                        |> shared.get_user
+                        |> option.map(fn(user) { user.id == event.manager })
+                        |> option.unwrap(False),
+                    ),
+                  ]),
+                )
               }),
           ),
 

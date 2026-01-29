@@ -5,7 +5,8 @@ import auth.session
 import globals
 from auth.user import User
 from typing import Self
-from utils import result
+from email_validator import EmailNotValidError, validate_email
+from utils import check_sql_identifier, result
 import aenum
 from api import API_PREFIX
 from flask import Blueprint, request
@@ -40,6 +41,40 @@ class UserData:
             return cls(id, email, name, bool(privilege_level))
 
 
+def protected_with_user(route):
+    @wraps(route)
+    def protected_route(*args, **kwargs):
+        user_id = auth.session.get_user_id()
+
+        if user_id is None:
+            return {"error": "invalid_session"}, 403
+        else:
+            current_user = UserData.by_id(user_id)
+
+            if current_user is None:
+                return {"error": "insufficient_privileges"}, 403
+            else:
+                return route(current_user, *args, **kwargs)
+
+    return protected_route
+
+
+def authenticated_with_user(route):
+    @wraps(route)
+    def authenticated_route(*args, **kwargs):
+        user_id = auth.session.get_user_id()
+
+        if user_id is not None:
+            current_user = UserData.by_id(user_id)
+
+            if current_user is not None:
+                return route(current_user, *args, **kwargs)
+
+        route(None, *args, **kwargs)
+
+    return authenticated_route
+
+
 def admin_only(route):
     @wraps(route)
     def admin_only_route(*args, **kwargs):
@@ -50,7 +85,7 @@ def admin_only(route):
         else:
             current_user = UserData.by_id(user_id)
 
-            if current_user is None:
+            if current_user is None or not current_user.is_admin:
                 return {"error": "insufficient_privileges"}, 403
             else:
                 return route(current_user, *args, **kwargs)
@@ -101,37 +136,98 @@ def get_all(current_user: UserData):
         )
     ]
 
-    return {}
+    return users
 
 
-class EventResult(aenum.Enum):  # type: ignore
+class UserResult(aenum.Enum):  # type: ignore
     _settings_ = aenum.NoAlias
 
+    FORBIDDEN = 403
     NOT_FOUND = 404
 
 
 @user_api.route("/<user_id>")
-@admin_only
-def get_user(_: UserData, user_id: str):
+@protected_with_user
+def get_user(current_user: UserData, user_id: str):
     id = int(user_id)
 
-    user = UserData.by_id(id)
+    if current_user.id == id or current_user.is_admin:
+        user = UserData.by_id(id)
 
-    if user is None:
-        return result(EventResult.NOT_FOUND)
+        if user is None:
+            return result(UserResult.NOT_FOUND)
 
-    return user.to_dict()
+        return {"is_logged_in": current_user.id == user.id} | user.to_dict()
+    else:
+        return result(UserResult.FORBIDDEN)
 
 
 @user_api.route("/<user_id>", methods=["DELETE"])
-@admin_only
-def delete_user(_: UserData, user_id: str):
+@protected_with_user
+def delete_user(current_user: UserData, user_id: str):
     id = int(user_id)
 
-    def run_delete_user(conn: Connection, cursor: Cursor):
-        cursor.execute("DELETE FROM users WHERE id = ?", (id,))
+    if current_user.id == id or current_user.is_admin:
+
+        def run_delete_user(conn: Connection, cursor: Cursor):
+            cursor.execute("DELETE FROM users WHERE id = ?", (id,))
+            conn.commit()
+
+        globals.db.run(run_delete_user)
+
+        return "", 204
+    else:
+        return result(UserResult.FORBIDDEN)
+
+
+class UpdateUserError(aenum.Enum):  # type: ignore
+    _settings_ = aenum.NoAlias
+
+    FORBIDDEN = 403
+    INVALID_EMAIL = 422
+    EMAIL_ALREADY_USED = 422
+
+
+@user_api.route("/<user_id>", methods=["PATCH"])
+@protected_with_user
+def update_user(current_user: UserData, user_id: str):
+    id = int(user_id)
+
+    if not (current_user.id == id or current_user.is_admin):
+        return result(UpdateUserError.FORBIDDEN)
+
+    is_admin = (
+        is_admin
+        if type(is_admin := request.json.get("is_admin", None)) is bool
+        else None
+    )
+
+    try:
+        email = (
+            validate_email(email, check_deliverability=False).normalized
+            if type(email := request.json.get("email", None)) is str
+            else None
+        )
+    except EmailNotValidError:
+        return result(UpdateUserError.INVALID_EMAIL)
+
+    if globals.db.contains(User.email, email):
+        return result(UpdateUserError.EMAIL_ALREADY_USED)
+
+    params = (
+        {"id": id}
+        | ({"privilege_level": int(is_admin)} if is_admin is not None else {})
+        | ({"email": email} if email is not None else {})
+    )
+
+    columns = ", ".join(
+        [f"{check_sql_identifier(column)} = :{column}" for column in params.keys()]
+    )
+
+    def run_update_user(conn: Connection, cursor: Cursor):
+        cursor.execute(f"UPDATE users SET {columns} WHERE id = :id", params)
         conn.commit()
 
-    globals.db.run(run_delete_user)
+    globals.db.run(run_update_user)
 
-    return "", 204
+    return get_user(user_id)  # type: ignore
