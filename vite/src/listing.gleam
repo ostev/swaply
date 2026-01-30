@@ -21,6 +21,7 @@ import lustre/element.{type Element}
 import lustre/element/html as h
 import lustre/event as e
 import rsvp
+import seller.{type Seller}
 import tempo.{type DateTime}
 import tempo/date
 import tempo/datetime
@@ -36,7 +37,7 @@ pub type Listing {
     short_description: String,
     description: String,
     location: String,
-    seller: String,
+    seller: Seller,
     is_published: Bool,
     name: String,
     date: DateTime,
@@ -46,15 +47,15 @@ pub type Listing {
 }
 
 pub type TicketType {
-  TicketType(name: String, price: Float, allotted: Int)
+  TicketType(name: String, price: Float, quantity: Int)
 }
 
 pub fn item_type_to_json(item_type: TicketType) -> Json {
-  let TicketType(name:, price:, allotted:) = item_type
+  let TicketType(name:, price:, quantity:) = item_type
   json.object([
     #("name", json.string(name)),
     #("price", json.float(price)),
-    #("allotted", json.int(allotted)),
+    #("quantity", json.int(quantity)),
   ])
 }
 
@@ -67,24 +68,24 @@ fn item_type_decoder() -> decode.Decoder(TicketType) {
       |> decode.map(int.to_float),
     ]),
   )
-  use allotted <- decode.field("allotted", decode.int)
-  decode.success(TicketType(name:, price:, allotted:))
+  use quantity <- decode.field("quantity", decode.int)
+  decode.success(TicketType(name:, price:, quantity:))
 }
 
-pub type TicketTypeInput {
-  TicketTypeInput(name: String, price: String, allotted: String)
+pub type ItemInput {
+  ItemInput(name: String, price: String, quantity: String)
 }
 
-pub fn parse_item_type(item_type_input: TicketTypeInput) {
+pub fn parse_item_type(item_type_input: ItemInput) {
   use price <- result.try(lenient_parse.to_float(item_type_input.price))
-  use allotted <- result.try(lenient_parse.to_int(item_type_input.allotted))
+  use quantity <- result.try(lenient_parse.to_int(item_type_input.quantity))
 
-  Ok(TicketType(name: item_type_input.name, price:, allotted:))
+  Ok(TicketType(name: item_type_input.name, price:, quantity:))
 }
 
 pub fn decoder() -> decode.Decoder(Listing) {
   use id <- decode.field("id", decode.string)
-  use seller <- decode.field("seller", decode.string)
+  use seller <- decode.field("seller", seller.decoder())
   use is_published <- decode.field("is_published", decode.bool)
   use name <- decode.field("name", decode.string)
   use date <- decode.field("date", extra_decode.datetime())
@@ -109,20 +110,6 @@ pub fn decoder() -> decode.Decoder(Listing) {
     description:,
     location:,
   ))
-}
-
-pub fn encode(listing: Listing) -> Json {
-  json.object([
-    #("id", json.string(listing.id)),
-    #("seller", json.string(listing.seller)),
-    #("is_published", json.bool(listing.is_published)),
-    #("name", json.string(listing.name)),
-    #(
-      "date",
-      json.string(listing.date |> datetime.format(tempo.ISO8601Seconds)),
-    ),
-    #("item_types", json.array(from: listing.item_types, of: item_type_to_json)),
-  ])
 }
 
 pub fn url(id: String) -> String {

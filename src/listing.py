@@ -135,7 +135,7 @@ def search_listings(user_id: int | None):
         (
             id,
             name,
-            seller,
+            seller_id,
             date,
             is_published,
             tags,
@@ -157,11 +157,13 @@ def search_listings(user_id: int | None):
             )
         ]
 
+        (seller_email,) = globals.db.retrieve_all([User.email], User.id, seller_id)
+
         listings.append(
             {
                 "id": str(id),
                 "name": str(name),
-                "seller": str(seller),
+                "seller": {"id": str(seller_id), "email": seller_email},
                 "date": datetime.fromisoformat(date).isoformat(),
                 "is_published": bool(is_published),
                 "tags": tags_from_csv(tags),

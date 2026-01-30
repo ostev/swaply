@@ -47,7 +47,7 @@ pub type Form {
     tags: Set(String),
     sorted_tags: List(String),
     current_tag: String,
-    item_types: iv.Array(listing.TicketTypeInput),
+    item_types: iv.Array(listing.ItemInput),
     is_published: Bool,
     description: String,
     short_description: String,
@@ -97,7 +97,7 @@ pub fn init(shared_model: Shared, mode: Mode) -> #(Model, Effect(Msg)) {
         tags: set.new(),
         sorted_tags: [],
         item_types: iv.from_list([
-          listing.TicketTypeInput(name: "Standard", price: "", allotted: ""),
+          listing.ItemInput(name: "Standard", price: "", quantity: ""),
         ]),
         current_tag: "",
         is_published: False,
@@ -133,9 +133,9 @@ pub type Msg {
 
   CreatedTags(List(String))
   DeletedTag(String)
-  UpdatedTicketType(listing.TicketTypeInput, index: Int)
+  UpdatedTicketType(listing.ItemInput, index: Int)
   DeletedTicketType(index: Int)
-  AddedTicketType(listing.TicketTypeInput)
+  AddedTicketType(listing.ItemInput)
   UpdateCurrentTag(String)
   SubmitForm
   NoOp
@@ -308,10 +308,10 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
             sorted_tags: listing.tags |> list.sort(string.compare),
             item_types: iv.from_list(listing.item_types)
               |> iv.map(fn(item_type) {
-                listing.TicketTypeInput(
+                listing.ItemInput(
                   name: item_type.name,
                   price: float.to_string(item_type.price),
-                  allotted: int.to_string(item_type.allotted),
+                  quantity: int.to_string(item_type.quantity),
                 )
               }),
             current_tag: "",
@@ -539,7 +539,7 @@ pub fn view(model: Model) -> Element(Msg) {
               on_remove_tag: DeletedTag,
             ),
 
-            h.h3([], [h.text("Ticket types")]),
+            h.h3([], [h.text("Items for offer")]),
 
             h.div([], [
               h.div(
@@ -570,10 +570,10 @@ pub fn view(model: Model) -> Element(Msg) {
                 [
                   a.type_("button"),
                   e.on_click(
-                    AddedTicketType(listing.TicketTypeInput(
+                    AddedTicketType(listing.ItemInput(
                       name: "",
                       price: "",
-                      allotted: "",
+                      quantity: "",
                     )),
                   ),
                 ],

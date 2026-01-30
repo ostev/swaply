@@ -221,7 +221,7 @@ pub fn view(model: Model, shared: Shared) -> Element(Msg) {
             [
               case shared.user {
                 user.Authenticated(user)
-                  if user.id == listing.seller
+                  if user.id == listing.seller.id
                   || { user.is_admin && listing.is_published }
                 -> {
                   h.div([], [

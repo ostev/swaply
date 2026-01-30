@@ -186,7 +186,7 @@ pub fn view(model: Model, shared: Shared) -> Element(Msg) {
                       listing,
                       is_editable: shared
                         |> shared.get_user
-                        |> option.map(fn(user) { user.id == listing.seller })
+                        |> option.map(fn(user) { user.id == listing.seller.id })
                         |> option.unwrap(False),
                     ),
                   ]),

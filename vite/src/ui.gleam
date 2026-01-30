@@ -232,20 +232,14 @@ pub fn tags_input(
   ])
 }
 
-pub fn item_type_input(
-  item_type: listing.TicketTypeInput,
-  name: String,
-  on_input,
-) {
+pub fn item_type_input(item_type: listing.ItemInput, name: String, on_input) {
   element.fragment([
     input(
       type_: "text",
       name: name <> "_name",
       label: "Name",
       value: option.Some(item_type.name),
-      on_input: fn(name) {
-        on_input(listing.TicketTypeInput(..item_type, name:))
-      },
+      on_input: fn(name) { on_input(listing.ItemInput(..item_type, name:)) },
       is_valid: string.length(item_type.name) > 0,
     ),
     number_input(
@@ -253,18 +247,18 @@ pub fn item_type_input(
       label: "Price",
       value: item_type.price,
       on_input: fn(value, _) {
-        on_input(listing.TicketTypeInput(..item_type, price: value))
+        on_input(listing.ItemInput(..item_type, price: value))
       },
       min: 0.0,
       max: 1_000_000.0,
       step: 0.01,
     ),
     number_input(
-      name: name <> "_allotted",
-      label: "Allotted",
-      value: item_type.allotted,
+      name: name <> "_quantity",
+      label: "Quantity",
+      value: item_type.quantity,
       on_input: fn(value, _) {
-        on_input(listing.TicketTypeInput(..item_type, allotted: value))
+        on_input(listing.ItemInput(..item_type, quantity: value))
       },
       min: 1.0,
       max: 1_000_000.0,
