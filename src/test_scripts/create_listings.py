@@ -20,7 +20,7 @@ def create_item_type():
     return {
         "name": fake.words(nb=random.randint(0, 100)),
         "price": random.random() * 1000,
-        "allotted": random.randint(0, 1_000_000),
+        "quantity": random.randint(0, 1_000_000),
     }
 
 
@@ -44,7 +44,7 @@ def create_listing():
     return {
         "name": " ".join(fake.words(nb=random.randint(0, 100))),
         "is_published": random.choice([False, True]),
-        "item_types": [create_item_type() for _ in range(random.randint(0, 200))],
+        "items": [create_item_type() for _ in range(random.randint(0, 200))],
         "date": random_datetime_between(
             datetime.datetime.now(tz=datetime.UTC),
             datetime.datetime.now(tz=datetime.UTC) + datetime.timedelta(days=1_000_000),

@@ -42,13 +42,13 @@ class Listing:
 
 @table
 class TicketType:
-    table_name = "ticket_types"
+    table_name = "items"
     id = PrimaryKey.integer().autoincrement()
     listing = Column.foreign(Listing.id)
 
     name = Column.text()
     price = Column.numeric()
-    allotted = Column.integer()
+    quantity = Column.integer()
 
 
 listing_api = Blueprint("listings", __name__, url_prefix=API_PREFIX + "/listings")
@@ -94,7 +94,7 @@ def search_listings(user_id: int | None):
         "offset": page * results_per_page,
     } | ({"user_id": user_id} if user_id is not None else {})
 
-    def retrieve_listings_with_ticket_types(conn: Connection, cursor: Cursor):
+    def retrieve_listings_with_items(conn: Connection, cursor: Cursor):
 
         return (
             cursor.execute(
@@ -127,7 +127,7 @@ def search_listings(user_id: int | None):
             ).fetchone()[0],
         )
 
-    (listing_tuples, count) = globals.db.run(retrieve_listings_with_ticket_types)
+    (listing_tuples, count) = globals.db.run(retrieve_listings_with_items)
 
     listings = []
 
@@ -148,16 +148,16 @@ def search_listings(user_id: int | None):
             {
                 "name": str(ticket_name),
                 "price": float(ticket_price),
-                "allotted": int(ticket_allotted),
+                "quantity": int(ticket_quantity),
             }
-            for ticket_name, ticket_price, ticket_allotted in globals.db.retrieve_all(
-                [TicketType.name, TicketType.price, TicketType.allotted],
+            for ticket_name, ticket_price, ticket_quantity in globals.db.retrieve_all(
+                [TicketType.name, TicketType.price, TicketType.quantity],
                 TicketType.listing,
                 id,
             )
         ]
 
-        (seller_email,) = globals.db.retrieve_all([User.email], User.id, seller_id)
+        (seller_email,) = globals.db.retrieve([User.email], User.id, seller_id)  # type: ignore
 
         listings.append(
             {
@@ -167,7 +167,7 @@ def search_listings(user_id: int | None):
                 "date": datetime.fromisoformat(date).isoformat(),
                 "is_published": bool(is_published),
                 "tags": tags_from_csv(tags),
-                "ticket_types": tickets,
+                "items": tickets,
                 "short_description": str(short_description),
                 "description": str(description),
                 "location": str(location),
@@ -185,23 +185,21 @@ def tags_from_csv(tag_string: str) -> list[str]:
     ]
 
 
-def get_ticket_types() -> list[tuple[str, float, int]]:
+def get_items() -> list[tuple[str, float, int]]:
     return [
         (
             str(ticket_type["name"]),
             float(ticket_type["price"]),
-            int(ticket_type["allotted"]),
+            int(ticket_type["quantity"]),
         )
-        for ticket_type in request.json.get("ticket_types", [])
+        for ticket_type in request.json.get("items", [])
     ]
 
 
-def insert_ticket_types(
-    cursor: Cursor, listing_id: int, ticket_types: list[tuple[str, float, int]]
-):
+def insert_items(cursor: Cursor, listing_id: int, items: list[tuple[str, float, int]]):
     cursor.executemany(
-        "INSERT INTO ticket_types (listing, name, price, allotted) VALUES (?, ?, ?, ?)",
-        [(listing_id,) + ticket_type for ticket_type in ticket_types],
+        "INSERT INTO items (listing, name, price, quantity) VALUES (?, ?, ?, ?)",
+        [(listing_id,) + ticket_type for ticket_type in items],
     )
 
 
@@ -223,7 +221,7 @@ def create_listing(user_id: int):
     date = datetime.fromisoformat(str(request.json["date"])).astimezone(UTC)
 
     is_published = bool(request.json.get("is_published", False))
-    ticket_types = get_ticket_types()
+    items = get_items()
 
     tags = [str(tag) for tag in request.json.get("tags", [])]
     tag_string = ",".join(tags)
@@ -252,7 +250,7 @@ def create_listing(user_id: int):
             raise ValueError("Failed to create listing")
 
         listing_id = int(cursor.lastrowid)
-        insert_ticket_types(cursor, listing_id, ticket_types)
+        insert_items(cursor, listing_id, items)
 
         conn.commit()
 
@@ -284,7 +282,7 @@ def get_listing(user_id: int | None, listing_id: int):
     if maybe_listing is not None:
         (
             name,
-            seller,
+            seller_id,
             date,
             is_published,
             tag_string,
@@ -293,27 +291,29 @@ def get_listing(user_id: int | None, listing_id: int):
             location,
         ) = maybe_listing
 
-        ticket_types = [
-            {"name": str(name), "price": float(price), "allotted": int(allotted)}
-            for (name, price, allotted) in globals.db.retrieve_all(
-                [TicketType.name, TicketType.price, TicketType.allotted],
+        items = [
+            {"name": str(name), "price": float(price), "quantity": int(quantity)}
+            for (name, price, quantity) in globals.db.retrieve_all(
+                [TicketType.name, TicketType.price, TicketType.quantity],
                 TicketType.listing,
                 listing_id,
             )
         ]
 
-        if is_published or (user_id is not None and int(seller) == user_id):
+        (seller_email,) = globals.db.retrieve([User.email], User.id, seller_id)  # type: ignore
+
+        if is_published or (user_id is not None and int(seller_id) == user_id):
             return {
                 "id": str(listing_id),
                 "name": str(name),
-                "seller": str(seller),
+                "seller": {"id": str(seller_id), "email": str(seller_email)},
                 "date": datetime.fromisoformat(date).isoformat(),
                 "is_published": bool(is_published),
                 "tags": tags_from_csv(tag_string),
                 "short_description": str(short_description),
                 "description": str(description),
                 "location": str(location),
-                "ticket_types": ticket_types,
+                "items": items,
             }
         else:
             return result(ListingResult.UNAUTHORISED)
@@ -366,20 +366,20 @@ def update_listing(user: UserData, listing_id: str):
         | ({"is_published": is_published} if is_published is not None else {})
     )
 
-    if "ticket_types" in request.json:
-        ticket_types = get_ticket_types()
+    if "items" in request.json:
+        items = get_items()
     else:
-        ticket_types = None
+        items = None
 
     placeholders = ", ".join([f"{column} = :{column}" for column in fields.keys()])
 
     def insert_listing(conn: Connection, cursor: Cursor):
         cursor.execute(f"UPDATE listings SET {placeholders} WHERE id = :id", fields)
 
-        if ticket_types is not None:
-            cursor.execute("DELETE FROM ticket_types WHERE listing = ?", (listing_id,))
-            if len(ticket_types) > 0:
-                insert_ticket_types(cursor, listing_id_parsed, ticket_types)
+        if items is not None:
+            cursor.execute("DELETE FROM items WHERE listing = ?", (listing_id,))
+            if len(items) > 0:
+                insert_items(cursor, listing_id_parsed, items)
 
         conn.commit()
 

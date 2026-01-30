@@ -44,12 +44,14 @@ class Database:
             [check_sql_identifier(column.name) for column in select_columns]
         )
 
-        return self.run(
+        results = self.run(
             lambda conn, cursor: cursor.execute(
                 f"SELECT {select_columns_list} FROM {table_name} WHERE {column_name} = ?",
                 (value,),
             ).fetchall()
         )
+
+        return results
 
     def retrieve(self, select_columns, where_column, value) -> Any | None:
         column_name = check_sql_identifier(where_column.name)

@@ -1,4 +1,5 @@
 import gleam/int
+import gleam/io
 import gleam/option.{type Option}
 import gleam/result
 import gleam/string
@@ -66,10 +67,17 @@ fn update_delete_modal(
 
 pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
   case msg {
-    ListingReceived(listing) -> #(
-      Model(..model, listing: option.Some(listing)),
-      effect.none(),
-    )
+    ListingReceived(listing) -> {
+      case listing {
+        Error(error) -> {
+          io.println_error(
+            "Error when fetching listing: " <> string.inspect(error),
+          )
+        }
+        Ok(_) -> Nil
+      }
+      #(Model(..model, listing: option.Some(listing)), effect.none())
+    }
     SetDeleteModal(delete_modal) -> {
       update_delete_modal(new: delete_modal, previous: model.delete_modal)
       #(Model(..model, delete_modal:), effect.none())

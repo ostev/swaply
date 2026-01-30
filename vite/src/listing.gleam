@@ -42,15 +42,15 @@ pub type Listing {
     name: String,
     date: DateTime,
     tags: List(String),
-    item_types: List(TicketType),
+    items: List(Item),
   )
 }
 
-pub type TicketType {
+pub type Item {
   TicketType(name: String, price: Float, quantity: Int)
 }
 
-pub fn item_type_to_json(item_type: TicketType) -> Json {
+pub fn item_type_to_json(item_type: Item) -> Json {
   let TicketType(name:, price:, quantity:) = item_type
   json.object([
     #("name", json.string(name)),
@@ -59,7 +59,7 @@ pub fn item_type_to_json(item_type: TicketType) -> Json {
   ])
 }
 
-fn item_type_decoder() -> decode.Decoder(TicketType) {
+fn item_decoder() -> decode.Decoder(Item) {
   use name <- decode.field("name", decode.string)
   use price <- decode.field(
     "price",
@@ -89,10 +89,7 @@ pub fn decoder() -> decode.Decoder(Listing) {
   use is_published <- decode.field("is_published", decode.bool)
   use name <- decode.field("name", decode.string)
   use date <- decode.field("date", extra_decode.datetime())
-  use item_types <- decode.field(
-    "item_types",
-    decode.list(of: item_type_decoder()),
-  )
+  use items <- decode.field("items", decode.list(of: item_decoder()))
   use tags <- decode.field("tags", decode.list(of: decode.string))
   use short_description <- decode.field("short_description", decode.string)
   use description <- decode.field("description", decode.string)
@@ -104,7 +101,7 @@ pub fn decoder() -> decode.Decoder(Listing) {
     is_published:,
     name:,
     date:,
-    item_types:,
+    items:,
     tags:,
     short_description:,
     description:,
@@ -213,7 +210,7 @@ pub fn search(
 }
 
 pub fn get_user_listings(handler) {
-  let url = api_prefix <> "/managing"
+  let url = api_prefix <> "/selling"
 
   let decoder = decode.list(of: decoder())
   let rsvp_handler = rsvp.expect_json(decoder, handler)

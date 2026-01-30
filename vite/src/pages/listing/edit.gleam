@@ -47,7 +47,7 @@ pub type Form {
     tags: Set(String),
     sorted_tags: List(String),
     current_tag: String,
-    item_types: iv.Array(listing.ItemInput),
+    items: iv.Array(listing.ItemInput),
     is_published: Bool,
     description: String,
     short_description: String,
@@ -96,7 +96,7 @@ pub fn init(shared_model: Shared, mode: Mode) -> #(Model, Effect(Msg)) {
         time: option.None,
         tags: set.new(),
         sorted_tags: [],
-        item_types: iv.from_list([
+        items: iv.from_list([
           listing.ItemInput(name: "Standard", price: "", quantity: ""),
         ]),
         current_tag: "",
@@ -202,29 +202,29 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
     }
 
     UpdatedTicketType(item_type, index) -> {
-      let item_types =
-        model.form.item_types
+      let items =
+        model.form.items
         |> iv.set(index, item_type)
-        |> result.unwrap(model.form.item_types)
+        |> result.unwrap(model.form.items)
 
-      #(Model(..model, form: Form(..model.form, item_types:)), effect.none())
+      #(Model(..model, form: Form(..model.form, items:)), effect.none())
     }
 
     DeletedTicketType(index) -> {
-      let item_types =
-        model.form.item_types
+      let items =
+        model.form.items
         |> iv.delete(index)
-        |> result.unwrap(model.form.item_types)
+        |> result.unwrap(model.form.items)
 
-      #(Model(..model, form: Form(..model.form, item_types:)), effect.none())
+      #(Model(..model, form: Form(..model.form, items:)), effect.none())
     }
 
     AddedTicketType(item_type) -> {
-      let item_types =
-        model.form.item_types
+      let items =
+        model.form.items
         |> iv.append(item_type)
 
-      #(Model(..model, form: Form(..model.form, item_types:)), effect.none())
+      #(Model(..model, form: Form(..model.form, items:)), effect.none())
     }
 
     UpdatedShortDescription(short_description) -> {
@@ -306,7 +306,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
             ),
             tags: set.from_list(listing.tags),
             sorted_tags: listing.tags |> list.sort(string.compare),
-            item_types: iv.from_list(listing.item_types)
+            items: iv.from_list(listing.items)
               |> iv.map(fn(item_type) {
                 listing.ItemInput(
                   name: item_type.name,
@@ -402,8 +402,8 @@ fn get_datetime(
 fn submit(form: Form, mode: Mode) -> Result(Effect(Msg), EditError) {
   use datetime <- result.try(get_datetime(form.date, form.time))
 
-  use json_item_types <- result.try(
-    form.item_types
+  use json_items <- result.try(
+    form.items
     |> iv.to_list
     |> list.try_map(fn(item_type) {
       listing.parse_item_type(item_type)
@@ -417,7 +417,7 @@ fn submit(form: Form, mode: Mode) -> Result(Effect(Msg), EditError) {
       #("name", json.string(form.name)),
       #("date", json.string(datetime |> datetime.format(tempo.ISO8601Seconds))),
       #("is_published", json.bool(form.is_published)),
-      #("item_types", json.preprocessed_array(json_item_types)),
+      #("items", json.preprocessed_array(json_items)),
       #(
         "tags",
         json.array(
@@ -544,7 +544,7 @@ pub fn view(model: Model) -> Element(Msg) {
             h.div([], [
               h.div(
                 [],
-                model.form.item_types
+                model.form.items
                   |> iv.to_list
                   |> list.index_map(fn(item_type, index) {
                     h.div([], [
