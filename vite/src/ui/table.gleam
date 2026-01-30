@@ -1,4 +1,3 @@
-import event.{type Event}
 import gleam/dynamic/decode
 import gleam/float
 import gleam/int
@@ -9,6 +8,7 @@ import gleam/set.{type Set}
 import gleam/string
 import gleam/uri
 import lenient_parse
+import listing.{type Listing}
 import lustre/attribute as a
 import lustre/element.{type Element}
 import lustre/element/html as h

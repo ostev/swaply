@@ -28,20 +28,20 @@ import tempo/instant
 import tempo/offset
 import tempo/time
 
-pub const api_prefix = api.prefix <> "/events"
+pub const api_prefix = api.prefix <> "/listings"
 
-pub type Event {
-  Event(
+pub type Listing {
+  Listing(
     id: String,
     short_description: String,
     description: String,
     location: String,
-    manager: String,
+    seller: String,
     is_published: Bool,
     name: String,
     date: DateTime,
     tags: List(String),
-    ticket_types: List(TicketType),
+    item_types: List(TicketType),
   )
 }
 
@@ -49,8 +49,8 @@ pub type TicketType {
   TicketType(name: String, price: Float, allotted: Int)
 }
 
-pub fn ticket_type_to_json(ticket_type: TicketType) -> Json {
-  let TicketType(name:, price:, allotted:) = ticket_type
+pub fn item_type_to_json(item_type: TicketType) -> Json {
+  let TicketType(name:, price:, allotted:) = item_type
   json.object([
     #("name", json.string(name)),
     #("price", json.float(price)),
@@ -58,7 +58,7 @@ pub fn ticket_type_to_json(ticket_type: TicketType) -> Json {
   ])
 }
 
-fn ticket_type_decoder() -> decode.Decoder(TicketType) {
+fn item_type_decoder() -> decode.Decoder(TicketType) {
   use name <- decode.field("name", decode.string)
   use price <- decode.field(
     "price",
@@ -75,35 +75,35 @@ pub type TicketTypeInput {
   TicketTypeInput(name: String, price: String, allotted: String)
 }
 
-pub fn parse_ticket_type(ticket_type_input: TicketTypeInput) {
-  use price <- result.try(lenient_parse.to_float(ticket_type_input.price))
-  use allotted <- result.try(lenient_parse.to_int(ticket_type_input.allotted))
+pub fn parse_item_type(item_type_input: TicketTypeInput) {
+  use price <- result.try(lenient_parse.to_float(item_type_input.price))
+  use allotted <- result.try(lenient_parse.to_int(item_type_input.allotted))
 
-  Ok(TicketType(name: ticket_type_input.name, price:, allotted:))
+  Ok(TicketType(name: item_type_input.name, price:, allotted:))
 }
 
-pub fn decoder() -> decode.Decoder(Event) {
+pub fn decoder() -> decode.Decoder(Listing) {
   use id <- decode.field("id", decode.string)
-  use manager <- decode.field("manager", decode.string)
+  use seller <- decode.field("seller", decode.string)
   use is_published <- decode.field("is_published", decode.bool)
   use name <- decode.field("name", decode.string)
   use date <- decode.field("date", extra_decode.datetime())
-  use ticket_types <- decode.field(
-    "ticket_types",
-    decode.list(of: ticket_type_decoder()),
+  use item_types <- decode.field(
+    "item_types",
+    decode.list(of: item_type_decoder()),
   )
   use tags <- decode.field("tags", decode.list(of: decode.string))
   use short_description <- decode.field("short_description", decode.string)
   use description <- decode.field("description", decode.string)
   use location <- decode.field("location", decode.string)
 
-  decode.success(Event(
+  decode.success(Listing(
     id:,
-    manager:,
+    seller:,
     is_published:,
     name:,
     date:,
-    ticket_types:,
+    item_types:,
     tags:,
     short_description:,
     description:,
@@ -111,17 +111,17 @@ pub fn decoder() -> decode.Decoder(Event) {
   ))
 }
 
-pub fn encode(event: Event) -> Json {
+pub fn encode(listing: Listing) -> Json {
   json.object([
-    #("id", json.string(event.id)),
-    #("manager", json.string(event.manager)),
-    #("is_published", json.bool(event.is_published)),
-    #("name", json.string(event.name)),
-    #("date", json.string(event.date |> datetime.format(tempo.ISO8601Seconds))),
+    #("id", json.string(listing.id)),
+    #("seller", json.string(listing.seller)),
+    #("is_published", json.bool(listing.is_published)),
+    #("name", json.string(listing.name)),
     #(
-      "ticket_types",
-      json.array(from: event.ticket_types, of: ticket_type_to_json),
+      "date",
+      json.string(listing.date |> datetime.format(tempo.ISO8601Seconds)),
     ),
+    #("item_types", json.array(from: listing.item_types, of: item_type_to_json)),
   ])
 }
 
@@ -129,7 +129,10 @@ pub fn url(id: String) -> String {
   api_prefix <> "/" <> uri.percent_encode(id)
 }
 
-pub fn get(id: String, handler: fn(Result(Event, rsvp.Error)) -> a) -> Effect(a) {
+pub fn get(
+  id: String,
+  handler: fn(Result(Listing, rsvp.Error)) -> a,
+) -> Effect(a) {
   let rsvp_handler = rsvp.expect_json(decoder(), handler)
 
   rsvp.get(url(id), rsvp_handler)
@@ -149,8 +152,8 @@ pub fn delete(id: String, handler: fn(Result(Nil, rsvp.Error)) -> msg) {
 }
 
 pub type SearchResults {
-  EventSearchResults(
-    events: List(Event),
+  ListingSearchResults(
+    listings: List(Listing),
     number_of_pages: Int,
     timestamp: tempo.Instant,
   )
@@ -201,19 +204,19 @@ pub fn search(
   let url = api_prefix <> "/search?" <> query_string
 
   let decoder = {
-    use events <- decode.field("events", decode.list(of: decoder()))
+    use listings <- decode.field("listings", decode.list(of: decoder()))
     use number_of_pages <- decode.field("number_of_pages", decode.int)
 
-    decode.success(#(events, number_of_pages))
+    decode.success(#(listings, number_of_pages))
   }
 
   let rsvp_handler =
-    rsvp.expect_json(decoder, fn(events_result) {
-      events_result
-      |> result.map(fn(events_with_pages) {
-        case events_with_pages {
-          #(events, number_of_pages) ->
-            EventSearchResults(events:, number_of_pages:, timestamp:)
+    rsvp.expect_json(decoder, fn(listings_result) {
+      listings_result
+      |> result.map(fn(listings_with_pages) {
+        case listings_with_pages {
+          #(listings, number_of_pages) ->
+            ListingSearchResults(listings:, number_of_pages:, timestamp:)
         }
       })
       |> handler
@@ -222,7 +225,7 @@ pub fn search(
   rsvp.get(url, rsvp_handler)
 }
 
-pub fn get_user_events(handler) {
+pub fn get_user_listings(handler) {
   let url = api_prefix <> "/managing"
 
   let decoder = decode.list(of: decoder())

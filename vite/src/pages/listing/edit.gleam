@@ -1,4 +1,3 @@
-import event.{type Event}
 import extra/rsvp as extra_rsvp
 import extra/time as extra_time
 import gleam/dynamic/decode
@@ -15,6 +14,7 @@ import gleam/set.{type Set}
 import gleam/string
 import gleam/uri
 import iv
+import listing.{type Listing}
 import lustre/attribute as a
 import lustre/effect.{type Effect}
 import lustre/element.{type Element}
@@ -47,7 +47,7 @@ pub type Form {
     tags: Set(String),
     sorted_tags: List(String),
     current_tag: String,
-    ticket_types: iv.Array(event.TicketTypeInput),
+    item_types: iv.Array(listing.TicketTypeInput),
     is_published: Bool,
     description: String,
     short_description: String,
@@ -63,7 +63,7 @@ pub type EditError {
   TimeParseError(extra_time.ParseError)
   IncompleteTicketType
   ServerCreationError(ServerResponse)
-  AttemptedToEditNonexistentEvent
+  AttemptedToEditNonexistentListing
   RsvpError(rsvp.Error)
   InvalidId
 }
@@ -96,8 +96,8 @@ pub fn init(shared_model: Shared, mode: Mode) -> #(Model, Effect(Msg)) {
         time: option.None,
         tags: set.new(),
         sorted_tags: [],
-        ticket_types: iv.from_list([
-          event.TicketTypeInput(name: "Standard", price: "", allotted: ""),
+        item_types: iv.from_list([
+          listing.TicketTypeInput(name: "Standard", price: "", allotted: ""),
         ]),
         current_tag: "",
         is_published: False,
@@ -114,14 +114,14 @@ pub fn init(shared_model: Shared, mode: Mode) -> #(Model, Effect(Msg)) {
     case mode {
       Create -> check_auth
       Update(id) ->
-        effect.batch([check_auth, event.get(id, PrefillFormResponseReceived)])
+        effect.batch([check_auth, listing.get(id, PrefillFormResponseReceived)])
     },
   )
 }
 
 pub type Msg {
-  ResponseReceived(Result(Event, rsvp.Error))
-  PrefillFormResponseReceived(Result(Event, rsvp.Error))
+  ResponseReceived(Result(Listing, rsvp.Error))
+  PrefillFormResponseReceived(Result(Listing, rsvp.Error))
 
   UpdatedName(String)
   UpdatedDate(String)
@@ -133,9 +133,9 @@ pub type Msg {
 
   CreatedTags(List(String))
   DeletedTag(String)
-  UpdatedTicketType(event.TicketTypeInput, index: Int)
+  UpdatedTicketType(listing.TicketTypeInput, index: Int)
   DeletedTicketType(index: Int)
-  AddedTicketType(event.TicketTypeInput)
+  AddedTicketType(listing.TicketTypeInput)
   UpdateCurrentTag(String)
   SubmitForm
   NoOp
@@ -201,30 +201,30 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       )
     }
 
-    UpdatedTicketType(ticket_type, index) -> {
-      let ticket_types =
-        model.form.ticket_types
-        |> iv.set(index, ticket_type)
-        |> result.unwrap(model.form.ticket_types)
+    UpdatedTicketType(item_type, index) -> {
+      let item_types =
+        model.form.item_types
+        |> iv.set(index, item_type)
+        |> result.unwrap(model.form.item_types)
 
-      #(Model(..model, form: Form(..model.form, ticket_types:)), effect.none())
+      #(Model(..model, form: Form(..model.form, item_types:)), effect.none())
     }
 
     DeletedTicketType(index) -> {
-      let ticket_types =
-        model.form.ticket_types
+      let item_types =
+        model.form.item_types
         |> iv.delete(index)
-        |> result.unwrap(model.form.ticket_types)
+        |> result.unwrap(model.form.item_types)
 
-      #(Model(..model, form: Form(..model.form, ticket_types:)), effect.none())
+      #(Model(..model, form: Form(..model.form, item_types:)), effect.none())
     }
 
-    AddedTicketType(ticket_type) -> {
-      let ticket_types =
-        model.form.ticket_types
-        |> iv.append(ticket_type)
+    AddedTicketType(item_type) -> {
+      let item_types =
+        model.form.item_types
+        |> iv.append(item_type)
 
-      #(Model(..model, form: Form(..model.form, ticket_types:)), effect.none())
+      #(Model(..model, form: Form(..model.form, item_types:)), effect.none())
     }
 
     UpdatedShortDescription(short_description) -> {
@@ -255,11 +255,11 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
         )
       }
     }
-    ResponseReceived(Ok(event)) -> {
+    ResponseReceived(Ok(listing)) -> {
       #(
         model,
         modem.push(
-          "/event/" <> uri.percent_encode(event.id),
+          "/listing/" <> uri.percent_encode(listing.id),
           option.None,
           option.None,
         ),
@@ -286,13 +286,14 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       )
     }
 
-    PrefillFormResponseReceived(Ok(event)) -> {
+    PrefillFormResponseReceived(Ok(listing)) -> {
       #(
         Model(..model, form: {
-          let local_datetime = event.date |> datetime.to_offset(offset.local())
+          let local_datetime =
+            listing.date |> datetime.to_offset(offset.local())
 
           Form(
-            name: event.name,
+            name: listing.name,
             date: option.Some(
               local_datetime
               |> datetime.get_date()
@@ -303,21 +304,21 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
               |> datetime.get_time()
               |> extra_time.format_as_24hr,
             ),
-            tags: set.from_list(event.tags),
-            sorted_tags: event.tags |> list.sort(string.compare),
-            ticket_types: iv.from_list(event.ticket_types)
-              |> iv.map(fn(ticket_type) {
-                event.TicketTypeInput(
-                  name: ticket_type.name,
-                  price: float.to_string(ticket_type.price),
-                  allotted: int.to_string(ticket_type.allotted),
+            tags: set.from_list(listing.tags),
+            sorted_tags: listing.tags |> list.sort(string.compare),
+            item_types: iv.from_list(listing.item_types)
+              |> iv.map(fn(item_type) {
+                listing.TicketTypeInput(
+                  name: item_type.name,
+                  price: float.to_string(item_type.price),
+                  allotted: int.to_string(item_type.allotted),
                 )
               }),
             current_tag: "",
-            is_published: event.is_published,
-            short_description: event.short_description,
-            description: event.description,
-            location: event.location,
+            is_published: listing.is_published,
+            short_description: listing.short_description,
+            description: listing.description,
+            location: listing.location,
             is_editable: True,
           )
         }),
@@ -332,7 +333,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
           error: option.Some(case error {
             rsvp.HttpError(response) -> {
               case response.status {
-                404 -> AttemptedToEditNonexistentEvent
+                404 -> AttemptedToEditNonexistentListing
                 _ -> RsvpError(error)
               }
             }
@@ -401,12 +402,12 @@ fn get_datetime(
 fn submit(form: Form, mode: Mode) -> Result(Effect(Msg), EditError) {
   use datetime <- result.try(get_datetime(form.date, form.time))
 
-  use json_ticket_types <- result.try(
-    form.ticket_types
+  use json_item_types <- result.try(
+    form.item_types
     |> iv.to_list
-    |> list.try_map(fn(ticket_type) {
-      event.parse_ticket_type(ticket_type)
-      |> result.map(event.ticket_type_to_json)
+    |> list.try_map(fn(item_type) {
+      listing.parse_item_type(item_type)
+      |> result.map(listing.item_type_to_json)
     })
     |> result.replace_error(IncompleteTicketType),
   )
@@ -416,7 +417,7 @@ fn submit(form: Form, mode: Mode) -> Result(Effect(Msg), EditError) {
       #("name", json.string(form.name)),
       #("date", json.string(datetime |> datetime.format(tempo.ISO8601Seconds))),
       #("is_published", json.bool(form.is_published)),
-      #("ticket_types", json.preprocessed_array(json_ticket_types)),
+      #("item_types", json.preprocessed_array(json_item_types)),
       #(
         "tags",
         json.array(
@@ -428,12 +429,12 @@ fn submit(form: Form, mode: Mode) -> Result(Effect(Msg), EditError) {
       #("description", json.string(form.description)),
       #("location", json.string(form.location)),
     ])
-  let handler = rsvp.expect_json(event.decoder(), ResponseReceived)
+  let handler = rsvp.expect_json(listing.decoder(), ResponseReceived)
 
   case mode {
-    Create -> Ok(rsvp.post(event.api_prefix, body, handler))
+    Create -> Ok(rsvp.post(listing.api_prefix, body, handler))
     Update(id) -> {
-      extra_rsvp.send(body:, to: event.url(id), with: http.Patch, handler:)
+      extra_rsvp.send(body:, to: listing.url(id), with: http.Patch, handler:)
       |> result.replace_error(InvalidId)
     }
   }
@@ -543,13 +544,13 @@ pub fn view(model: Model) -> Element(Msg) {
             h.div([], [
               h.div(
                 [],
-                model.form.ticket_types
+                model.form.item_types
                   |> iv.to_list
-                  |> list.index_map(fn(ticket_type, index) {
+                  |> list.index_map(fn(item_type, index) {
                     h.div([], [
-                      ui.ticket_type_input(
-                        ticket_type,
-                        "ticket_type_" <> int.to_string(index),
+                      ui.item_type_input(
+                        item_type,
+                        "item_type_" <> int.to_string(index),
                         UpdatedTicketType(_, index:),
                       ),
                       h.button(
@@ -569,7 +570,7 @@ pub fn view(model: Model) -> Element(Msg) {
                 [
                   a.type_("button"),
                   e.on_click(
-                    AddedTicketType(event.TicketTypeInput(
+                    AddedTicketType(listing.TicketTypeInput(
                       name: "",
                       price: "",
                       allotted: "",
@@ -602,29 +603,29 @@ pub fn view(model: Model) -> Element(Msg) {
                       ServerCreationError(server_response) -> {
                         case server_response {
                           InvalidName ->
-                            "Please provide a name for the event that is longer than 3 characters."
+                            "Please provide a name for the listing that is longer than 3 characters."
                           NameAlreadyUsed ->
-                            "An event with this name already exists."
-                          Unauthorised -> "Please log in to create an event."
+                            "An listing with this name already exists."
+                          Unauthorised -> "Please log in to create an listing."
                         }
                       }
 
                       NoDateProvided -> {
-                        "Please provide a date for the event."
+                        "Please provide a date for the listing."
                       }
                       DateParseError(_) ->
-                        "Please provide a valid date in the future for the event."
+                        "Please provide a valid date in the future for the listing."
                       IncompleteTicketType ->
-                        "One of the provided ticket types is incomplete."
-                      NoTimeProvided -> "Please provide a time for the event."
+                        "One of the provided item types is incomplete."
+                      NoTimeProvided -> "Please provide a time for the listing."
                       RsvpError(_) ->
-                        "A network error occurred while creating your event. Please try again"
+                        "A network error occurred while creating your listing. Please try again"
                       TimeParseError(_) ->
-                        "Please provide a valid time in the future for the event."
-                      AttemptedToEditNonexistentEvent ->
-                        "The event you are trying to edit does not exist."
+                        "Please provide a valid time in the future for the listing."
+                      AttemptedToEditNonexistentListing ->
+                        "The listing you are trying to edit does not exist."
                       InvalidId ->
-                        "The event ID contained within the URL is invalid."
+                        "The listing ID contained within the URL is invalid."
                     }),
                   ]),
                 ]

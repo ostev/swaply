@@ -18,10 +18,10 @@ import globals
 
 
 @table
-class Event:
-    table_name = "events"
+class Listing:
+    table_name = "listings"
     id = PrimaryKey.integer().autoincrement()
-    manager = Column.foreign(User.id)
+    seller = Column.foreign(User.id)
 
     # 0 is not published, 1 is published
     # (since SQLLite doesn't have a boolean type)
@@ -44,17 +44,17 @@ class Event:
 class TicketType:
     table_name = "ticket_types"
     id = PrimaryKey.integer().autoincrement()
-    event = Column.foreign(Event.id)
+    listing = Column.foreign(Listing.id)
 
     name = Column.text()
     price = Column.numeric()
     allotted = Column.integer()
 
 
-event_api = Blueprint("events", __name__, url_prefix=API_PREFIX + "/events")
+listing_api = Blueprint("listings", __name__, url_prefix=API_PREFIX + "/listings")
 
 
-class EventResult(aenum.Enum):  # type: ignore
+class ListingResult(aenum.Enum):  # type: ignore
     _settings_ = aenum.NoAlias
 
     SUCCESS = 200
@@ -64,9 +64,9 @@ class EventResult(aenum.Enum):  # type: ignore
     NAME_ALREADY_USED = 400
 
 
-@event_api.route("/search")
+@listing_api.route("/search")
 @authenticated
-def search_events(user_id: int | None):
+def search_listings(user_id: int | None):
     search_query = request.args.get("q", "")
     page = int(request.args.get("p", 0))
     filter_owned = request.args.get("filter_owned", "false").lower() == "true"
@@ -74,17 +74,17 @@ def search_events(user_id: int | None):
     results_per_page = 10
 
     is_authorized_expr = (
-        "(events.is_published = 1 OR manager = :user_id)"
+        "(listings.is_published = 1 OR seller = :user_id)"
         if user_id is not None
-        else "events.is_published = 1"
+        else "listings.is_published = 1"
     )
 
     filter_expr = (
-        "manager = :user_id AND" if (user_id is not None) and filter_owned else ""
+        "seller = :user_id AND" if (user_id is not None) and filter_owned else ""
     )
 
     search_query_expr = (
-        f"event_search_index MATCH :query AND" if len(search_query) >= 3 else ""
+        f"listing_search_index MATCH :query AND" if len(search_query) >= 3 else ""
     )
 
     condition_expr = f"{search_query_expr} {filter_expr} {is_authorized_expr}"
@@ -94,55 +94,55 @@ def search_events(user_id: int | None):
         "offset": page * results_per_page,
     } | ({"user_id": user_id} if user_id is not None else {})
 
-    def retrieve_events_with_ticket_types(conn: Connection, cursor: Cursor):
+    def retrieve_listings_with_ticket_types(conn: Connection, cursor: Cursor):
 
         return (
             cursor.execute(
                 f"""
                 SELECT
-                    events.id,
-                    events.name,
-                    events.manager,
-                    events.date,
-                    events.is_published,
-                    events.tags,
-                    events.short_description,
-                    events.description,
-                    events.location
-                FROM event_search_index
-                JOIN events
-                    ON event_search_index.ROWID = events.id AND ({condition_expr})
+                    listings.id,
+                    listings.name,
+                    listings.seller,
+                    listings.date,
+                    listings.is_published,
+                    listings.tags,
+                    listings.short_description,
+                    listings.description,
+                    listings.location
+                FROM listing_search_index
+                JOIN listings
+                    ON listing_search_index.ROWID = listings.id AND ({condition_expr})
                 LIMIT :results_per_page OFFSET :offset
                 """,
                 params,
             ).fetchall(),
             cursor.execute(
                 f"""
-                SELECT COUNT(events.id)
-                FROM event_search_index
-                JOIN events
-                    ON event_search_index.ROWID = events.id AND ({condition_expr})
+                SELECT COUNT(listings.id)
+                FROM listing_search_index
+                JOIN listings
+                    ON listing_search_index.ROWID = listings.id AND ({condition_expr})
                 """,
                 params,
             ).fetchone()[0],
         )
 
-    (event_tuples, count) = globals.db.run(retrieve_events_with_ticket_types)
+    (listing_tuples, count) = globals.db.run(retrieve_listings_with_ticket_types)
 
-    events = []
+    listings = []
 
-    for event in event_tuples:
+    for listing in listing_tuples:
         (
             id,
             name,
-            manager,
+            seller,
             date,
             is_published,
             tags,
             short_description,
             description,
             location,
-        ) = event
+        ) = listing
 
         tickets = [
             {
@@ -152,16 +152,16 @@ def search_events(user_id: int | None):
             }
             for ticket_name, ticket_price, ticket_allotted in globals.db.retrieve_all(
                 [TicketType.name, TicketType.price, TicketType.allotted],
-                TicketType.event,
+                TicketType.listing,
                 id,
             )
         ]
 
-        events.append(
+        listings.append(
             {
                 "id": str(id),
                 "name": str(name),
-                "manager": str(manager),
+                "seller": str(seller),
                 "date": datetime.fromisoformat(date).isoformat(),
                 "is_published": bool(is_published),
                 "tags": tags_from_csv(tags),
@@ -172,7 +172,7 @@ def search_events(user_id: int | None):
             }
         )
 
-    return {"events": events, "number_of_pages": count // results_per_page}
+    return {"listings": listings, "number_of_pages": count // results_per_page}
 
 
 def tags_from_csv(tag_string: str) -> list[str]:
@@ -195,28 +195,28 @@ def get_ticket_types() -> list[tuple[str, float, int]]:
 
 
 def insert_ticket_types(
-    cursor: Cursor, event_id: int, ticket_types: list[tuple[str, float, int]]
+    cursor: Cursor, listing_id: int, ticket_types: list[tuple[str, float, int]]
 ):
     cursor.executemany(
-        "INSERT INTO ticket_types (event, name, price, allotted) VALUES (?, ?, ?, ?)",
-        [(event_id,) + ticket_type for ticket_type in ticket_types],
+        "INSERT INTO ticket_types (listing, name, price, allotted) VALUES (?, ?, ?, ?)",
+        [(listing_id,) + ticket_type for ticket_type in ticket_types],
     )
 
 
-@event_api.route("/", methods=["POST"])
+@listing_api.route("/", methods=["POST"])
 @protected
-def create_event(user_id: int):
+def create_listing(user_id: int):
     name = str(request.json["name"])
     if len(name) < 3:
-        return result(EventResult.INVALID_NAME)
+        return result(ListingResult.INVALID_NAME)
 
     if globals.db.run(
         lambda _, cursor: cursor.execute(
-            "SELECT id FROM events WHERE name LIKE ?", (name,)
+            "SELECT id FROM listings WHERE name LIKE ?", (name,)
         ).fetchone()
         is not None
     ):
-        return result(EventResult.NAME_ALREADY_USED)
+        return result(ListingResult.NAME_ALREADY_USED)
 
     date = datetime.fromisoformat(str(request.json["date"])).astimezone(UTC)
 
@@ -231,9 +231,9 @@ def create_event(user_id: int):
 
     location = request.json["location"]
 
-    def insert_event(conn: Connection, cursor: Cursor):
+    def insert_listing(conn: Connection, cursor: Cursor):
         cursor.execute(
-            "INSERT INTO events (name, date, is_published, manager, tags, short_description, description, location) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO listings (name, date, is_published, seller, tags, short_description, description, location) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
             (
                 name,
                 date,
@@ -247,64 +247,64 @@ def create_event(user_id: int):
         )
 
         if cursor.lastrowid is None:
-            raise ValueError("Failed to create event")
+            raise ValueError("Failed to create listing")
 
-        event_id = int(cursor.lastrowid)
-        insert_ticket_types(cursor, event_id, ticket_types)
+        listing_id = int(cursor.lastrowid)
+        insert_ticket_types(cursor, listing_id, ticket_types)
 
         conn.commit()
 
-        return event_id
+        return listing_id
 
-    event_id = globals.db.run(insert_event)
+    listing_id = globals.db.run(insert_listing)
 
-    return get_event(event_id)  # type: ignore
+    return get_listing(listing_id)  # type: ignore
 
 
-@event_api.route("/<event_id>", methods=["GET"])
+@listing_api.route("/<listing_id>", methods=["GET"])
 @authenticated
-def get_event(user_id: int | None, event_id: int):
-    maybe_event = globals.db.retrieve(
+def get_listing(user_id: int | None, listing_id: int):
+    maybe_listing = globals.db.retrieve(
         [
-            Event.name,
-            Event.manager,
-            Event.date,
-            Event.is_published,
-            Event.tags,
-            Event.short_description,
-            Event.description,
-            Event.location,
+            Listing.name,
+            Listing.seller,
+            Listing.date,
+            Listing.is_published,
+            Listing.tags,
+            Listing.short_description,
+            Listing.description,
+            Listing.location,
         ],
-        Event.id,
-        event_id,
+        Listing.id,
+        listing_id,
     )
 
-    if maybe_event is not None:
+    if maybe_listing is not None:
         (
             name,
-            manager,
+            seller,
             date,
             is_published,
             tag_string,
             short_description,
             description,
             location,
-        ) = maybe_event
+        ) = maybe_listing
 
         ticket_types = [
             {"name": str(name), "price": float(price), "allotted": int(allotted)}
             for (name, price, allotted) in globals.db.retrieve_all(
                 [TicketType.name, TicketType.price, TicketType.allotted],
-                TicketType.event,
-                event_id,
+                TicketType.listing,
+                listing_id,
             )
         ]
 
-        if is_published or (user_id is not None and int(manager) == user_id):
+        if is_published or (user_id is not None and int(seller) == user_id):
             return {
-                "id": str(event_id),
+                "id": str(listing_id),
                 "name": str(name),
-                "manager": str(manager),
+                "seller": str(seller),
                 "date": datetime.fromisoformat(date).isoformat(),
                 "is_published": bool(is_published),
                 "tags": tags_from_csv(tag_string),
@@ -314,34 +314,34 @@ def get_event(user_id: int | None, event_id: int):
                 "ticket_types": ticket_types,
             }
         else:
-            return result(EventResult.UNAUTHORISED)
+            return result(ListingResult.UNAUTHORISED)
     else:
-        return result(EventResult.NOT_FOUND)
+        return result(ListingResult.NOT_FOUND)
 
 
-@event_api.route("/<event_id>", methods=["PATCH"])
+@listing_api.route("/<listing_id>", methods=["PATCH"])
 @protected_with_user
-def update_event(user: UserData, event_id: str):
-    event_id_parsed = int(event_id)
+def update_listing(user: UserData, listing_id: str):
+    listing_id_parsed = int(listing_id)
 
-    event_details = globals.db.retrieve(
-        [Event.manager, Event.is_published], Event.id, event_id_parsed
+    listing_details = globals.db.retrieve(
+        [Listing.seller, Listing.is_published], Listing.id, listing_id_parsed
     )
 
-    if event_details == None:
-        return result(EventResult.NOT_FOUND)
+    if listing_details == None:
+        return result(ListingResult.NOT_FOUND)
 
-    manager_id, is_event_already_published = event_details
+    seller_id, is_listing_already_published = listing_details
 
-    # Admins can only update published events
-    if user.id != manager_id and not (user.is_admin and is_event_already_published):
-        return result(EventResult.UNAUTHORISED)
+    # Admins can only update published listings
+    if user.id != seller_id and not (user.is_admin and is_listing_already_published):
+        return result(ListingResult.UNAUTHORISED)
 
     if "name" in request.json:
         name = str(request.json["name"])
 
         if len(name) < 3:
-            return result(EventResult.INVALID_NAME)
+            return result(ListingResult.INVALID_NAME)
     else:
         name = None
 
@@ -357,7 +357,7 @@ def update_event(user: UserData, event_id: str):
 
     fields: dict[str, str | int] = (
         {
-            "id": event_id_parsed,
+            "id": listing_id_parsed,
         }
         | ({"name": name} if name is not None else {})
         | ({"date": date} if date is not None else {})
@@ -371,36 +371,38 @@ def update_event(user: UserData, event_id: str):
 
     placeholders = ", ".join([f"{column} = :{column}" for column in fields.keys()])
 
-    def insert_event(conn: Connection, cursor: Cursor):
-        cursor.execute(f"UPDATE events SET {placeholders} WHERE id = :id", fields)
+    def insert_listing(conn: Connection, cursor: Cursor):
+        cursor.execute(f"UPDATE listings SET {placeholders} WHERE id = :id", fields)
 
         if ticket_types is not None:
-            cursor.execute("DELETE FROM ticket_types WHERE event = ?", (event_id,))
+            cursor.execute("DELETE FROM ticket_types WHERE listing = ?", (listing_id,))
             if len(ticket_types) > 0:
-                insert_ticket_types(cursor, event_id_parsed, ticket_types)
+                insert_ticket_types(cursor, listing_id_parsed, ticket_types)
 
         conn.commit()
 
-    globals.db.run(insert_event)
+    globals.db.run(insert_listing)
 
-    return get_event(event_id_parsed)  # type: ignore
+    return get_listing(listing_id_parsed)  # type: ignore
 
 
-@event_api.route("/<event_id>", methods=["DELETE"])
+@listing_api.route("/<listing_id>", methods=["DELETE"])
 @protected_with_user
-def delete_event(user: UserData, event_id: str):
-    event_id_parsed = int(event_id)
+def delete_listing(user: UserData, listing_id: str):
+    listing_id_parsed = int(listing_id)
 
-    manager = globals.db.retrieve([Event.manager], Event.id, event_id_parsed)
+    seller = globals.db.retrieve([Listing.seller], Listing.id, listing_id_parsed)
 
-    if manager is not None and (manager[0] == user.id or user.is_admin):
+    if seller is not None and (seller[0] == user.id or user.is_admin):
         # TODO: check and refund transactions
         def run_delete(conn: Connection, cursor: Cursor):
-            cursor.execute("DELETE FROM events WHERE event_id = ?", (event_id_parsed,))
+            cursor.execute(
+                "DELETE FROM listings WHERE listing_id = ?", (listing_id_parsed,)
+            )
             conn.commit()
 
         globals.db.run(run_delete)
 
-        return result(EventResult.SUCCESS)
+        return result(ListingResult.SUCCESS)
     else:
-        return result(EventResult.UNAUTHORISED)
+        return result(ListingResult.UNAUTHORISED)

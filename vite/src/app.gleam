@@ -8,16 +8,16 @@ import lustre/attribute as a
 import lustre/effect.{type Effect}
 import lustre/element.{type Element}
 import lustre/element/html as h
-import lustre/event
+import lustre/event as e
 import modem
 import pages/admin/users as manage_users
 import pages/auth
 import pages/auth/login
 import pages/auth/sign_up
 import pages/edit_user
-import pages/event/edit as edit_event
-import pages/event/view as view_event
 import pages/home
+import pages/listing/edit as edit_listing
+import pages/listing/view as view_listing
 import pages/not_found
 import rsvp
 import shared.{type Shared, Shared}
@@ -40,9 +40,9 @@ type Page {
   Login(login.Model)
   SignUp(sign_up.Model)
 
-  CreateEvent(edit_event.Model)
-  UpdateEvent(edit_event.Model)
-  ViewEvent(view_event.Model)
+  CreateListing(edit_listing.Model)
+  UpdateListing(edit_listing.Model)
+  ViewListing(view_listing.Model)
 
   EditUser(edit_user.Model)
   ManageUsers(manage_users.Model)
@@ -74,21 +74,21 @@ fn change_page(
       })
       |> update_page_with(SignUp, GotSignUpMsg)
 
-    ["event", "create"] ->
-      edit_event.init(shared, edit_event.Create)
-      |> update_page_with(CreateEvent, GotCreateEventMsg)
+    ["listing", "create"] ->
+      edit_listing.init(shared, edit_listing.Create)
+      |> update_page_with(CreateListing, GotCreateListingMsg)
 
-    ["event", id_url_string] -> {
+    ["listing", id_url_string] -> {
       parse_percent_encoded_id(id_url_string, fn(id) {
-        view_event.init(id)
-        |> update_page_with(ViewEvent, GotViewEventMsg)
+        view_listing.init(id)
+        |> update_page_with(ViewListing, GotViewListingMsg)
       })
     }
 
-    ["event", id_url_string, "edit"] -> {
+    ["listing", id_url_string, "edit"] -> {
       parse_percent_encoded_id(id_url_string, fn(id) {
-        edit_event.init(shared, edit_event.Update(id))
-        |> update_page_with(UpdateEvent, GotUpdateEventMsg)
+        edit_listing.init(shared, edit_listing.Update(id))
+        |> update_page_with(UpdateListing, GotUpdateListingMsg)
       })
     }
 
@@ -159,9 +159,9 @@ type Msg {
   GotLoginMsg(login.Msg)
   GotSignUpMsg(sign_up.Msg)
 
-  GotCreateEventMsg(edit_event.Msg)
-  GotUpdateEventMsg(edit_event.Msg)
-  GotViewEventMsg(view_event.Msg)
+  GotCreateListingMsg(edit_listing.Msg)
+  GotUpdateListingMsg(edit_listing.Msg)
+  GotViewListingMsg(view_listing.Msg)
 
   GotEditUserMsg(edit_user.Msg)
   GotManageUsersMsg(manage_users.Msg)
@@ -262,17 +262,17 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       sign_up.update(sub_model, sub_msg)
       |> update_with(SignUp, GotSignUpMsg, model)
 
-    GotCreateEventMsg(sub_msg), CreateEvent(sub_model) ->
-      edit_event.update(sub_model, sub_msg)
-      |> update_with(CreateEvent, GotCreateEventMsg, model)
+    GotCreateListingMsg(sub_msg), CreateListing(sub_model) ->
+      edit_listing.update(sub_model, sub_msg)
+      |> update_with(CreateListing, GotCreateListingMsg, model)
 
-    GotUpdateEventMsg(sub_msg), UpdateEvent(sub_model) ->
-      edit_event.update(sub_model, sub_msg)
-      |> update_with(UpdateEvent, GotUpdateEventMsg, model)
+    GotUpdateListingMsg(sub_msg), UpdateListing(sub_model) ->
+      edit_listing.update(sub_model, sub_msg)
+      |> update_with(UpdateListing, GotUpdateListingMsg, model)
 
-    GotViewEventMsg(sub_msg), ViewEvent(sub_model) ->
-      view_event.update(sub_model, sub_msg)
-      |> update_with(ViewEvent, GotViewEventMsg, model)
+    GotViewListingMsg(sub_msg), ViewListing(sub_model) ->
+      view_listing.update(sub_model, sub_msg)
+      |> update_with(ViewListing, GotViewListingMsg, model)
 
     GotEditUserMsg(sub_msg), EditUser(sub_model) ->
       edit_user.update(sub_model, sub_msg)
@@ -303,17 +303,17 @@ fn view_page(page: Page, shared: Shared) {
       login.view(sub_model)
       |> element.map(GotLoginMsg)
 
-    CreateEvent(sub_model) ->
-      edit_event.view(sub_model)
-      |> element.map(GotCreateEventMsg)
+    CreateListing(sub_model) ->
+      edit_listing.view(sub_model)
+      |> element.map(GotCreateListingMsg)
 
-    UpdateEvent(sub_model) ->
-      edit_event.view(sub_model)
-      |> element.map(GotUpdateEventMsg)
+    UpdateListing(sub_model) ->
+      edit_listing.view(sub_model)
+      |> element.map(GotUpdateListingMsg)
 
-    ViewEvent(sub_model) ->
-      view_event.view(sub_model, shared)
-      |> element.map(GotViewEventMsg)
+    ViewListing(sub_model) ->
+      view_listing.view(sub_model, shared)
+      |> element.map(GotViewListingMsg)
 
     EditUser(sub_model) ->
       edit_user.view(sub_model)
@@ -329,10 +329,10 @@ fn view(model: Model) -> Element(Msg) {
   h.div([], [
     h.nav([], [
       h.a([a.href("/")], [element.text("Home")]),
-      h.a([a.href("/event/create")], [element.text("Create event")]),
+      h.a([a.href("/listing/create")], [element.text("Create listing")]),
       case model.shared.user {
         user.Authenticated(_) ->
-          h.button([event.on_click(UserRequestedLogout)], [
+          h.button([e.on_click(UserRequestedLogout)], [
             element.text("Log out"),
           ])
         user.Unauthenticated | user.Unknown ->

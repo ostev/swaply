@@ -9,13 +9,13 @@ from flask_vite import Vite
 import auth.user_api
 from db import Database
 from model import schema
-import event
+import listing
 import auth
 import globals
 import model
 
 app = Flask(__name__, template_folder="templates")
-app.register_blueprint(event.event_api)
+app.register_blueprint(listing.listing_api)
 app.register_blueprint(auth.auth_api)
 app.register_blueprint(auth.user_api.user_api)
 
@@ -26,21 +26,21 @@ globals.db.create()
 def create_search_index(conn: sqlite3.Connection, cursor: sqlite3.Cursor):
     cursor.executescript(
         """
-        CREATE VIRTUAL TABLE IF NOT EXISTS event_search_index
+        CREATE VIRTUAL TABLE IF NOT EXISTS listing_search_index
             USING fts5(
                 name,
                 tags,
                 description,
                 short_description,
                 location,
-                content="events",
+                content="listings",
                 content_rowid="id",
                 tokenize="trigram"
             );
 
-        CREATE TRIGGER IF NOT EXISTS event_insert_trigger AFTER INSERT ON events BEGIN
+        CREATE TRIGGER IF NOT EXISTS listing_insert_trigger AFTER INSERT ON listings BEGIN
             INSERT INTO
-                event_search_index(
+                listing_search_index(
                     rowid,
                     name,
                     tags,
@@ -58,10 +58,10 @@ def create_search_index(conn: sqlite3.Connection, cursor: sqlite3.Cursor):
                 );
         END;
 
-        CREATE TRIGGER IF NOT EXISTS event_delete_trigger AFTER DELETE ON events BEGIN
+        CREATE TRIGGER IF NOT EXISTS listing_delete_trigger AFTER DELETE ON listings BEGIN
             INSERT INTO
-                event_search_index(
-                    event_search_index,
+                listing_search_index(
+                    listing_search_index,
                     rowid,
                     name,
                     tags,
@@ -80,10 +80,10 @@ def create_search_index(conn: sqlite3.Connection, cursor: sqlite3.Cursor):
                 );
         END;
 
-        CREATE TRIGGER IF NOT EXISTS event_update_trigger AFTER UPDATE ON events BEGIN
+        CREATE TRIGGER IF NOT EXISTS listing_update_trigger AFTER UPDATE ON listings BEGIN
             INSERT INTO
-                event_search_index(
-                    event_search_index,
+                listing_search_index(
+                    listing_search_index,
                     rowid,
                     name,
                     tags,
@@ -102,7 +102,7 @@ def create_search_index(conn: sqlite3.Connection, cursor: sqlite3.Cursor):
                 );
 
             INSERT INTO
-                event_search_index(
+                listing_search_index(
                     rowid,
                     name,
                     tags,

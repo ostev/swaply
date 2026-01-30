@@ -1,8 +1,8 @@
-import event
 import gleam/list
 import gleam/option.{type Option}
 import gleam/order
 import gleam/string
+import listing
 import lustre/attribute as a
 import lustre/effect.{type Effect}
 import lustre/element.{type Element}
@@ -19,22 +19,22 @@ import user
 pub type Model {
   Model(
     search_query: String,
-    filter: event.SearchFilter,
+    filter: listing.SearchFilter,
     page: Int,
-    events: Option(event.SearchResults),
+    listings: Option(listing.SearchResults),
   )
 }
 
 pub type Msg {
   UpdateSearchQuery(String)
-  UpdatedFilter(event.SearchFilter)
-  FetchedSearchResults(Result(event.SearchResults, rsvp.Error))
+  UpdatedFilter(listing.SearchFilter)
+  FetchedSearchResults(Result(listing.SearchResults, rsvp.Error))
   ChangePage(Int)
 }
 
 pub fn init() -> #(Model, Effect(Msg)) {
   let filter =
-    event.SearchFilter(
+    listing.SearchFilter(
       only_owned: False,
       start_date: option.None,
       end_date: option.None,
@@ -42,8 +42,8 @@ pub fn init() -> #(Model, Effect(Msg)) {
   let page = 0
 
   #(
-    Model(search_query: "", filter:, page:, events: option.None),
-    event.search(
+    Model(search_query: "", filter:, page:, listings: option.None),
+    listing.search(
       query: "",
       page:,
       filter:,
@@ -54,7 +54,7 @@ pub fn init() -> #(Model, Effect(Msg)) {
 }
 
 fn search(model: Model) -> Effect(Msg) {
-  event.search(
+  listing.search(
     query: model.search_query,
     page: model.page,
     filter: model.filter,
@@ -94,16 +94,16 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       #(new_model, search(new_model))
     }
 
-    FetchedSearchResults(Ok(events)) -> {
+    FetchedSearchResults(Ok(listings)) -> {
       #(
-        Model(..model, events: case model.events {
+        Model(..model, listings: case model.listings {
           option.Some(previous) -> {
             option.Some(
               // If we've received the new search results after the previous ones,
               // update the page. Otherwise, use the old results.
-              case events.timestamp |> instant.compare(previous.timestamp) {
+              case listings.timestamp |> instant.compare(previous.timestamp) {
                 order.Gt | order.Eq -> {
-                  events
+                  listings
                 }
                 _ -> {
                   previous
@@ -111,14 +111,14 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
               },
             )
           }
-          option.None -> option.Some(events)
+          option.None -> option.Some(listings)
         }),
         effect.none(),
       )
     }
 
     FetchedSearchResults(Error(_error)) -> {
-      #(Model(..model, events: option.None), effect.none())
+      #(Model(..model, listings: option.None), effect.none())
     }
   }
 }
@@ -141,7 +141,7 @@ fn date_filter_control(
 
 pub fn view(model: Model, shared: Shared) -> Element(Msg) {
   h.div([], [
-    h.h1([], [h.text("Events")]),
+    h.h1([], [h.text("Listings")]),
     h.h2([], [
       h.text(
         "Hello there! "
@@ -154,39 +154,39 @@ pub fn view(model: Model, shared: Shared) -> Element(Msg) {
     ]),
     h.input([
       a.value(model.search_query),
-      a.placeholder("Search for events..."),
+      a.placeholder("Search for listings..."),
       e.debounce(e.on_input(UpdateSearchQuery), 200),
     ]),
     case shared.user {
       user.Authenticated(_) -> {
         ui.toggle_input(
-          label: "Only your events?",
+          label: "Only your listings?",
           name: "filter_owned",
           is_checked: model.filter.only_owned,
           on_input: fn(is_checked) {
             UpdatedFilter(
-              event.SearchFilter(..model.filter, only_owned: is_checked),
+              listing.SearchFilter(..model.filter, only_owned: is_checked),
             )
           },
         )
       }
       user.Unknown | user.Unauthenticated -> element.none()
     },
-    case model.events {
+    case model.listings {
       option.Some(search_result) -> {
         h.div([], [
           keyed.ol(
             [],
-            search_result.events
-              |> list.map(fn(event) {
+            search_result.listings
+              |> list.map(fn(listing) {
                 #(
-                  event.id,
+                  listing.id,
                   h.li([], [
-                    ui.event_card_view(
-                      event,
+                    ui.listing_card_view(
+                      listing,
                       is_editable: shared
                         |> shared.get_user
-                        |> option.map(fn(user) { user.id == event.manager })
+                        |> option.map(fn(user) { user.id == listing.seller })
                         |> option.unwrap(False),
                     ),
                   ]),
@@ -205,7 +205,7 @@ pub fn view(model: Model, shared: Shared) -> Element(Msg) {
       }
       option.None -> {
         h.text(
-          "An error occurred while searching for events. Please try again.",
+          "An error occurred while searching for listings. Please try again.",
         )
       }
     },

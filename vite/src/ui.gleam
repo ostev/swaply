@@ -1,4 +1,3 @@
-import event.{type Event}
 import gleam/dynamic/decode
 import gleam/float
 import gleam/int
@@ -9,6 +8,7 @@ import gleam/set.{type Set}
 import gleam/string
 import gleam/uri
 import lenient_parse
+import listing.{type Listing}
 import lustre/attribute as a
 import lustre/element.{type Element}
 import lustre/element/html as h
@@ -232,8 +232,8 @@ pub fn tags_input(
   ])
 }
 
-pub fn ticket_type_input(
-  ticket_type: event.TicketTypeInput,
+pub fn item_type_input(
+  item_type: listing.TicketTypeInput,
   name: String,
   on_input,
 ) {
@@ -242,18 +242,18 @@ pub fn ticket_type_input(
       type_: "text",
       name: name <> "_name",
       label: "Name",
-      value: option.Some(ticket_type.name),
+      value: option.Some(item_type.name),
       on_input: fn(name) {
-        on_input(event.TicketTypeInput(..ticket_type, name:))
+        on_input(listing.TicketTypeInput(..item_type, name:))
       },
-      is_valid: string.length(ticket_type.name) > 0,
+      is_valid: string.length(item_type.name) > 0,
     ),
     number_input(
       name: name <> "_price",
       label: "Price",
-      value: ticket_type.price,
+      value: item_type.price,
       on_input: fn(value, _) {
-        on_input(event.TicketTypeInput(..ticket_type, price: value))
+        on_input(listing.TicketTypeInput(..item_type, price: value))
       },
       min: 0.0,
       max: 1_000_000.0,
@@ -262,9 +262,9 @@ pub fn ticket_type_input(
     number_input(
       name: name <> "_allotted",
       label: "Allotted",
-      value: ticket_type.allotted,
+      value: item_type.allotted,
       on_input: fn(value, _) {
-        on_input(event.TicketTypeInput(..ticket_type, allotted: value))
+        on_input(listing.TicketTypeInput(..item_type, allotted: value))
       },
       min: 1.0,
       max: 1_000_000.0,
@@ -281,29 +281,29 @@ pub fn tags(tags: List(String)) {
   )
 }
 
-pub fn event_card_view(event: Event, is_editable is_editable: Bool) {
+pub fn listing_card_view(listing: Listing, is_editable is_editable: Bool) {
   h.div([], [
     h.h3([], [
-      h.a([a.href("/event/" <> uri.percent_encode(event.id))], [
-        h.text(event.name),
+      h.a([a.href("/listing/" <> uri.percent_encode(listing.id))], [
+        h.text(listing.name),
       ]),
     ]),
-    tags(event.tags),
-    h.p([], [h.text(event.location)]),
-    h.p([], [datetime_view(event.date)]),
+    tags(listing.tags),
+    h.p([], [h.text(listing.location)]),
+    h.p([], [datetime_view(listing.date)]),
 
     case is_editable {
       True ->
         h.a(
           [
-            a.href("/event/" <> uri.percent_encode(event.id) <> "/edit"),
+            a.href("/listing/" <> uri.percent_encode(listing.id) <> "/edit"),
           ],
           [h.text("Edit")],
         )
       False -> element.none()
     },
 
-    h.p([], [h.text(event.short_description)]),
+    h.p([], [h.text(listing.short_description)]),
   ])
 }
 

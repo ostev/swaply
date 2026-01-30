@@ -16,7 +16,7 @@ s.post(
 )
 
 
-def create_ticket_type():
+def create_item_type():
     return {
         "name": fake.words(nb=random.randint(0, 100)),
         "price": random.random() * 1000,
@@ -40,11 +40,11 @@ def random_datetime_between(start_date, end_date):
     return start_date + datetime.timedelta(seconds=random_second)
 
 
-def create_event():
+def create_listing():
     return {
         "name": " ".join(fake.words(nb=random.randint(0, 100))),
         "is_published": random.choice([False, True]),
-        "ticket_types": [create_ticket_type() for _ in range(random.randint(0, 200))],
+        "item_types": [create_item_type() for _ in range(random.randint(0, 200))],
         "date": random_datetime_between(
             datetime.datetime.now(tz=datetime.UTC),
             datetime.datetime.now(tz=datetime.UTC) + datetime.timedelta(days=1_000_000),
@@ -58,4 +58,4 @@ def create_event():
 
 for i in range(1_000_000):
     print(i)
-    s.post(host + "/api/v1/events", json=create_event())
+    s.post(host + "/api/v1/listings", json=create_listing())

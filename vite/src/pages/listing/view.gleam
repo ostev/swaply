@@ -1,9 +1,9 @@
-import event.{type Event}
 import gleam/int
 import gleam/option.{type Option}
 import gleam/result
 import gleam/string
 import gleam/uri
+import listing.{type Listing}
 import lustre/attribute as a
 import lustre/effect.{type Effect}
 import lustre/element.{type Element}
@@ -21,7 +21,7 @@ import user
 
 pub type Model {
   Model(
-    event: Option(Result(Event, rsvp.Error)),
+    listing: Option(Result(Listing, rsvp.Error)),
     delete_modal: Option(DeleteModal),
   )
 }
@@ -30,15 +30,15 @@ pub type DeleteModal {
   DeleteModal(verify: String, error: Option(rsvp.Error))
 }
 
-pub fn init(event_id: String) -> #(Model, Effect(Msg)) {
+pub fn init(listing_id: String) -> #(Model, Effect(Msg)) {
   #(
-    Model(event: option.None, delete_modal: option.None),
-    event.get(event_id, EventReceived),
+    Model(listing: option.None, delete_modal: option.None),
+    listing.get(listing_id, ListingReceived),
   )
 }
 
 pub type Msg {
-  EventReceived(Result(Event, rsvp.Error))
+  ListingReceived(Result(Listing, rsvp.Error))
   SetDeleteModal(Option(DeleteModal))
   Delete
   DeletedResponseReceived(Result(Nil, rsvp.Error))
@@ -66,8 +66,8 @@ fn update_delete_modal(
 
 pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
   case msg {
-    EventReceived(event) -> #(
-      Model(..model, event: option.Some(event)),
+    ListingReceived(listing) -> #(
+      Model(..model, listing: option.Some(listing)),
       effect.none(),
     )
     SetDeleteModal(delete_modal) -> {
@@ -75,9 +75,9 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       #(Model(..model, delete_modal:), effect.none())
     }
     Delete -> {
-      #(model, case model.event {
-        option.Some(Ok(event)) ->
-          event.delete(event.id, DeletedResponseReceived)
+      #(model, case model.listing {
+        option.Some(Ok(listing)) ->
+          listing.delete(listing.id, DeletedResponseReceived)
           |> result.unwrap(effect.none())
         _ -> effect.none()
       })
@@ -100,44 +100,44 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
   }
 }
 
-fn view_event(event: Event) -> Element(Msg) {
+fn view_listing(listing: Listing) -> Element(Msg) {
   h.div([], [
     h.div([], [
-      h.h2([], [h.text(event.name)]),
-      ui.tags(event.tags),
+      h.h2([], [h.text(listing.name)]),
+      ui.tags(listing.tags),
       h.div([], [
-        h.p([], [ui.datetime_view(event.date)]),
-        case event.location {
+        h.p([], [ui.datetime_view(listing.date)]),
+        case listing.location {
           "" -> element.none()
-          _ -> h.p([], [h.text(event.location)])
+          _ -> h.p([], [h.text(listing.location)])
         },
       ]),
-      case event.is_published {
+      case listing.is_published {
         False -> h.span([], [h.text("Private")])
         True -> element.none()
       },
-      case event.short_description {
+      case listing.short_description {
         "" -> element.none()
-        _ -> h.p([], [h.text(event.short_description)])
+        _ -> h.p([], [h.text(listing.short_description)])
       },
     ]),
 
     h.div([], [
-      case event.description {
+      case listing.description {
         "" ->
           h.p([], [
-            h.text("The manager of this event has provided no description."),
+            h.text("The seller of this listing has provided no description."),
           ])
-        _ -> h.p([], [h.text(event.description)])
+        _ -> h.p([], [h.text(listing.description)])
       },
     ]),
   ])
 }
 
 fn can_delete(model: Model) -> Bool {
-  case model.delete_modal, model.event {
-    option.Some(delete_modal), option.Some(Ok(event)) ->
-      string.lowercase(delete_modal.verify) == string.lowercase(event.name)
+  case model.delete_modal, model.listing {
+    option.Some(delete_modal), option.Some(Ok(listing)) ->
+      string.lowercase(delete_modal.verify) == string.lowercase(listing.name)
     _, _ -> False
   }
 }
@@ -146,13 +146,13 @@ pub fn view(model: Model, shared: Shared) -> Element(Msg) {
   let can_delete = can_delete(model)
 
   h.div([], [
-    case shared.user, model.event {
-      user.Authenticated(user), option.Some(Ok(event))
-        if user.is_admin && event.is_published
+    case shared.user, model.listing {
+      user.Authenticated(user), option.Some(Ok(listing))
+        if user.is_admin && listing.is_published
       -> {
         h.p([], [
           h.text(
-            "This is not your event, but since you are able to edit and/or delete it
+            "This is not your listing, but since you are able to edit and/or delete it
  for moderation purposes since you are an admin and it has been published.",
           ),
         ])
@@ -162,8 +162,8 @@ pub fn view(model: Model, shared: Shared) -> Element(Msg) {
     h.dialog([a.id("delete_modal")], [
       h.p([], [
         h.text(
-          "Please enter the name of the event that you're about to delete to verify this action. "
-          <> "Note that all tickets bought for this event will be refunded.",
+          "Please enter the name of the listing that you're about to delete to verify this action. "
+          <> "Note that all items bought for this listing will be refunded.",
         ),
       ]),
       model.delete_modal
@@ -172,7 +172,7 @@ pub fn view(model: Model, shared: Shared) -> Element(Msg) {
             option.Some(_) ->
               h.p([], [
                 h.text(
-                  "There was an error while trying to delete your event. Please try again.",
+                  "There was an error while trying to delete your listing. Please try again.",
                 ),
               ])
             option.None -> element.none()
@@ -214,21 +214,23 @@ pub fn view(model: Model, shared: Shared) -> Element(Msg) {
         [h.text("Delete")],
       ),
     ]),
-    h.div([], case model.event {
+    h.div([], case model.listing {
       option.Some(result) -> {
         case result {
-          Ok(event) -> {
+          Ok(listing) -> {
             [
               case shared.user {
                 user.Authenticated(user)
-                  if user.id == event.manager
-                  || { user.is_admin && event.is_published }
+                  if user.id == listing.seller
+                  || { user.is_admin && listing.is_published }
                 -> {
                   h.div([], [
                     h.a(
                       [
                         a.href(
-                          "/event/" <> uri.percent_encode(event.id) <> "/edit",
+                          "/listing/"
+                          <> uri.percent_encode(listing.id)
+                          <> "/edit",
                         ),
                       ],
                       [h.text("Edit")],
@@ -255,7 +257,7 @@ pub fn view(model: Model, shared: Shared) -> Element(Msg) {
                   element.none()
                 }
               },
-              view_event(event),
+              view_listing(listing),
             ]
           }
           Error(error) -> {
@@ -264,16 +266,16 @@ pub fn view(model: Model, shared: Shared) -> Element(Msg) {
                 case error {
                   rsvp.HttpError(response) -> {
                     case response.status {
-                      404 -> h.text("This event does not exist.")
+                      404 -> h.text("This listing does not exist.")
                       _ ->
                         h.text(
-                          "An error occurred while loading the event. Please try again.",
+                          "An error occurred while loading the listing. Please try again.",
                         )
                     }
                   }
                   _ -> {
                     h.text(
-                      "An error occurred while loading the event. Please try again.",
+                      "An error occurred while loading the listing. Please try again.",
                     )
                   }
                 },
