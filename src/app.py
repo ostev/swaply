@@ -18,10 +18,7 @@ app = Flask(__name__, template_folder="templates")
 app.register_blueprint(event.event_api)
 app.register_blueprint(auth.auth_api)
 app.register_blueprint(auth.user_api.user_api)
-# with app.app_context():
-# if "db" not in g:
-#     g.db = Database("db.sqlite3", schema)
-#     g.db.create()
+
 globals.db = Database("db.sqlite3", model.schema)
 globals.db.create()
 
@@ -172,14 +169,6 @@ def create_default_admin():
 
 
 create_default_admin()
-
-
-@app.teardown_appcontext
-def teardown_db(exception):
-    db = g.pop("db", None)
-
-    if db is not None:
-        db.close()
 
 
 @app.route("/", defaults={"path": ""})
