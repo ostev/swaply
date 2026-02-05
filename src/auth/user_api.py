@@ -170,6 +170,8 @@ def delete_user(current_user: UserData, user_id: str):
     if current_user.id == id or current_user.is_admin:
 
         def run_delete_user(conn: Connection, cursor: Cursor):
+            cursor.execute("DELETE FROM listings WHERE seller = ?", (id,))
+            cursor.execute("DELETE FROM sessions WHERE user_id = ?", (id,))
             cursor.execute("DELETE FROM users WHERE id = ?", (id,))
             conn.commit()
 
