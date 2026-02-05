@@ -7,24 +7,42 @@ import lustre
 import lustre/attribute as a
 import lustre/effect.{type Effect}
 import lustre/element.{type Element}
-import lustre/element/html as h
 import lustre/event as e
 import modem
-import pages/admin/users as manage_users
-import pages/auth
-import pages/auth/login
-import pages/auth/sign_up
-import pages/edit_user
-import pages/home
-import pages/listing/edit as edit_listing
-import pages/listing/view as view_listing
-import pages/not_found
+import page/admin/users as manage_users
+import page/auth
+import page/auth/login
+import page/auth/sign_up
+import page/edit_user
+import page/home
+import page/listing/edit as edit_listing
+import page/listing/view as view_listing
+import page/not_found
+import phosphor
 import rsvp
 import shared.{type Shared, Shared}
+import sketch
+import sketch/css
+import sketch/css/angle
+import sketch/css/keyframe
+import sketch/css/length
+import sketch/css/transform
+import sketch/lustre as sketch_lustre
+import sketch/lustre/element/html as h
+import ui
+import ui/colors
+import ui/fonts
+import ui/styles
 import user.{type User}
 
 pub fn main() {
-  let app = lustre.application(init, update, view)
+  let assert Ok(stylesheet) =
+    sketch_lustre.construct(fn(stylesheet) {
+      stylesheet
+      |> sketch.global(css.global("html, body", [fonts.merriweather()]))
+    })
+
+  let app = lustre.application(init, update, view(_, stylesheet))
   let assert Ok(_) = lustre.start(app, "#app", Nil)
 
   Nil
@@ -325,27 +343,134 @@ fn view_page(page: Page, shared: Shared) {
   }
 }
 
-fn view(model: Model) -> Element(Msg) {
-  h.div([], [
-    h.nav([], [
-      h.a([a.href("/")], [element.text("Home")]),
-      h.a([a.href("/listing/create")], [element.text("Create listing")]),
+fn nav(model: Model) -> Element(Msg) {
+  h.nav(
+    css.class([
+      styles.padding_md(),
+      css.background_color("#E7C6FF"),
+      css.border_radius(length.px(6)),
+      css.display("flex"),
+      css.align_items("center"),
+      css.justify_content("space-between"),
+    ]),
+    [],
+    [
+      action_nav(),
+      case shared.is_admin(model.shared) {
+        True -> h.a_([a.href("/admin/users")], [h.text("Manage users")])
+        False -> element.none()
+      },
       case model.shared.user {
         user.Authenticated(_) ->
-          h.button([e.on_click(UserRequestedLogout)], [
+          h.button_([e.on_click(UserRequestedLogout)], [
             element.text("Log out"),
           ])
         user.Unauthenticated | user.Unknown ->
-          element.fragment([
-            h.a([a.href("/login")], [element.text("Login")]),
-            h.a([a.href("/register")], [element.text("Sign up")]),
-          ])
+          h.div(
+            css.class([
+              css.display("flex"),
+              css.align_content("center"),
+              css.justify_content("space-between"),
+              css.gap(length.px(10)),
+              css.color(colors.text),
+            ]),
+            [],
+            [
+              h.a(css.class([css.color(colors.text)]), [a.href("/login")], [
+                element.text("Login"),
+              ]),
+              h.a_([a.href("/register")], [element.text("Sign up")]),
+            ],
+          )
       },
-      case shared.is_admin(model.shared) {
-        True -> h.a([a.href("/admin/users")], [h.text("Manage users")])
-        False -> element.none()
-      },
+    ],
+  )
+}
+
+fn action_nav() -> Element(Msg) {
+  h.div(
+    css.class([
+      css.display("flex"),
+      css.align_items("center"),
+      css.justify_content("start"),
+      css.gap(length.px(20)),
+      css.flex_grow(2),
     ]),
-    h.div([], [view_page(model.page, model.shared)]),
+    [],
+    [
+      h.a(
+        css.class([
+          css.display("flex"),
+          css.align_items("center"),
+          css.justify_content("start"),
+          css.gap(length.px(10)),
+          css.color(colors.text),
+          css.text_decoration("none"),
+        ]),
+        [
+          a.href("/"),
+          a.title("Home"),
+        ],
+        [
+          h.div(css.class([css.compose(styles.rotate_hover(-10.0))]), [], [
+            phosphor.house_regular([a.style("font-size", "48px")]),
+          ]),
+
+          h.span(styles.rotate_hover(2.0), [], [ui.h1("Swaply")]),
+        ],
+      ),
+      h.a(
+        css.class([
+          css.color(colors.text),
+
+          css.display("flex"),
+          css.align_items("center"),
+          css.justify_content("start"),
+
+          css.selector(":hover .new_listing", [
+            css.clip_path("inset(0 0 0 0)"),
+          ]),
+
+          css.selector(">.new_listing_icon", [
+            css.transition("transform 0.3s " <> styles.energetic_hover_curve),
+          ]),
+
+          css.selector(":hover .new_listing_icon", [
+            css.transform([transform.rotate(angle.deg(-90.0))]),
+          ]),
+
+          css.overflow("hidden"),
+        ]),
+        [
+          a.href("/listing/create"),
+          a.title("Create listing"),
+        ],
+        [
+          phosphor.plus_circle_regular([
+            a.class("new_listing_icon"),
+            a.style("font-size", "48px"),
+          ]),
+
+          h.span(
+            css.class([
+              css.white_space("nowrap"),
+              css.clip_path("inset(0 110% 0 0)"),
+              css.transition("clip-path 0.3s " <> styles.energetic_hover_curve),
+            ]),
+            [a.class("new_listing")],
+            [h.text("Create listing")],
+          ),
+        ],
+      ),
+    ],
+  )
+}
+
+fn view(model: Model, stylesheet: sketch.StyleSheet) -> Element(Msg) {
+  use <- sketch_lustre.render(stylesheet:, in: [sketch_lustre.node()])
+
+  h.div_([], [
+    nav(model),
+    h.div_([], [view_page(model.page, model.shared)]),
   ])
 }

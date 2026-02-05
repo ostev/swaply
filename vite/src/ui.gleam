@@ -11,14 +11,17 @@ import lenient_parse
 import listing.{type Listing}
 import lustre/attribute as a
 import lustre/element.{type Element}
-import lustre/element/html as h
 import lustre/event as e
 import phosphor
 import sequence
+import sketch/css
+import sketch/css/length
+import sketch/lustre/element/html as h
 import tempo
 import tempo/date
 import tempo/datetime
 import tempo/offset
+import ui/fonts
 
 pub fn input(
   type_ type_: String,
@@ -28,9 +31,9 @@ pub fn input(
   on_input on_input: fn(String) -> msg,
   is_valid is_valid: Bool,
 ) -> Element(msg) {
-  h.div([], [
-    h.label([a.for(name)], [h.text(label)]),
-    h.input([
+  h.div_([], [
+    h.label_([a.for(name)], [h.text(label)]),
+    h.input_([
       a.type_(type_),
       a.name(name),
       a.id(name),
@@ -47,9 +50,9 @@ pub fn search_input(
   value value: Option(String),
   on_input on_input: fn(String) -> msg,
 ) -> Element(msg) {
-  h.div([], [
-    h.label([a.for(name)], [h.text(label)]),
-    h.input([
+  h.div_([], [
+    h.label_([a.for(name)], [h.text(label)]),
+    h.input_([
       a.type_("text"),
       a.name(name),
       a.id(name),
@@ -65,9 +68,9 @@ pub fn toggle_input(
   is_checked is_checked: Bool,
   on_input on_input: fn(Bool) -> msg,
 ) -> Element(msg) {
-  h.div([], [
-    h.label([a.for(name)], [h.text(label)]),
-    h.input([
+  h.div_([], [
+    h.label_([a.for(name)], [h.text(label)]),
+    h.input_([
       a.type_("checkbox"),
       a.name(name),
       a.id(name),
@@ -86,9 +89,9 @@ pub fn number_input(
   max max: Float,
   step step: Float,
 ) -> Element(msg) {
-  h.div([], [
-    h.label([a.for(name)], [h.text(label)]),
-    h.input([
+  h.div_([], [
+    h.label_([a.for(name)], [h.text(label)]),
+    h.input_([
       a.type_("text"),
       a.name(name),
       a.id(name),
@@ -138,26 +141,26 @@ pub fn textarea(
   on_input on_input: fn(String) -> msg,
   is_valid is_valid: Bool,
 ) -> Element(msg) {
-  h.div([], [
-    h.label([a.for(name)], [h.text(label)]),
-    h.textarea(
+  h.div_([], [
+    h.label_([a.for(name)], [h.text(label)]),
+    h.textarea_(
       [
         a.name(name),
         a.id(name),
         a.classes([#("invalid", !is_valid)]),
         e.on_input(on_input),
       ],
-      value,
+      [h.text(value)],
     ),
   ])
 }
 
 pub fn tag(text: String) -> Element(msg) {
-  h.span([], [h.text(text)])
+  h.span_([], [h.text(text)])
 }
 
 fn tag_button(text: String, on_remove: fn(String) -> msg) -> Element(msg) {
-  h.button([a.type_("button"), e.on_click(on_remove(text))], [tag(text)])
+  h.button_([a.type_("button"), e.on_click(on_remove(text))], [tag(text)])
 }
 
 pub fn sort_tags(unsorted: Set(String)) -> List(String) {
@@ -184,15 +187,15 @@ pub fn tags_input(
     |> on_create_tags
   }
 
-  h.div([], [
-    h.label([a.for(name)], [h.text(label)]),
-    h.span(
+  h.div_([], [
+    h.label_([a.for(name)], [h.text(label)]),
+    h.span_(
       [],
       tags
         |> list.map(tag_button(_, on_remove_tag)),
     ),
-    h.div([], [
-      h.input([
+    h.div_([], [
+      h.input_([
         a.type_("text"),
         a.name(name),
         a.id(name),
@@ -268,27 +271,27 @@ pub fn item_type_input(item_type: listing.ItemInput, name: String, on_input) {
 }
 
 pub fn tags(tags: List(String)) {
-  h.ul(
+  h.ul_(
     [],
     tags
-      |> list.map(fn(text) { h.li([], [tag(text)]) }),
+      |> list.map(fn(text) { h.li_([], [tag(text)]) }),
   )
 }
 
 pub fn listing_card_view(listing: Listing, is_editable is_editable: Bool) {
-  h.div([], [
-    h.h3([], [
-      h.a([a.href("/listing/" <> uri.percent_encode(listing.id))], [
+  h.div_([], [
+    h.h3_([], [
+      h.a_([a.href("/listing/" <> uri.percent_encode(listing.id))], [
         h.text(listing.name),
       ]),
     ]),
     tags(listing.tags),
-    h.p([], [h.text(listing.location)]),
-    h.p([], [datetime_view(listing.date)]),
+    h.p_([], [h.text(listing.location)]),
+    h.p_([], [datetime_view(listing.date)]),
 
     case is_editable {
       True ->
-        h.a(
+        h.a_(
           [
             a.href("/listing/" <> uri.percent_encode(listing.id) <> "/edit"),
           ],
@@ -297,7 +300,7 @@ pub fn listing_card_view(listing: Listing, is_editable is_editable: Bool) {
       False -> element.none()
     },
 
-    h.p([], [h.text(listing.short_description)]),
+    h.p_([], [h.text(listing.short_description)]),
   ])
 }
 
@@ -310,7 +313,7 @@ pub fn datetime_view(datetime: tempo.DateTime) -> Element(msg) {
     |> datetime.get_date
     |> date.get_day
 
-  h.span([], [
+  h.span_([], [
     h.text(
       date
       |> datetime.format(tempo.Custom("h:mma on dddd")),
@@ -334,7 +337,7 @@ pub fn datetime_view(datetime: tempo.DateTime) -> Element(msg) {
 }
 
 pub fn icon_button(attributes: List(a.Attribute(msg)), icon: Element(msg)) {
-  h.button(attributes, [icon])
+  h.button_(attributes, [icon])
 }
 
 pub fn page_control(
@@ -345,8 +348,8 @@ pub fn page_control(
   let page_buttons =
     sequence.new(fn(index) {
       Ok(
-        h.li([], [
-          h.button([e.on_click(change_page(index))], [
+        h.li_([], [
+          h.button_([e.on_click(change_page(index))], [
             h.text(int.to_string(index + 1)),
           ]),
         ]),
@@ -356,15 +359,29 @@ pub fn page_control(
     |> sequence.window(center: page, size: 6)
     |> sequence.generate
 
-  h.div([], [
+  h.div_([], [
     icon_button(
       [e.on_click(change_page(page - 1)), a.disabled(page <= 0)],
       phosphor.arrow_left_regular([]),
     ),
-    h.ol([], page_buttons),
+    h.ol_([], page_buttons),
     icon_button(
       [e.on_click(change_page(page + 1)), a.disabled(page >= total_pages)],
       phosphor.arrow_right_regular([]),
     ),
   ])
+}
+
+pub fn h1(text: String) {
+  h.h1(
+    css.class([
+      fonts.merriweather(),
+      css.font_size(length.px(48)),
+      css.font_weight("500"),
+    ]),
+    [],
+    [
+      h.text(text),
+    ],
+  )
 }

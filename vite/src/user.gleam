@@ -11,7 +11,7 @@ import gleam/option.{type Option}
 import gleam/result
 import gleam/uri
 import lustre/effect.{type Effect}
-import pages/auth
+import page/auth
 import rsvp
 
 const api_prefix = api.prefix <> "/user"

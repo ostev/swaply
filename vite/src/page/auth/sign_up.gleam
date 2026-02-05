@@ -11,7 +11,7 @@ import lustre/element.{type Element}
 import lustre/element/html as h
 import lustre/event as e
 import modem
-import pages/auth
+import page/auth
 import rsvp
 import ui
 

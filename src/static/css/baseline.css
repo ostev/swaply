@@ -1,0 +1,46 @@
+@font-face {
+  font-family: "Merriweather";
+  src: url("/static/fonts/Merriweather/Merriweather-VariableFont_opsz,wdth,wght.ttf")
+    format("truetype-variations");
+  font-weight: 125 950;
+  font-stretch: 75% 125%;
+  font-optical-sizing: auto;
+
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "Merriweather";
+  src: url("/static/fonts/Merriweather/Merriweather-Italic-VariableFont_opsz,wdth,wght.ttf")
+    format("truetype-variations");
+  font-weight: 125 950;
+  font-stretch: 75% 125%;
+  font-optical-sizing: auto;
+
+  font-style: italic;
+}
+
+html, body {
+  font-family: "Merriweather", serif;
+}
+
+a {
+  color: rgb(128, 86, 255);
+  text-decoration: underline;
+}
+
+a:link {
+}
+
+a:visited {
+}
+
+a:focus {
+}
+
+a:hover {
+}
+
+a:active {
+} 
+
