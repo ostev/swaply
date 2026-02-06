@@ -16,12 +16,15 @@ import phosphor
 import sequence
 import sketch/css
 import sketch/css/length
+import sketch/css/transform
 import sketch/lustre/element/html as h
 import tempo
 import tempo/date
 import tempo/datetime
 import tempo/offset
+import ui/colors
 import ui/fonts
+import ui/styles
 
 pub fn input(
   type_ type_: String,
@@ -70,13 +73,80 @@ pub fn toggle_input(
 ) -> Element(msg) {
   h.div_([], [
     h.label_([a.for(name)], [h.text(label)]),
-    h.input_([
-      a.type_("checkbox"),
-      a.name(name),
-      a.id(name),
-      a.checked(is_checked),
-      e.on_check(on_input),
-    ]),
+    h.input(
+      css.class([
+        css.appearance("none"),
+        css.position("relative"),
+        css.font_size_("inherit"),
+
+        css.width(length.em(2.3)),
+        css.height(length.em(1.3)),
+
+        css.box_sizing("content-box"),
+        css.border_width(length.px(1)),
+        css.border_style("solid"),
+        css.border_color(colors.black),
+        css.border_radius(length.em(1.0)),
+        css.vertical_align("text-bottom"),
+
+        css.margin_("auto"),
+        css.color("inherit"),
+
+        css.before([
+          css.property("content", "\"\""),
+          css.position("absolute"),
+          css.top(length.percent(50)),
+          css.left(length.percent(0)),
+
+          css.transform([
+            transform.translate(length.percent(0), length.percent(-50)),
+          ]),
+          css.box_sizing("border-box"),
+          css.width(length.em(1.0)),
+          css.height(length.em(1.0)),
+
+          css.margin_("0 0.15em"),
+          css.border_width(length.px(1)),
+          css.border_style("solid"),
+          css.border_radius(length.percent(50)),
+          css.background_color(colors.black),
+
+          css.transition(
+            "transform 0.5s "
+            <> styles.energetic_hover_curve
+            <> ", background-color 0.5s "
+            <> styles.energetic_hover_curve
+            <> ", box-shadow 0.5s "
+            <> styles.energetic_hover_curve,
+          ),
+        ]),
+
+        css.box_shadow("1px 1px 1px rgba(41, 34, 49, 0.2) inset"),
+        css.transition("box-shadow 0.5s " <> styles.energetic_hover_curve),
+
+        css.checked([
+          css.box_shadow("2px 2px 2px rgba(41, 34, 49, 0.2) inset"),
+
+          css.before([
+            css.transform([
+              transform.translate(length.em(1.0), length.percent(-50)),
+            ]),
+
+            css.background_color(colors.secondary),
+
+            css.box_shadow("2px 2px 8px 2px rgba(41, 34, 49, 0.2)"),
+          ]),
+        ]),
+      ]),
+      [
+        a.type_("checkbox"),
+        a.role("switch"),
+        a.name(name),
+        a.id(name),
+        a.checked(is_checked),
+        e.on_check(on_input),
+      ],
+    ),
   ])
 }
 
@@ -378,6 +448,23 @@ pub fn h1(text: String) {
       fonts.merriweather(),
       css.font_size(length.px(48)),
       css.font_weight("500"),
+      css.margin(length.px(0)),
+    ]),
+    [],
+    [
+      h.text(text),
+    ],
+  )
+}
+
+pub fn h2(text: String) -> Element(a) {
+  h.h2(
+    css.class([
+      fonts.merriweather(),
+      css.font_size(length.px(48)),
+      css.font_weight("500"),
+      css.margin(length.px(0)),
+      css.margin_block_end(length.px(10)),
     ]),
     [],
     [
