@@ -158,7 +158,7 @@ pub fn view(model: Model, shared: Shared) -> Element(Msg) {
       ]),
       [],
       [
-        ui.h2("Listings"),
+        ui.h2_("Listings"),
 
         h.div(
           css.class([

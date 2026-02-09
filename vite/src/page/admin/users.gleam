@@ -8,13 +8,16 @@ import gleam/uri.{type Uri}
 import lustre/attribute as a
 import lustre/effect.{type Effect}
 import lustre/element.{type Element}
-import lustre/element/html as h
 import lustre/event as e
 import modem
 import page/auth
 import rsvp
 import shared.{type Shared}
+import sketch/css
+import sketch/css/length
+import sketch/lustre/element/html as h
 import ui
+import ui/layout
 import ui/table
 import user.{type User}
 
@@ -67,52 +70,75 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
 }
 
 pub fn view(model: Model, shared: Shared) -> Element(Msg) {
-  case shared.is_admin(shared) {
-    False -> h.div([], [h.p([], [h.text("This page is for admins only.")])])
-    True ->
-      h.div([], [
-        h.h1([], [h.text("Manage users")]),
-        ui.search_input(
-          label: "Email",
-          name: "email",
-          value: model.email_filter,
-          on_input: UpdatedEmailFilter,
-        ),
-        case
-          model.users
-          |> option.unwrap(Ok([]))
-        {
-          Ok(users) -> {
-            table.view(
-              headings: ["ID", "Email", "Name", "Action"],
-              rows: users
-                |> list.map(fn(user) {
+  h.div(layout.row(layout.Center), [], [
+    case shared.is_unknown(shared) || shared.is_admin(shared) {
+      False -> ui.error_panel(True, "This page is for admins only.")
+      True ->
+        h.div(
+          css.class([
+            css.width(length.percent(100)),
+            css.max_width(length.rem(30.0)),
+          ]),
+          [],
+          [
+            ui.h2(css.class([css.text_align("center")]), "Manage users"),
+            h.div(
+              css.class([
+                css.margin_bottom(length.px(12)),
+                css.width(length.percent(100)),
+
+                css.compose(layout.row(layout.Center)),
+              ]),
+              [],
+              [
+                h.div(
+                  css.class([
+                    css.width(length.percent(100)),
+                    css.max_width(length.rem(25.0)),
+                  ]),
+                  [],
                   [
-                    [h.text(user.id)],
-                    [h.text(user.email)],
-                    [h.text(user.name)],
-                    [
-                      h.a(
+                    ui.search_input(
+                      label: "Email",
+                      name: "email",
+                      placeholder: "Search by email...",
+                      value: model.email_filter |> option.unwrap(""),
+                      on_input: UpdatedEmailFilter,
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            case model.users {
+              option.Some(Ok(users)) -> {
+                table.view(
+                  headings: ["ID", "Email", "Name", "Action"],
+                  rows: users
+                    |> list.map(fn(user) {
+                      [
+                        [h.text(user.id)],
+                        [h.text(user.email)],
+                        [h.text(user.name)],
                         [
-                          a.href(
+                          ui.link_button(
+                            ui.Regular,
+                            "Edit",
                             "/user/" <> uri.percent_encode(user.id) <> "/edit",
                           ),
                         ],
-                        [h.text("Edit")],
-                      ),
-                    ],
-                  ]
-                }),
-            )
-          }
-          Error(_) -> {
-            h.p([], [
-              h.text(
-                "An error occurred while fetching the list of users. Please try again.",
-              ),
-            ])
-          }
-        },
-      ])
-  }
+                      ]
+                    }),
+                )
+              }
+              option.Some(Error(_)) ->
+                ui.error_panel(
+                  True,
+                  "An error occurred while fetching the list of users. Please try again.",
+                )
+              option.None -> element.none()
+            },
+          ],
+        )
+    },
+  ])
 }

@@ -28,3 +28,10 @@ pub fn is_admin(shared: Shared) -> Bool {
     option.None -> False
   }
 }
+
+pub fn is_unknown(shared: Shared) -> Bool {
+  case shared.user {
+    user.Unknown -> True
+    _ -> False
+  }
+}

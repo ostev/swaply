@@ -184,19 +184,49 @@ pub fn input_(
 pub fn search_input(
   name name: String,
   label label: String,
-  value value: Option(String),
+  value value: String,
+  placeholder placeholder: String,
   on_input on_input: fn(String) -> msg,
 ) -> Element(msg) {
-  h.div_([], [
-    h.label_([a.for(name)], [h.text(label)]),
-    h.input_([
-      a.type_("text"),
-      a.name(name),
-      a.id(name),
-      a.value(value |> option.unwrap("")),
-      e.debounce(e.on_input(on_input), 100),
+  h.input(
+    css.class([
+      css.all("unset"),
+      css.display("block"),
+
+      css.padding(length.px(10)),
+      css.background_color(colors.input_background),
+      css.border_color(colors.black),
+      css.border_style("solid"),
+      css.border_width(length.px(1)),
+      css.border_radius(length.px(6)),
+      css.font_size(length.px(16)),
+
+      css.transition("box-shadow 0.3s"),
+      css.box_shadow("3px 3px 3px " <> colors.input_box_shadow),
+      css.hover([
+        css.box_shadow("1px 1px 3px " <> colors.input_box_shadow),
+      ]),
+      css.active([
+        css.box_shadow("0px 0px 2px " <> colors.input_box_shadow),
+      ]),
+
+      css.placeholder([css.color(colors.placeholder_text)]),
+
+      css.font_family("Inter, sans-serif"),
+
+      css.width(length.percent(100)),
+      css.box_sizing("border-box"),
+      css.text_align("center"),
     ]),
-  ])
+    [
+      a.value(value),
+      a.placeholder(placeholder),
+      e.debounce(e.on_input(on_input), 200),
+
+      a.aria_label(label),
+      a.name(name),
+    ],
+  )
 }
 
 pub fn toggle_input(
@@ -804,7 +834,11 @@ pub fn h1(text: String) {
   )
 }
 
-pub fn h2(text: String) -> Element(msg) {
+pub fn h2_(text: String) -> Element(msg) {
+  h2(css.class([]), text)
+}
+
+pub fn h2(class: css.Class, text: String) -> Element(msg) {
   h.h2(
     css.class([
       fonts.merriweather(),
@@ -812,6 +846,8 @@ pub fn h2(text: String) -> Element(msg) {
       css.font_weight("500"),
       css.margin(length.px(0)),
       css.margin_block_end(length.px(10)),
+
+      css.compose(class),
     ]),
     [],
     [
