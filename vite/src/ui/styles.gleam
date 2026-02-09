@@ -1,8 +1,10 @@
+import gleam/int
 import sketch/css
 import sketch/css/angle
 import sketch/css/length
 import sketch/css/transform
 import ui/colors
+import ui/fonts
 import ui/layout
 
 pub fn padding_sm() {
@@ -48,5 +50,61 @@ pub fn card() {
     css.border_radius(length.px(10)),
 
     css.compose(interactive_box_shadow()),
+  ])
+}
+
+pub fn input_box_shadow() -> css.Style {
+  css.compose(
+    css.class([
+      css.transition("box-shadow 0.3s"),
+      css.box_shadow("3px 3px 3px " <> colors.input_box_shadow),
+      css.hover([
+        css.box_shadow("1px 1px 3px " <> colors.input_box_shadow),
+      ]),
+      css.active([
+        css.box_shadow("0px 0px 2px " <> colors.input_box_shadow),
+      ]),
+    ]),
+  )
+}
+
+fn strikethrough_background(completion: Int) {
+  css.background(
+    "linear-gradient("
+    <> colors.black
+    <> " 0 0) no-repeat 0 60% / "
+    <> int.to_string(completion)
+    <> "% .1em, currentcolor",
+  )
+}
+
+pub fn strikethrough_on_hover() {
+  css.class([
+    strikethrough_background(0),
+    css.background_clip("border-box, text"),
+    css.property("-webkit-text-fill-color", "transparent"),
+    css.transition("background-size .4s " <> energetic_hover_curve),
+    css.isolation("isolate"),
+
+    css.hover([
+      strikethrough_background(100),
+    ]),
+  ])
+}
+
+pub fn tag() {
+  css.class([
+    css.padding(length.px(4)),
+
+    fonts.inter(),
+    css.font_size(length.px(14)),
+
+    css.border_style("solid"),
+    css.border_color(colors.black),
+    css.border_width(length.px(1)),
+    css.border_radius(length.px(10)),
+
+    css.min_width(length.em(3.0)),
+    css.color(colors.black),
   ])
 }

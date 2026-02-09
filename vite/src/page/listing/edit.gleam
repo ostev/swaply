@@ -560,7 +560,6 @@ pub fn view(model: Model) -> Element(Msg) {
                 css.width(length.percent(100)),
                 css.max_width(length.em(10.0)),
                 css.box_sizing("border-box"),
-                css.text_align("center"),
 
                 css.margin_bottom(length.px(8)),
               ]),
@@ -580,93 +579,99 @@ pub fn view(model: Model) -> Element(Msg) {
               ]),
               [],
               [
-                ui.h3("Details"),
-                ui.textarea(
-                  label: "Short description",
-                  name: "short_description",
-                  value: model.form.short_description,
-                  on_input: UpdatedShortDescription,
-                  is_valid: True,
-                ),
-
-                ui.textarea(
-                  label: "Description",
-                  name: "description",
-                  value: model.form.description,
-                  on_input: UpdatedDescription,
-                  is_valid: True,
-                ),
-
-                ui.tags_input(
-                  label: "Tags",
-                  name: "tags",
-                  sorted_tags: model.form.sorted_tags,
-                  value: model.form.current_tag,
-                  on_update_value: UpdateCurrentTag,
-                  on_create_tags: CreatedTags,
-                  on_remove_tag: DeletedTag,
-                ),
-
-                ui.input_(
-                  type_: "text",
-                  label: "Pickup location",
-                  name: "location",
-                  value: option.Some(model.form.location),
-                  on_input: UpdatedLocation,
-                  is_valid: True,
-                ),
-
-                ui.h3("Items for offer"),
-
-                h.div_([], [
-                  h.div_(
-                    [],
-                    model.form.items
-                      |> iv.to_list
-                      |> list.index_map(fn(item_type, index) {
-                        h.div_([], [
-                          ui.item_type_input(
-                            item_type,
-                            "item_type_" <> int.to_string(index),
-                            UpdatedTicketType(_, index:),
-                          ),
-                          h.button_(
-                            [
-                              e.on_click(DeletedTicketType(index)),
-                              a.type_("button"),
-                            ],
-                            [
-                              h.text("Delete"),
-                            ],
-                          ),
-                        ])
-                      }),
+                ui.fieldset([
+                  ui.h3("Details"),
+                  ui.textarea(
+                    label: "Short description",
+                    name: "short_description",
+                    value: model.form.short_description,
+                    on_input: UpdatedShortDescription,
+                    is_valid: True,
                   ),
 
-                  h.button_(
-                    [
-                      a.type_("button"),
-                      e.on_click(
-                        AddedTicketType(listing.ItemInput(
-                          name: "",
-                          price: "",
-                          quantity: "",
-                        )),
-                      ),
-                    ],
-                    [h.text("Add")],
+                  ui.textarea(
+                    label: "Description",
+                    name: "description",
+                    value: model.form.description,
+                    on_input: UpdatedDescription,
+                    is_valid: True,
+                  ),
+
+                  ui.tags_input(
+                    label: "Tags",
+                    name: "tags",
+                    sorted_tags: model.form.sorted_tags,
+                    value: model.form.current_tag,
+                    on_update_value: UpdateCurrentTag,
+                    on_create_tags: CreatedTags,
+                    on_remove_tag: DeletedTag,
+                  ),
+
+                  ui.input_(
+                    type_: "text",
+                    label: "Pickup location",
+                    name: "location",
+                    value: option.Some(model.form.location),
+                    on_input: UpdatedLocation,
+                    is_valid: True,
                   ),
                 ]),
 
-                ui.h3("Management"),
-                listing_date(model),
+                ui.fieldset([
+                  ui.h3("Items for offer"),
 
-                ui.toggle_input(
-                  label: "Published?",
-                  name: "is_published",
-                  is_checked: model.form.is_published,
-                  on_input: UpdatedIsPublished,
-                ),
+                  h.div_([], [
+                    h.div_(
+                      [],
+                      model.form.items
+                        |> iv.to_list
+                        |> list.index_map(fn(item_type, index) {
+                          h.div_([], [
+                            ui.item_type_input(
+                              item_type,
+                              "item_type_" <> int.to_string(index),
+                              UpdatedTicketType(_, index:),
+                            ),
+                            h.button_(
+                              [
+                                e.on_click(DeletedTicketType(index)),
+                                a.type_("button"),
+                              ],
+                              [
+                                h.text("Delete"),
+                              ],
+                            ),
+                          ])
+                        }),
+                    ),
+
+                    h.button_(
+                      [
+                        a.type_("button"),
+                        e.on_click(
+                          AddedTicketType(listing.ItemInput(
+                            name: "",
+                            price: "",
+                            quantity: "",
+                          )),
+                        ),
+                      ],
+                      [h.text("Add")],
+                    ),
+                  ]),
+                ]),
+
+                ui.fieldset([
+                  ui.h3("Management"),
+                  listing_date(model),
+
+                  ui.toggle_input(
+                    label: "Published?",
+                    name: "is_published",
+                    is_checked: model.form.is_published,
+                    on_input: UpdatedIsPublished,
+                  ),
+                ]),
 
                 h.button_([a.type_("submit")], [
                   h.text(case model.mode {

@@ -18,6 +18,7 @@ import sketch/css
 import sketch/css/length
 import sketch/css/transform
 import sketch/lustre/element/html as h
+import sketch/lustre/element/keyed
 import tempo
 import tempo/date
 import tempo/datetime
@@ -61,16 +62,9 @@ pub fn input(
           css.border_width(length.px(1)),
           css.border_radius(length.px(6)),
 
-          css.font_size(length.px(16)),
+          fonts.size_md(),
 
-          css.transition("box-shadow 0.3s"),
-          css.box_shadow("3px 3px 3px " <> colors.input_box_shadow),
-          css.hover([
-            css.box_shadow("1px 1px 3px " <> colors.input_box_shadow),
-          ]),
-          css.active([
-            css.box_shadow("0px 0px 2px " <> colors.input_box_shadow),
-          ]),
+          styles.input_box_shadow(),
 
           css.placeholder([css.color(colors.placeholder_text)]),
 
@@ -293,11 +287,35 @@ pub fn textarea(
 }
 
 pub fn tag(text: String) -> Element(msg) {
-  h.span_([], [h.text(text)])
+  h.span(styles.tag(), [], [tag_content(text)])
+}
+
+fn tag_content(text: String) -> Element(msg) {
+  h.div(css.class([css.compose(layout.row(layout.SpaceBetween))]), [], [
+    phosphor.tag_regular([]),
+    h.text(text),
+  ])
 }
 
 fn tag_button(text: String, on_remove: fn(String) -> msg) -> Element(msg) {
-  h.button_([a.type_("button"), e.on_click(on_remove(text))], [tag(text)])
+  h.button(
+    css.class([
+      css.all("unset"),
+
+      css.compose(styles.tag()),
+      styles.input_box_shadow(),
+      css.cursor("pointer"),
+
+      // css.compose(styles.strikethrough_on_hover()),
+      css.hover([
+        css.text_decoration_line("line-through"),
+        css.text_decoration_color(colors.black),
+        css.text_decoration_thickness("0.1em"),
+      ]),
+    ]),
+    [a.type_("button"), e.on_click(on_remove(text))],
+    [tag_content(text)],
+  )
 }
 
 pub fn sort_tags(unsorted: Set(String)) -> List(String) {
@@ -324,51 +342,106 @@ pub fn tags_input(
     |> on_create_tags
   }
 
-  h.div_([], [
-    h.label_([a.for(name)], [h.text(label)]),
-    h.span_(
-      [],
-      tags
-        |> list.map(tag_button(_, on_remove_tag)),
-    ),
-    h.div_([], [
-      h.input_([
-        a.type_("text"),
-        a.name(name),
-        a.id(name),
-        a.value(value),
-        e.on_input(fn(new_tags) {
-          case new_tags |> string.trim_end() |> string.ends_with(",") {
-            True -> {
-              create_tags(new_tags)
-            }
-            False -> {
-              on_update_value(new_tags)
-            }
-          }
-        }),
-        e.advanced("keyup", {
-          use key <- decode.field("key", decode.string)
-
-          decode.success(case key {
-            "Enter" -> {
-              e.handler(
-                dispatch: create_tags(value),
-                prevent_default: True,
-                stop_propagation: False,
-              )
-            }
-            _ -> {
-              e.handler(
-                dispatch: on_create_tags([]),
-                prevent_default: True,
-                stop_propagation: False,
-              )
-            }
-          })
-        }),
+  h.div(css.class([fonts.inter(), css.width(length.percent(100))]), [], [
+    h.label(
+      css.class([
+        css.display("block"),
+        css.margin_bottom(length.px(8)),
+        fonts.inter(),
       ]),
-    ]),
+      [a.for(name)],
+      [h.text(label)],
+    ),
+
+    h.div(
+      css.class([
+        css.compose(layout.row(layout.Start)),
+        css.gap(length.px(12)),
+
+        css.background_color(colors.input_background),
+
+        css.padding(length.px(10)),
+        css.border_style("solid"),
+        css.border_color(colors.black),
+        css.border_width(length.px(1)),
+        css.border_radius(length.px(12)),
+
+        css.height(length.em(3.0)),
+      ]),
+      [],
+      [
+        h.input(
+          css.class([
+            css.compose(styles.tag()),
+
+            styles.input_box_shadow(),
+
+            css.placeholder([css.color(colors.placeholder_text)]),
+
+            css.box_sizing("border-box"),
+            css.text_align("start"),
+
+            css.display("block"),
+            css.width(length.percent(30)),
+          ]),
+          [
+            a.type_("text"),
+            a.name(name),
+            a.id(name),
+            a.value(value),
+            e.on_input(fn(new_tags) {
+              case new_tags |> string.trim_end() |> string.ends_with(",") {
+                True -> {
+                  create_tags(new_tags)
+                }
+                False -> {
+                  on_update_value(new_tags)
+                }
+              }
+            }),
+            e.advanced("keyup", {
+              use key <- decode.field("key", decode.string)
+
+              decode.success(case key {
+                "Enter" -> {
+                  e.handler(
+                    dispatch: create_tags(value),
+                    prevent_default: True,
+                    stop_propagation: False,
+                  )
+                }
+                _ -> {
+                  e.handler(
+                    dispatch: on_create_tags([]),
+                    prevent_default: True,
+                    stop_propagation: False,
+                  )
+                }
+              })
+            }),
+          ],
+        ),
+
+        keyed.ul(
+          css.class([
+            css.all("unset"),
+
+            css.compose(layout.row(layout.Start)),
+            css.gap(length.px(4)),
+            css.list_style("none"),
+
+            css.overflow_x("auto"),
+            css.height(length.percent(100)),
+            css.width(length.percent(100)),
+          ]),
+          [],
+          tags
+            |> list.map(fn(tag) {
+              #(tag, h.li_([], [tag_button(tag, on_remove_tag)]))
+            }),
+        ),
+      ],
+    ),
   ])
 }
 
@@ -507,6 +580,23 @@ pub fn page_control(
       phosphor.arrow_right_regular([]),
     ),
   ])
+}
+
+pub fn fieldset(children: List(Element(msg))) -> Element(msg) {
+  h.fieldset(
+    css.class([
+      css.all("unset"),
+      css.width(length.percent(100)),
+      css.compose(layout.column(layout.Start)),
+      css.gap(length.px(10)),
+      // css.padding_block(length.px(20)),
+    // css.border_top_style("solid"),
+    // css.border_top_color("rgba(0, 0, 0, 0.37)"),
+    // css.border_top_width(length.px(1)),
+    ]),
+    [],
+    children,
+  )
 }
 
 pub fn h1(text: String) {
