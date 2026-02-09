@@ -15,7 +15,7 @@ import lustre/event as e
 import phosphor
 import sequence
 import sketch/css
-import sketch/css/length
+import sketch/css/length.{type Length}
 import sketch/css/transform
 import sketch/lustre/element/html as h
 import sketch/lustre/element/keyed
@@ -379,21 +379,64 @@ pub fn textarea(
   name name: String,
   label label: String,
   value value: String,
+  height height: Length,
   on_input on_input: fn(String) -> msg,
   is_valid is_valid: Bool,
 ) -> Element(msg) {
-  h.div_([], [
-    h.label_([a.for(name)], [h.text(label)]),
-    h.textarea_(
-      [
-        a.name(name),
-        a.id(name),
-        a.classes([#("invalid", !is_valid)]),
-        e.on_input(on_input),
-      ],
-      [h.text(value)],
-    ),
-  ])
+  h.div(
+    css.class([
+      css.compose(layout.column(layout.Start)),
+      fonts.inter(),
+      css.width(length.percent(100)),
+    ]),
+    [],
+    [
+      h.label(
+        css.class([
+          css.margin_bottom(length.em(0.3)),
+        ]),
+        [a.for(name)],
+        [h.text(label)],
+      ),
+      h.textarea(
+        css.class([
+          css.display("block"),
+
+          css.padding(length.px(10)),
+          css.background_color(colors.input_background),
+          css.border_color(case is_valid {
+            True -> colors.black
+            False -> colors.red
+          }),
+          css.border_style("solid"),
+          css.border_width(length.px(1)),
+          css.border_radius(length.px(6)),
+
+          fonts.size_md(),
+          fonts.inter(),
+
+          styles.input_box_shadow(),
+
+          css.placeholder([css.color(colors.placeholder_text)]),
+
+          css.width(length.percent(100)),
+          css.box_sizing("border-box"),
+          css.text_align("start"),
+
+          css.resize("none"),
+
+          css.height(height),
+          css.width(length.percent(100)),
+        ]),
+        [
+          a.id(name),
+          a.name(name),
+          e.on_input(on_input),
+        ],
+        [h.text(value)],
+      ),
+    ],
+  )
 }
 
 pub fn tag(text: String) -> Element(msg) {

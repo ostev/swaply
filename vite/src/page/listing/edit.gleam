@@ -513,9 +513,14 @@ pub fn view(model: Model) -> Element(Msg) {
             e.on_submit(fn(_) { SubmitForm }),
             e.advanced("keydown", {
               use key <- decode.field("key", decode.string)
+              use tag_name <- decode.field("target", {
+                use tag_name <- decode.field("tagName", decode.string)
+
+                decode.success(tag_name)
+              })
 
               decode.success(case key {
-                "Enter" ->
+                "Enter" if tag_name != "TEXTAREA" ->
                   e.handler(
                     NoOp,
                     prevent_default: True,
@@ -553,6 +558,7 @@ pub fn view(model: Model) -> Element(Msg) {
                     value: model.form.short_description,
                     on_input: UpdatedShortDescription,
                     is_valid: True,
+                    height: length.em(4.0),
                   ),
 
                   ui.textarea(
@@ -561,6 +567,7 @@ pub fn view(model: Model) -> Element(Msg) {
                     value: model.form.description,
                     on_input: UpdatedDescription,
                     is_valid: True,
+                    height: length.em(10.0),
                   ),
 
                   ui.tags_input(
