@@ -108,3 +108,15 @@ pub fn tag() {
     css.color(colors.black),
   ])
 }
+
+pub fn focus_outline() {
+  css.compose(
+    css.class([
+      css.focus([
+        css.outline_style("solid"),
+        css.outline_width("2px"),
+        css.outline_color(colors.primary_background),
+      ]),
+    ]),
+  )
+}

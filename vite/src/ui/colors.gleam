@@ -27,3 +27,5 @@ pub const black = "black"
 pub const background2 = "#E7C6FF98"
 
 pub const input_box_shadow = "#9ebcff"
+
+pub const button_box_shadow = "#84a3e6"

@@ -28,6 +28,69 @@ import ui/fonts
 import ui/layout
 import ui/styles
 
+pub type ButtonRole {
+  Regular
+  Danger
+}
+
+pub fn button(role: ButtonRole, text: String, on_click: msg) -> Element(msg) {
+  button_internal("button", role, text, on_click)
+}
+
+pub fn submit(role: ButtonRole, text: String, on_click: msg) -> Element(msg) {
+  button_internal("submit", role, text, on_click)
+}
+
+fn button_internal(
+  type_: String,
+  role: ButtonRole,
+  text: String,
+  on_click: msg,
+) -> Element(msg) {
+  let #(bg_color, hover_color, text_color) = case role {
+    Regular -> #(
+      colors.primary_background,
+      colors.primary_foreground,
+      colors.black,
+    )
+    Danger -> #("red", colors.background, "white")
+  }
+
+  h.button(
+    css.class([
+      css.color(text_color),
+      css.background_color(bg_color),
+
+      fonts.inter(),
+      fonts.size_md(),
+
+      css.border_style("solid"),
+      css.border_color("black"),
+      css.border_width(length.px(1)),
+      css.border_radius(length.px(6)),
+
+      css.padding_inline(length.px(10)),
+      css.padding_block(length.px(6)),
+
+      css.transition("box-shadow 0.3s"),
+      css.box_shadow("3px 3px 5px " <> colors.button_box_shadow),
+      css.hover([
+        css.box_shadow("2px 2px 3px " <> colors.button_box_shadow),
+      ]),
+      css.active([
+        css.box_shadow("0px 0px 2px " <> colors.button_box_shadow),
+      ]),
+
+      css.transition("background-color 0.3s, box-shadow 0.3s"),
+      css.cursor("pointer"),
+
+      css.hover([css.background_color(hover_color)]),
+    ]),
+    [a.type_(type_), e.on_click(on_click)],
+    [h.text(text)],
+  )
+}
+
 pub fn input(
   class: css.Class,
   type_ type_: String,
@@ -52,7 +115,6 @@ pub fn input(
       ),
       h.input(
         css.class([
-          css.all("unset"),
           css.display("block"),
 
           css.padding(length.px(10)),
@@ -183,6 +245,14 @@ pub fn toggle_input(
           css.box_shadow("1px 1px 1px " <> colors.input_box_shadow <> " inset"),
           css.transition("box-shadow 0.4s " <> styles.energetic_hover_curve),
 
+          css.hover([
+            css.before([
+              css.transform([
+                transform.translate(length.em(0.1), length.percent(-50)),
+              ]),
+            ]),
+          ]),
+
           css.checked([
             css.box_shadow(
               "2px 2px 2px " <> colors.input_box_shadow <> " inset",
@@ -195,6 +265,14 @@ pub fn toggle_input(
 
               css.background_color(colors.secondary),
               css.box_shadow("2px 2px 8px 2px " <> colors.input_box_shadow),
+            ]),
+
+            css.hover([
+              css.before([
+                css.transform([
+                  transform.translate(length.em(0.95), length.percent(-50)),
+                ]),
+              ]),
             ]),
           ]),
         ]),
@@ -389,6 +467,7 @@ pub fn tags_input(
             a.name(name),
             a.id(name),
             a.value(value),
+            a.placeholder("Tag..."),
             e.on_input(fn(new_tags) {
               case new_tags |> string.trim_end() |> string.ends_with(",") {
                 True -> {
@@ -447,14 +526,20 @@ pub fn tags_input(
 
 pub fn item_type_input(item_type: listing.ItemInput, name: String, on_input) {
   element.fragment([
-    input_(
-      type_: "text",
-      name: name <> "_name",
+    title_input(
+      css.class([
+        css.max_width(length.percent(100)),
+        css.width(length.percent(100)),
+        css.font_size(length.px(25)),
+      ]),
+      name: "name",
       label: "Name",
-      value: option.Some(item_type.name),
-      on_input: fn(name) { on_input(listing.ItemInput(..item_type, name:)) },
-      is_valid: string.length(item_type.name) > 0,
+      value: item_type.name,
+      on_input: fn(value) {
+        on_input(listing.ItemInput(..item_type, name: value))
+      },
     ),
+
     number_input(
       name: name <> "_price",
       label: "Price",
@@ -614,7 +699,7 @@ pub fn h1(text: String) {
   )
 }
 
-pub fn h2(text: String) -> Element(a) {
+pub fn h2(text: String) -> Element(msg) {
   h.h2(
     css.class([
       fonts.merriweather(),
@@ -630,7 +715,7 @@ pub fn h2(text: String) -> Element(a) {
   )
 }
 
-pub fn h3(text: String) -> Element(a) {
+pub fn h3(text: String) -> Element(msg) {
   h.h3(
     css.class([
       fonts.merriweather(),
@@ -646,6 +731,60 @@ pub fn h3(text: String) -> Element(a) {
     [],
     [
       h.text(text),
+    ],
+  )
+}
+
+pub fn title_input(
+  class: css.Class,
+  name name: String,
+  label label: String,
+  value value: String,
+  on_input on_input: fn(String) -> msg,
+) -> Element(msg) {
+  h.input(
+    css.class([
+      css.all("unset"),
+      css.display("block"),
+
+      css.padding(length.px(10)),
+      css.background_color(colors.input_background),
+      css.border_color(colors.black),
+      css.border_style("solid"),
+      css.border_width(length.px(1)),
+      css.border_radius(length.px(6)),
+      css.font_size(length.px(16)),
+
+      css.transition("box-shadow 0.3s"),
+      css.box_shadow("3px 3px 3px " <> colors.input_box_shadow),
+      css.hover([
+        css.box_shadow("1px 1px 3px " <> colors.input_box_shadow),
+      ]),
+      css.active([
+        css.box_shadow("0px 0px 2px " <> colors.input_box_shadow),
+      ]),
+
+      css.placeholder([css.color(colors.placeholder_text)]),
+
+      fonts.merriweather(),
+      css.font_size(length.px(30)),
+      css.text_align("center"),
+
+      css.width(length.percent(100)),
+      css.max_width(length.em(10.0)),
+      css.box_sizing("border-box"),
+
+      css.margin_bottom(length.px(8)),
+
+      css.compose(class),
+    ]),
+    [
+      a.value(value),
+      a.placeholder(label <> "..."),
+      e.on_input(on_input),
+
+      a.aria_label(label),
+      a.name(name),
     ],
   )
 }

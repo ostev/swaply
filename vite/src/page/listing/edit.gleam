@@ -103,7 +103,7 @@ pub fn init(shared_model: Shared, mode: Mode) -> #(Model, Effect(Msg)) {
         tags: set.new(),
         sorted_tags: [],
         items: iv.from_list([
-          listing.ItemInput(name: "Standard", price: "", quantity: ""),
+          listing.ItemInput(name: "", price: "", quantity: ""),
         ]),
         current_tag: "",
         is_published: False,
@@ -504,6 +504,7 @@ pub fn view(model: Model) -> Element(Msg) {
             css.compose(styles.card()),
 
             css.margin_top(length.px(8)),
+            css.margin_bottom(length.px(20)),
 
             css.compose(layout.column(layout.Center)),
             css.gap(length.px(8)),
@@ -530,47 +531,12 @@ pub fn view(model: Model) -> Element(Msg) {
             }),
           ],
           [
-            h.input(
-              css.class([
-                css.all("unset"),
-                css.display("block"),
-
-                css.padding(length.px(10)),
-                css.background_color(colors.input_background),
-                css.border_color(colors.black),
-                css.border_style("solid"),
-                css.border_width(length.px(1)),
-                css.border_radius(length.px(6)),
-                css.font_size(length.px(16)),
-
-                css.transition("box-shadow 0.3s"),
-                css.box_shadow("3px 3px 3px " <> colors.input_box_shadow),
-                css.hover([
-                  css.box_shadow("1px 1px 3px " <> colors.input_box_shadow),
-                ]),
-                css.active([
-                  css.box_shadow("0px 0px 2px " <> colors.input_box_shadow),
-                ]),
-
-                css.placeholder([css.color(colors.placeholder_text)]),
-
-                fonts.merriweather(),
-                css.font_size(length.px(30)),
-
-                css.width(length.percent(100)),
-                css.max_width(length.em(10.0)),
-                css.box_sizing("border-box"),
-
-                css.margin_bottom(length.px(8)),
-              ]),
-              [
-                a.value(model.form.name),
-                a.placeholder("Title..."),
-                e.on_input(UpdatedName),
-
-                a.aria_label("Title"),
-                a.name("title"),
-              ],
+            ui.title_input(
+              css.class([]),
+              name: "title",
+              label: "Title",
+              value: model.form.name,
+              on_input: UpdatedName,
             ),
 
             h.div(
@@ -620,64 +586,81 @@ pub fn view(model: Model) -> Element(Msg) {
                 ui.fieldset([
                   ui.h3("Items for offer"),
 
-                  h.div_([], [
-                    h.div_(
-                      [],
-                      model.form.items
-                        |> iv.to_list
-                        |> list.index_map(fn(item_type, index) {
-                          h.div_([], [
-                            ui.item_type_input(
-                              item_type,
-                              "item_type_" <> int.to_string(index),
-                              UpdatedTicketType(_, index:),
-                            ),
-                            h.button_(
-                              [
-                                e.on_click(DeletedTicketType(index)),
-                                a.type_("button"),
-                              ],
-                              [
-                                h.text("Delete"),
-                              ],
-                            ),
-                          ])
-                        }),
-                    ),
+                  h.div(
+                    css.class([
+                      css.width(length.percent(100)),
+                    ]),
+                    [],
+                    [
+                      h.div_(
+                        [],
+                        model.form.items
+                          |> iv.to_list
+                          |> list.index_map(fn(item_type, index) {
+                            h.div_([], [
+                              ui.item_type_input(
+                                item_type,
+                                "item_type_" <> int.to_string(index),
+                                UpdatedTicketType(_, index:),
+                              ),
+                              h.button_(
+                                [
+                                  e.on_click(DeletedTicketType(index)),
+                                  a.type_("button"),
+                                ],
+                                [
+                                  h.text("Delete"),
+                                ],
+                              ),
+                            ])
+                          }),
+                      ),
 
-                    h.button_(
-                      [
-                        a.type_("button"),
-                        e.on_click(
-                          AddedTicketType(listing.ItemInput(
-                            name: "",
-                            price: "",
-                            quantity: "",
-                          )),
-                        ),
-                      ],
-                      [h.text("Add")],
-                    ),
-                  ]),
+                      h.button_(
+                        [
+                          a.type_("button"),
+                          e.on_click(
+                            AddedTicketType(listing.ItemInput(
+                              name: "",
+                              price: "",
+                              quantity: "",
+                            )),
+                          ),
+                        ],
+                        [h.text("Add")],
+                      ),
+                    ],
+                  ),
                 ]),
 
                 ui.fieldset([
                   ui.h3("Management"),
                   listing_date(model),
 
-                  ui.toggle_input(
-                    label: "Published?",
-                    name: "is_published",
-                    is_checked: model.form.is_published,
-                    on_input: UpdatedIsPublished,
-                  ),
-                ]),
+                  h.div(
+                    css.class([
+                      css.compose(layout.row(layout.SpaceBetween)),
+                      css.width(length.percent(100)),
+                    ]),
+                    [],
+                    [
+                      ui.toggle_input(
+                        label: "Published?",
+                        name: "is_published",
+                        is_checked: model.form.is_published,
+                        on_input: UpdatedIsPublished,
+                      ),
 
-                h.button_([a.type_("submit")], [
-                  h.text(case model.mode {
-                    Create -> "Create"
-                    Update(_) -> "Update"
-                  }),
+                      ui.submit(
+                        ui.Regular,
+                        case model.mode {
+                          Create -> "Create"
+                          Update(_) -> "Update"
+                        },
+                        SubmitForm,
+                      ),
+                    ],
+                  ),
                 ]),
 
                 h.div_([], case model.error {
