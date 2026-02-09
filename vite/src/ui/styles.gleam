@@ -2,6 +2,8 @@ import sketch/css
 import sketch/css/angle
 import sketch/css/length
 import sketch/css/transform
+import ui/colors
+import ui/layout
 
 pub fn padding_sm() {
   css.padding(length.px(4))
@@ -22,5 +24,29 @@ pub fn rotate_hover(amount) {
   css.class([
     css.transition("transform 0.3s " <> energetic_hover_curve),
     css.hover([css.transform([transform.rotate(angle.deg(amount))])]),
+  ])
+}
+
+pub fn interactive_box_shadow() {
+  css.class([
+    css.transition("box-shadow 0.2s ease-in"),
+
+    css.box_shadow("2px 2px 2px " <> colors.input_box_shadow),
+    css.hover([
+      css.box_shadow("1px 1px 2px " <> colors.input_box_shadow),
+    ]),
+    css.active([
+      css.box_shadow("0px 0px 2px " <> colors.input_box_shadow),
+    ]),
+  ])
+}
+
+pub fn card() {
+  css.class([
+    css.padding(length.px(10)),
+    css.background_color(colors.four),
+    css.border_radius(length.px(10)),
+
+    css.compose(interactive_box_shadow()),
   ])
 }
