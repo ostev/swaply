@@ -4,28 +4,28 @@
 
 // https://coolors.co/palette/ffd6ff-e7c6ff-c8b6ff-b8c0ff-bbd0ff
 
-pub const primary_foreground = "#FFD6FF"
+pub const primary_foreground = "hsl(300, 100%, 92%)"
 
-pub const primary_background = "#E7C6FF"
+pub const primary_background = "hsl(275, 100%, 89%)"
 
-pub const secondary = "#C8B6FF"
+pub const secondary = "hsl(255, 100%, 86%)"
 
-pub const tertiary = "#B8C0FF"
+pub const tertiary = "hsl(233, 100%, 86%)"
 
-pub const four = "#BBD0FF"
+pub const four = "hsl(221, 100%, 87%)"
 
-pub const background = "rgb(255, 249, 227)"
+pub const background = "hsl(47, 100%, 95%)"
 
-pub const input_background = "rgb(255, 252, 243)"
+pub const input_background = "hsl(45, 100%, 98%)"
 
-pub const placeholder_text = "#564680"
+pub const placeholder_text = "hsl(257, 29%, 39%)"
 
 pub const text = "black"
 
 pub const black = "black"
 
-pub const background2 = "#E7C6FF98"
+pub const background2 = "hsla(275, 100%, 89%, 0.60)"
 
-pub const input_box_shadow = "#9ebcff"
+pub const input_box_shadow = "hsl(221, 100%, 81%)"
 
-pub const button_box_shadow = "#84a3e6"
+pub const button_box_shadow = "hsl(221, 66%, 71%)"
