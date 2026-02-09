@@ -8,13 +8,16 @@ import gleam/uri.{type Uri}
 import lustre/attribute as a
 import lustre/effect.{type Effect}
 import lustre/element.{type Element}
-import lustre/element/html as h
 import lustre/event as e
 import modem
 import page/auth
 import rsvp
 import sketch/css
+import sketch/css/length
+import sketch/lustre/element/html as h
 import ui
+import ui/layout
+import ui/styles
 
 pub type Form {
   Form(email: String, name: String, password: String)
@@ -108,64 +111,84 @@ pub fn signup(form: Form) {
 }
 
 pub fn view(model: Model) -> Element(Msg) {
-  h.div([], [
-    h.form([e.on_submit(fn(_) { SubmitForm })], [
-      ui.input_(
-        type_: "text",
-        label: "Email",
-        name: "email",
-        value: option.Some(model.form.email),
-        on_input: UpdatedEmail,
-        is_valid: model.form.email |> string.contains("@"),
-      ),
-      ui.input_(
-        type_: "text",
-        label: "Name",
-        name: "name",
-        value: option.Some(model.form.name),
-        on_input: UpdatedName,
-        is_valid: string.length(model.form.name) > 0,
-      ),
-      ui.input_(
-        type_: "password",
-        label: "Password",
-        name: "password",
-        value: option.Some(model.form.password),
-        on_input: UpdatedPassword,
-        is_valid: string.length(model.form.password) >= 8,
-      ),
-      h.button([a.type_("submit")], [h.text("Sign up")]),
+  let spacing = css.class([css.margin_bottom(length.px(14))])
+  h.div(
+    css.class([
+      css.compose(layout.column(layout.Center)),
+      css.margin_top(length.rem(3.0)),
     ]),
-    h.div([], case model.error {
-      option.Some(error) -> {
-        case error {
-          rsvp.HttpError(response) -> {
-            let parsed_status =
-              json.parse(from: response.body, using: sign_up_response_decoder())
+    [],
+    [
+      ui.h2(css.class([css.margin_bottom(length.rem(2.0))]), "Sign up"),
 
-            case response.status, parsed_status {
-              422, Ok(status) -> {
-                [
-                  h.p([], [
-                    h.text(case status {
-                      InvalidEmail ->
-                        "The email you've provided doesn't actually exist."
-                      EmailAlreadyUsed ->
-                        "The email you've provided already has an account associated with it"
-                      InvalidPassword ->
-                        "The password you've entered is invalid. Make sure it contains at least 8 characters."
-                      Success -> "Error signing up. Please try again."
-                    }),
-                  ]),
-                ]
+      h.form(
+        css.class([
+          css.compose(styles.card()),
+          css.max_width(length.rem(20.0)),
+          css.width(length.percent(100)),
+        ]),
+        [e.on_submit(fn(_) { SubmitForm })],
+        [
+          ui.input(
+            spacing,
+            type_: "text",
+            label: "Email",
+            name: "email",
+            value: option.Some(model.form.email),
+            on_input: UpdatedEmail,
+            is_valid: model.form.email |> string.contains("@"),
+          ),
+          ui.input(
+            spacing,
+            type_: "text",
+            label: "Name",
+            name: "name",
+            value: option.Some(model.form.name),
+            on_input: UpdatedName,
+            is_valid: string.length(model.form.name) > 0,
+          ),
+          ui.input(
+            spacing,
+            type_: "password",
+            label: "Password",
+            name: "password",
+            value: option.Some(model.form.password),
+            on_input: UpdatedPassword,
+            is_valid: string.length(model.form.password) >= 8,
+          ),
+
+          ui.submit(ui.Regular, "Sign up"),
+        ],
+      ),
+
+      case model.error {
+        option.Some(error) ->
+          ui.error_panel(True, case error {
+            rsvp.HttpError(response) -> {
+              let parsed_status =
+                json.parse(
+                  from: response.body,
+                  using: sign_up_response_decoder(),
+                )
+
+              case response.status, parsed_status {
+                422, Ok(status) ->
+                  case status {
+                    InvalidEmail ->
+                      "The email you've provided doesn't actually exist."
+                    EmailAlreadyUsed ->
+                      "The email you've provided already has an account associated with it"
+                    InvalidPassword ->
+                      "The password you've entered is invalid. Make sure it contains at least 8 characters."
+                    Success -> "Error signing up. Please try again."
+                  }
+                _, _ -> "Error signing up. Please try again."
               }
-              _, _ -> [h.p([], [h.text("Error signing up. Please try again.")])]
             }
-          }
-          _ -> [h.p([], [h.text("Error signing up. Please try again.")])]
-        }
-      }
-      option.None -> []
-    }),
-  ])
+            _ -> "Error signing up. Please try again."
+          })
+        option.None -> element.none()
+      },
+    ],
+  )
 }
