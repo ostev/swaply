@@ -8,13 +8,16 @@ import gleam/uri.{type Uri}
 import lustre/attribute as a
 import lustre/effect.{type Effect}
 import lustre/element.{type Element}
-import lustre/element/html as h
 import lustre/event as e
 import modem
 import page/auth
 import rsvp
 import shared.{type Shared}
+import sketch/css
+import sketch/lustre/element/html as h
 import ui
+import ui/layout
+import ui/styles
 import ui/table
 import user.{type User}
 
@@ -124,21 +127,12 @@ fn submit(form: Form, user: User) {
 }
 
 pub fn view(model: Model) -> Element(Msg) {
-  h.div([], [
-    h.button([a.type_("button"), e.on_click(DeleteUser)], [h.text("Delete")]),
-
-    case model.delete_error {
-      option.Some(_) ->
-        h.p([], [
-          h.text("An error occurred while deleting the user. Please try again."),
-        ])
-      option.None -> element.none()
-    },
-
+  h.div(layout.row(layout.Center), [], [
     case model.form {
       option.None -> element.none()
       option.Some(form) -> {
         h.form(
+          css.class([css.compose(styles.card())]),
           [
             e.on_submit(fn(_) { SubmitForm }),
           ],
@@ -158,7 +152,10 @@ pub fn view(model: Model) -> Element(Msg) {
               on_input: fn(is_admin) { UpdateForm(Form(..form, is_admin:)) },
             ),
 
-            h.button([a.type_("submit")], [h.text("Update")]),
+            h.div(layout.row(layout.SpaceBetween), [], [
+              ui.button(ui.Danger, "Delete", DeleteUser),
+              ui.submit(ui.Regular, "Update"),
+            ]),
           ],
         )
       }
@@ -166,15 +163,22 @@ pub fn view(model: Model) -> Element(Msg) {
 
     case model.update_error {
       option.Some(error) -> {
-        h.p([], [
-          h.text(case error {
-            user.InvalidEmail -> "Please provide a valid new email."
-            user.EmailAlreadyUsed ->
-              "The new email you provided is already in use."
-            _ -> "An error occurred. Please try again."
-          }),
-        ])
+        ui.error_panel(True, case error {
+          user.InvalidEmail -> "Please provide a valid new email."
+          user.EmailAlreadyUsed ->
+            "The new email you provided is already in use."
+          _ -> "An error occurred. Please try again."
+        })
       }
+      option.None -> element.none()
+    },
+
+    case model.delete_error {
+      option.Some(_) ->
+        ui.error_panel(
+          True,
+          "An error occurred while deleting the user. Please try again.",
+        )
       option.None -> element.none()
     },
   ])

@@ -50,13 +50,8 @@ pub fn button(role: ButtonRole, text: String, on_click: msg) -> Element(msg) {
   )
 }
 
-pub fn submit(role: ButtonRole, text: String, on_click: msg) -> Element(msg) {
-  button_internal(
-    h.button,
-    [a.type_("submit"), e.on_click(on_click)],
-    role,
-    text,
-  )
+pub fn submit(role: ButtonRole, text: String) -> Element(msg) {
+  button_internal(h.button, [a.type_("submit")], role, text)
 }
 
 fn button_internal(

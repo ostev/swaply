@@ -714,14 +714,10 @@ pub fn view(model: Model) -> Element(Msg) {
                         on_input: UpdatedIsPublished,
                       ),
 
-                      ui.submit(
-                        ui.Regular,
-                        case model.mode {
-                          Create -> "Create"
-                          Update(_) -> "Update"
-                        },
-                        SubmitForm,
-                      ),
+                      ui.submit(ui.Regular, case model.mode {
+                        Create -> "Create"
+                        Update(_) -> "Update"
+                      }),
                     ],
                   ),
                 ]),
