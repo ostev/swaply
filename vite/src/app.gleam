@@ -358,33 +358,19 @@ fn nav(model: Model) -> Element(Msg) {
       css.display("flex"),
       css.align_items("center"),
       css.justify_content("space-between"),
+
+      css.gap(length.px(10)),
     ]),
     [],
     [
       action_nav(),
       case shared.is_admin(model.shared) {
-        True -> h.a_([a.href("/admin/users")], [h.text("Manage users")])
+        True -> ui.link_button(ui.Regular, "Manage users", to: "/admin/users")
         False -> element.none()
       },
       case model.shared.user {
         user.Authenticated(_) ->
-          h.button(
-            css.class([
-              css.all("unset"),
-              css.font_size(length.px(16)),
-              fonts.inter(),
-              css.border_style("solid"),
-              css.border_width(length.px(1)),
-              css.border_color(colors.black),
-              css.border_radius(length.em(0.5)),
-              css.padding(length.em(0.3)),
-              css.text_align("center"),
-            ]),
-            [e.on_click(UserRequestedLogout)],
-            [
-              element.text("Log out"),
-            ],
-          )
+          ui.button(ui.Regular, "Log out", UserRequestedLogout)
         user.Unauthenticated | user.Unknown ->
           h.div(
             css.class([

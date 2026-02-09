@@ -9,7 +9,7 @@ import gleam/string
 import gleam/uri
 import lenient_parse
 import listing.{type Listing}
-import lustre/attribute as a
+import lustre/attribute.{type Attribute} as a
 import lustre/element.{type Element}
 import lustre/event as e
 import phosphor
@@ -33,19 +33,38 @@ pub type ButtonRole {
   Danger
 }
 
+pub fn link_button(
+  role role: ButtonRole,
+  text text: String,
+  to href: String,
+) -> Element(msg) {
+  button_internal(h.a, [a.type_("submit"), a.href(href)], role, text)
+}
+
 pub fn button(role: ButtonRole, text: String, on_click: msg) -> Element(msg) {
-  button_internal("button", role, text, on_click)
+  button_internal(
+    h.button,
+    [a.type_("button"), e.on_click(on_click)],
+    role,
+    text,
+  )
 }
 
 pub fn submit(role: ButtonRole, text: String, on_click: msg) -> Element(msg) {
-  button_internal("submit", role, text, on_click)
+  button_internal(
+    h.button,
+    [a.type_("submit"), e.on_click(on_click)],
+    role,
+    text,
+  )
 }
 
 fn button_internal(
-  type_: String,
+  container: fn(css.Class, List(a.Attribute(msg)), List(Element(a))) ->
+    Element(msg),
+  attrs: List(Attribute(msg)),
   role: ButtonRole,
   text: String,
-  on_click: msg,
 ) -> Element(msg) {
   let #(bg_color, hover_color, text_color) = case role {
     Regular -> #(
@@ -56,7 +75,7 @@ fn button_internal(
     Danger -> #(colors.red, colors.red_light, "black")
   }
 
-  h.button(
+  container(
     css.class([
       css.color(text_color),
       css.background_color(bg_color),
@@ -84,9 +103,11 @@ fn button_internal(
       css.transition("background-color 0.3s, box-shadow 0.3s"),
       css.cursor("pointer"),
 
+      css.text_decoration("none"),
+
       css.hover([css.background_color(hover_color)]),
     ]),
-    [a.type_(type_), e.on_click(on_click)],
+    attrs,
     [h.text(text)],
   )
 }
