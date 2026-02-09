@@ -352,7 +352,7 @@ fn nav(model: Model) -> Element(Msg) {
       css.background_color("#E7C6FF98"),
       css.backdrop_filter("blur(20px)"),
       css.position("sticky"),
-      css.top(length.px(4)),
+      css.top(length.px(0)),
 
       css.border_radius(length.px(6)),
       css.display("flex"),

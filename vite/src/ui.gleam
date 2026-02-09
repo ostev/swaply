@@ -53,7 +53,7 @@ fn button_internal(
       colors.primary_foreground,
       colors.black,
     )
-    Danger -> #("red", colors.background, "white")
+    Danger -> #(colors.red, colors.red_light, "black")
   }
 
   h.button(
@@ -298,49 +298,81 @@ pub fn number_input(
   max max: Float,
   step step: Float,
 ) -> Element(msg) {
-  h.div_([], [
-    h.label_([a.for(name)], [h.text(label)]),
-    h.input_([
-      a.type_("text"),
-      a.name(name),
-      a.id(name),
-      a.value(value),
-      a.min(float.to_string(min)),
-      a.max(float.to_string(max)),
-      a.step(float.to_string(step)),
-      a.classes([
-        #(
-          "invalid",
-          value
-            |> lenient_parse.to_float
-            |> result.map(fn(value) {
-              !{
-                min <=. value
-                && value <=. max
-                && float.modulo(value, by: step)
-                |> result.map(float.loosely_equals(
-                  _,
-                  with: 0.0,
-                  tolerating: 0.001,
-                ))
-                |> result.unwrap(False)
-              }
-            })
-            |> result.unwrap(True),
-        ),
-      ]),
-      e.on_input(fn(text) {
-        let trimmed_text = string.trim(text)
+  let is_invalid =
+    !string.is_empty(value)
+    && value
+    |> lenient_parse.to_float
+    |> result.map(fn(value) {
+      !{
+        min <=. value
+        && value <=. max
+        && float.modulo(value, by: step)
+        |> result.map(float.loosely_equals(_, with: 0.0, tolerating: 0.001))
+        |> result.unwrap(False)
+      }
+    })
+    |> result.unwrap(True)
 
-        let updated_value = case trimmed_text {
-          "" -> option.None
-          number -> lenient_parse.to_float(number) |> option.from_result
-        }
+  h.div(
+    css.class([css.compose(layout.column(layout.Start)), fonts.inter()]),
+    [],
+    [
+      h.label(
+        css.class([
+          css.margin_bottom(length.em(0.3)),
+        ]),
+        [a.for(name)],
+        [
+          h.text(label),
+        ],
+      ),
+      h.input(
+        css.class([
+          css.display("block"),
 
-        on_input(text, updated_value)
-      }),
-    ]),
-  ])
+          css.padding(length.px(10)),
+          css.background_color(colors.input_background),
+          css.border_color(case is_invalid {
+            False -> colors.black
+            True -> colors.red
+          }),
+          css.border_style("solid"),
+          css.border_width(length.px(1)),
+          css.border_radius(length.px(6)),
+
+          fonts.size_md(),
+
+          styles.input_box_shadow(),
+
+          css.placeholder([css.color(colors.placeholder_text)]),
+
+          css.width(length.percent(100)),
+          css.box_sizing("border-box"),
+          css.text_align("start"),
+        ]),
+        [
+          a.type_("text"),
+          a.name(name),
+          a.id(name),
+          a.value(value),
+          a.min(float.to_string(min)),
+          a.max(float.to_string(max)),
+          a.step(float.to_string(step)),
+
+          e.on_input(fn(text) {
+            let trimmed_text = string.trim(text)
+
+            let updated_value = case trimmed_text {
+              "" -> option.None
+              number -> lenient_parse.to_float(number) |> option.from_result
+            }
+
+            on_input(text, updated_value)
+          }),
+        ],
+      ),
+    ],
+  )
 }
 
 pub fn textarea(
@@ -525,7 +557,7 @@ pub fn tags_input(
 }
 
 pub fn item_type_input(item_type: listing.ItemInput, name: String, on_input) {
-  element.fragment([
+  fieldset([
     title_input(
       css.class([
         css.max_width(length.percent(100)),
@@ -540,27 +572,36 @@ pub fn item_type_input(item_type: listing.ItemInput, name: String, on_input) {
       },
     ),
 
-    number_input(
-      name: name <> "_price",
-      label: "Price",
-      value: item_type.price,
-      on_input: fn(value, _) {
-        on_input(listing.ItemInput(..item_type, price: value))
-      },
-      min: 0.0,
-      max: 1_000_000.0,
-      step: 0.01,
-    ),
-    number_input(
-      name: name <> "_quantity",
-      label: "Quantity",
-      value: item_type.quantity,
-      on_input: fn(value, _) {
-        on_input(listing.ItemInput(..item_type, quantity: value))
-      },
-      min: 1.0,
-      max: 1_000_000.0,
-      step: 1.0,
+    h.div(
+      css.class([
+        css.compose(layout.row(layout.SpaceBetween)),
+        css.gap(length.px(20)),
+      ]),
+      [],
+      [
+        number_input(
+          name: name <> "_price",
+          label: "Price (AUD)",
+          value: item_type.price,
+          on_input: fn(value, _) {
+            on_input(listing.ItemInput(..item_type, price: value))
+          },
+          min: 0.0,
+          max: 1_000_000.0,
+          step: 0.01,
+        ),
+        number_input(
+          name: name <> "_quantity",
+          label: "Quantity",
+          value: item_type.quantity,
+          on_input: fn(value, _) {
+            on_input(listing.ItemInput(..item_type, quantity: value))
+          },
+          min: 1.0,
+          max: 1_000_000.0,
+          step: 1.0,
+        ),
+      ],
     ),
   ])
 }

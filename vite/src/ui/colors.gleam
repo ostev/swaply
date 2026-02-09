@@ -29,3 +29,9 @@ pub const background2 = "hsla(275, 100%, 89%, 0.60)"
 pub const input_box_shadow = "hsl(221, 100%, 81%)"
 
 pub const button_box_shadow = "hsl(221, 66%, 71%)"
+
+pub const opposite = "hsl(74, 100%, 86%)"
+
+pub const red = "hsl(0, 93%, 82%)"
+
+pub const red_light = "hsl(0, 79%, 89%)"

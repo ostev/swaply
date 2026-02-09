@@ -592,34 +592,48 @@ pub fn view(model: Model) -> Element(Msg) {
                     ]),
                     [],
                     [
-                      h.div_(
+                      h.div(
+                        css.class([
+                          css.compose(layout.column(layout.Start)),
+                          css.gap(length.em(2.0)),
+                          css.width(length.percent(100)),
+                        ]),
                         [],
                         model.form.items
                           |> iv.to_list
                           |> list.index_map(fn(item_type, index) {
-                            h.div_([], [
-                              ui.item_type_input(
-                                item_type,
-                                "item_type_" <> int.to_string(index),
-                                UpdatedTicketType(_, index:),
-                              ),
-                              h.button_(
-                                [
-                                  e.on_click(DeletedTicketType(index)),
-                                  a.type_("button"),
-                                ],
-                                [
-                                  h.text("Delete"),
-                                ],
-                              ),
-                            ])
+                            h.div(
+                              css.class([
+                                css.compose(layout.column(layout.Start)),
+                                css.gap(length.px(4)),
+                                css.width(length.percent(100)),
+                              ]),
+                              [],
+                              [
+                                ui.item_type_input(
+                                  item_type,
+                                  "item_type_" <> int.to_string(index),
+                                  UpdatedTicketType(_, index:),
+                                ),
+                                ui.button(
+                                  ui.Danger,
+                                  "Delete",
+                                  DeletedTicketType(index),
+                                ),
+                              ],
+                            )
                           }),
                       ),
 
-                      h.button_(
+                      h.div(
+                        css.class([
+                          css.compose(layout.row(layout.End)),
+                        ]),
+                        [],
                         [
-                          a.type_("button"),
-                          e.on_click(
+                          ui.button(
+                            ui.Regular,
+                            "Add",
                             AddedTicketType(listing.ItemInput(
                               name: "",
                               price: "",
@@ -627,7 +641,6 @@ pub fn view(model: Model) -> Element(Msg) {
                             )),
                           ),
                         ],
-                        [h.text("Add")],
                       ),
                     ],
                   ),
