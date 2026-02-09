@@ -14,7 +14,26 @@
   src: url("/static/fonts/Merriweather/Merriweather-Italic-VariableFont_opsz,wdth,wght.ttf")
     format("truetype-variations");
   font-weight: 125 950;
-  font-stretch: 75% 125%;
+  font-optical-sizing: auto;
+
+  font-style: italic;
+}
+
+@font-face {
+  font-family: "Inter";
+  src: url("/static/fonts/Inter/Inter-VariableFont_opsz,wght.ttf")
+    format("truetype-variations");
+  font-weight: 125 950;
+  /* TODO fix this */
+  font-optical-sizing: auto;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "Inter";
+  src: url("/static/fonts/Inter/Inter-Italic-VariableFont_opsz,wght.ttf")
+    format("truetype-variations");
+  font-weight: 125 950;
   font-optical-sizing: auto;
 
   font-style: italic;
@@ -22,6 +41,7 @@
 
 html, body {
   font-family: "Merriweather", serif;
+  background-color: rgb(255, 250, 232);
 }
 
 a {
