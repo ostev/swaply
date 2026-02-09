@@ -67,7 +67,7 @@ pub type EditError {
   NoTimeProvided
   DateParseError(tempo_error.DateParseError)
   TimeParseError(extra_time.ParseError)
-  IncompleteTicketType
+  IncompleteItem
   ServerCreationError(ServerResponse)
   AttemptedToEditNonexistentListing
   RsvpError(rsvp.Error)
@@ -415,7 +415,7 @@ fn submit(form: Form, mode: Mode) -> Result(Effect(Msg), EditError) {
       listing.parse_item_type(item_type)
       |> result.map(listing.item_type_to_json)
     })
-    |> result.replace_error(IncompleteTicketType),
+    |> result.replace_error(IncompleteItem),
   )
 
   let body =
@@ -447,49 +447,90 @@ fn submit(form: Form, mode: Mode) -> Result(Effect(Msg), EditError) {
 }
 
 fn listing_date(model: Model) -> Element(Msg) {
-  let date_is_valid = is_date_valid(model.form.date)
+  let date_is_valid =
+    { model.form.date |> option.map(string.is_empty) |> option.unwrap(True) }
+    || is_date_valid(model.form.date)
 
-  h.div(
-    css.class([
-      css.compose(layout.row(layout.SpaceBetween)),
-      css.align_items("start"),
-      css.gap(length.px(12)),
-    ]),
-    [],
-    [
-      h.div(css.class([css.flex("1")]), [], [
-        ui.input_(
-          type_: "date",
-          label: "Date",
-          name: "date",
-          value: model.form.date,
-          on_input: UpdatedDate,
-          is_valid: date_is_valid,
-        ),
-
-        case date_is_valid {
-          True -> element.none()
-          False ->
-            h.p_([], [
-              h.text("Please enter a date in the future."),
-            ])
-        },
+  h.div_([], [
+    h.div(
+      css.class([
+        css.compose(layout.row(layout.SpaceBetween)),
+        css.align_items("start"),
+        css.gap(length.px(12)),
       ]),
+      [],
+      [
+        h.div(css.class([css.flex("1")]), [], [
+          ui.input_(
+            type_: "date",
+            label: "Date",
+            name: "date",
+            value: model.form.date,
+            on_input: UpdatedDate,
+            is_valid: date_is_valid,
+          ),
+        ]),
 
-      h.div(css.class([css.flex("1")]), [], [
-        ui.input_(
-          type_: "time",
-          label: "Time",
-          name: "time",
-          value: model.form.time,
-          on_input: UpdatedTime,
-          is_valid: model.form.time
-            |> option.map(is_time_valid)
-            |> option.unwrap(False),
-        ),
-      ]),
-    ],
-  )
+        h.div(css.class([css.flex("1")]), [], [
+          ui.input_(
+            type_: "time",
+            label: "Time",
+            name: "time",
+            value: model.form.time,
+            on_input: UpdatedTime,
+            is_valid: model.form.time
+              |> option.map(is_time_valid)
+              |> option.unwrap(False),
+          ),
+        ]),
+      ],
+    ),
+  ])
+}
+
+fn error_panel(model: Model) -> Element(Msg) {
+  let date_is_valid =
+    { model.form.date |> option.map(string.is_empty) |> option.unwrap(True) }
+    || is_date_valid(model.form.date)
+
+  h.div_([], [
+    ui.error_panel(
+      !date_is_valid || option.is_some(model.error),
+      case model.error {
+        option.Some(error) ->
+          case error {
+            ServerCreationError(server_response) -> {
+              case server_response {
+                InvalidName ->
+                  "Please provide a name for the listing that is longer than 3 characters."
+                NameAlreadyUsed -> "An listing with this name already exists."
+                Unauthorised -> "Please log in to create an listing."
+              }
+            }
+
+            NoDateProvided -> {
+              "Please provide a date for the listing."
+            }
+            DateParseError(_) ->
+              "Please provide a valid date in the future for the listing."
+            IncompleteItem -> "One of the items is incomplete."
+            NoTimeProvided -> "Please provide a time for the listing."
+            RsvpError(_) ->
+              "A network error occurred while creating your listing. Please try again"
+            TimeParseError(_) ->
+              "Please provide a valid time in the future for the listing."
+            AttemptedToEditNonexistentListing ->
+              "The listing you are trying to edit does not exist."
+            InvalidId -> "The listing ID contained within the URL is invalid."
+          }
+        option.None ->
+          case date_is_valid {
+            False -> "Please enter a date in the future."
+            True -> ""
+          }
+      },
+    ),
+  ])
 }
 
 pub fn view(model: Model) -> Element(Msg) {
@@ -657,6 +698,8 @@ pub fn view(model: Model) -> Element(Msg) {
                   ui.h3("Management"),
                   listing_date(model),
 
+                  error_panel(model),
+
                   h.div(
                     css.class([
                       css.compose(layout.row(layout.SpaceBetween)),
@@ -682,46 +725,6 @@ pub fn view(model: Model) -> Element(Msg) {
                     ],
                   ),
                 ]),
-
-                h.div_([], case model.error {
-                  option.Some(error) -> {
-                    [
-                      h.p_([], [
-                        h.text(case error {
-                          ServerCreationError(server_response) -> {
-                            case server_response {
-                              InvalidName ->
-                                "Please provide a name for the listing that is longer than 3 characters."
-                              NameAlreadyUsed ->
-                                "An listing with this name already exists."
-                              Unauthorised ->
-                                "Please log in to create an listing."
-                            }
-                          }
-
-                          NoDateProvided -> {
-                            "Please provide a date for the listing."
-                          }
-                          DateParseError(_) ->
-                            "Please provide a valid date in the future for the listing."
-                          IncompleteTicketType ->
-                            "One of the provided item types is incomplete."
-                          NoTimeProvided ->
-                            "Please provide a time for the listing."
-                          RsvpError(_) ->
-                            "A network error occurred while creating your listing. Please try again"
-                          TimeParseError(_) ->
-                            "Please provide a valid time in the future for the listing."
-                          AttemptedToEditNonexistentListing ->
-                            "The listing you are trying to edit does not exist."
-                          InvalidId ->
-                            "The listing ID contained within the URL is invalid."
-                        }),
-                      ]),
-                    ]
-                  }
-                  option.None -> []
-                }),
               ],
             ),
           ],

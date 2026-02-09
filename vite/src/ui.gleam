@@ -872,3 +872,38 @@ pub fn title_input(
     ],
   )
 }
+
+pub fn error_panel(is_error: Bool, text: String) {
+  h.div(
+    css.class([
+      css.height(length.em(1.5)),
+      css.width(length.percent(100)),
+      css.margin_block(length.px(8)),
+    ]),
+    [],
+    case is_error {
+      False -> []
+      True -> [
+        h.p(
+          css.class([
+            fonts.inter(),
+            fonts.size_md(),
+            css.color(colors.black),
+
+            css.border_color(colors.red),
+            css.border_style("solid"),
+            css.border_width(length.px(1)),
+            css.border_radius(length.px(6)),
+
+            css.font_weight("500"),
+            css.margin(length.px(0)),
+            css.padding(length.px(8)),
+            css.background_color(colors.red_light),
+          ]),
+          [],
+          [h.text(text)],
+        ),
+      ]
+    },
+  )
+}
