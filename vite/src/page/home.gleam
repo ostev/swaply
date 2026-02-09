@@ -6,14 +6,19 @@ import listing
 import lustre/attribute as a
 import lustre/effect.{type Effect}
 import lustre/element.{type Element}
-import lustre/element/html as h
-import lustre/element/keyed
 import lustre/event as e
 import rsvp
 import shared.{type Shared}
+import sketch/css
+import sketch/css/length
+import sketch/lustre/element/html as h
+import sketch/lustre/element/keyed
 import tempo
 import tempo/instant
 import ui
+import ui/colors
+import ui/layout
+import ui/styles
 import user
 
 pub type Model {
@@ -129,7 +134,7 @@ fn date_filter_control(
   value: Option(tempo.Date),
   on_input: fn(Option(tempo.Date)) -> msg,
 ) -> Element(msg) {
-  h.div([], [
+  h.div_([], [
     ui.toggle_input(
       label: "Filter by " <> string.lowercase(label) <> "?",
       name: "toggle_" <> name,
@@ -140,48 +145,105 @@ fn date_filter_control(
 }
 
 pub fn view(model: Model, shared: Shared) -> Element(Msg) {
-  h.div([], [
-    h.h1([], [h.text("Listings")]),
-    h.h2([], [
-      h.text(
-        "Hello there! "
-        <> case shared.user {
-          user.Authenticated(user) -> "Your name is " <> user.name
-          user.Unauthenticated -> "You have not signed in."
-          user.Unknown -> ""
-        },
-      ),
-    ]),
-    h.input([
-      a.value(model.search_query),
-      a.placeholder("Search for listings..."),
-      e.debounce(e.on_input(UpdateSearchQuery), 200),
-    ]),
-    case shared.user {
-      user.Authenticated(_) -> {
-        ui.toggle_input(
-          label: "Only your listings?",
-          name: "filter_owned",
-          is_checked: model.filter.only_owned,
-          on_input: fn(is_checked) {
-            UpdatedFilter(
-              listing.SearchFilter(..model.filter, only_owned: is_checked),
-            )
-          },
-        )
-      }
-      user.Unknown | user.Unauthenticated -> element.none()
-    },
+  h.div_([], [
+    h.div(
+      css.class([
+        css.compose(layout.column(layout.Center)),
+
+        css.width(length.percent(100)),
+
+        css.margin_top(length.rem(1.5)),
+        css.margin_bottom(length.rem(2.0)),
+        css.gap(length.px(10)),
+      ]),
+      [],
+      [
+        ui.h2("Listings"),
+
+        h.div(
+          css.class([
+            css.width(length.percent(100)),
+            css.max_width(length.rem(20.0)),
+
+            css.compose(styles.card()),
+            css.compose(layout.column(layout.Start)),
+            css.gap(length.em(0.6)),
+          ]),
+          [],
+          [
+            h.input(
+              css.class([
+                css.all("unset"),
+                css.display("block"),
+
+                css.padding(length.px(10)),
+                css.background_color(colors.input_background),
+                css.border_color(colors.black),
+                css.border_style("solid"),
+                css.border_width(length.px(1)),
+                css.border_radius(length.px(6)),
+                css.font_size(length.px(16)),
+
+                css.transition("box-shadow 0.3s"),
+                css.box_shadow("3px 3px 3px " <> colors.input_box_shadow),
+                css.hover([
+                  css.box_shadow("1px 1px 3px " <> colors.input_box_shadow),
+                ]),
+                css.active([
+                  css.box_shadow("0px 0px 2px " <> colors.input_box_shadow),
+                ]),
+
+                css.placeholder([css.color(colors.placeholder_text)]),
+
+                css.font_family("Inter, sans-serif"),
+
+                css.width(length.percent(100)),
+                css.box_sizing("border-box"),
+                css.text_align("center"),
+              ]),
+              [
+                a.value(model.search_query),
+                a.placeholder("Search for listings..."),
+                e.debounce(e.on_input(UpdateSearchQuery), 200),
+
+                a.aria_label("Search for listings"),
+                a.name("search_listings"),
+              ],
+            ),
+
+            case shared.user {
+              user.Authenticated(_) -> {
+                ui.toggle_input(
+                  label: "Only your listings?",
+                  name: "filter_owned",
+                  is_checked: model.filter.only_owned,
+                  on_input: fn(is_checked) {
+                    UpdatedFilter(
+                      listing.SearchFilter(
+                        ..model.filter,
+                        only_owned: is_checked,
+                      ),
+                    )
+                  },
+                )
+              }
+              user.Unknown | user.Unauthenticated -> element.none()
+            },
+          ],
+        ),
+      ],
+    ),
+
     case model.listings {
       option.Some(search_result) -> {
-        h.div([], [
-          keyed.ol(
+        h.div_([], [
+          keyed.ol_(
             [],
             search_result.listings
               |> list.map(fn(listing) {
                 #(
                   listing.id,
-                  h.li([], [
+                  h.li_([], [
                     ui.listing_card_view(
                       listing,
                       is_editable: shared
@@ -194,7 +256,7 @@ pub fn view(model: Model, shared: Shared) -> Element(Msg) {
               }),
           ),
 
-          h.div([], [
+          h.div_([], [
             ui.page_control(
               page: model.page,
               of: search_result.number_of_pages,

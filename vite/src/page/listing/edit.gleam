@@ -18,17 +18,23 @@ import listing.{type Listing}
 import lustre/attribute as a
 import lustre/effect.{type Effect}
 import lustre/element.{type Element}
-import lustre/element/html as h
 import lustre/event as e
 import modem
 import rsvp
 import shared.{type Shared}
+import sketch/css
+import sketch/css/length
+import sketch/lustre/element/html as h
 import tempo
 import tempo/date
 import tempo/datetime
 import tempo/error as tempo_error
 import tempo/offset
 import ui
+import ui/colors
+import ui/fonts
+import ui/layout
+import ui/styles
 
 pub type Model {
   Model(mode: Mode, form: Form, error: Option(EditError))
@@ -443,11 +449,22 @@ fn submit(form: Form, mode: Mode) -> Result(Effect(Msg), EditError) {
 pub fn view(model: Model) -> Element(Msg) {
   let date_is_valid = is_date_valid(model.form.date)
 
-  h.div([], [
+  h.div(layout.row(layout.Center), [], [
     case model.form.is_editable {
       False -> element.none()
       True ->
         h.form(
+          css.class([
+            css.max_width(length.rem(26.0)),
+            css.width(length.percent(100)),
+            css.compose(styles.card()),
+
+            css.margin_top(length.px(8)),
+
+            // css.display("grid"),
+            // css.grid_template_columns("auto 1fr"),
+            css.compose(layout.column(layout.Center)),
+          ]),
           [
             e.on_submit(fn(_) { SubmitForm }),
             e.advanced("keydown", {
@@ -470,168 +487,229 @@ pub fn view(model: Model) -> Element(Msg) {
             }),
           ],
           [
-            ui.input(
-              type_: "text",
-              label: "Title",
-              name: "name",
-              value: option.Some(model.form.name),
-              on_input: UpdatedName,
-              is_valid: string.length(model.form.name) > 1,
+            h.input(
+              css.class([
+                css.all("unset"),
+                css.display("block"),
+
+                css.padding(length.px(10)),
+                css.background_color(colors.input_background),
+                css.border_color(colors.black),
+                css.border_style("solid"),
+                css.border_width(length.px(1)),
+                css.border_radius(length.px(6)),
+                css.font_size(length.px(16)),
+
+                css.transition("box-shadow 0.3s"),
+                css.box_shadow("3px 3px 3px " <> colors.input_box_shadow),
+                css.hover([
+                  css.box_shadow("1px 1px 3px " <> colors.input_box_shadow),
+                ]),
+                css.active([
+                  css.box_shadow("0px 0px 2px " <> colors.input_box_shadow),
+                ]),
+
+                css.placeholder([css.color(colors.placeholder_text)]),
+
+                fonts.merriweather(),
+                css.font_size(length.px(30)),
+
+                css.width(length.percent(100)),
+                css.max_width(length.em(10.0)),
+                css.box_sizing("border-box"),
+                css.text_align("center"),
+              ]),
+              [
+                a.value(model.form.name),
+                a.placeholder("Title..."),
+                e.on_input(UpdatedName),
+
+                a.aria_label("Title"),
+                a.name("title"),
+              ],
             ),
 
-            ui.input(
-              type_: "date",
-              label: "Date",
-              name: "date",
-              value: model.form.date,
-              on_input: UpdatedDate,
-              is_valid: date_is_valid,
-            ),
-
-            case date_is_valid {
-              True -> element.none()
-              False -> h.p([], [h.text("Please enter a date in the future.")])
-            },
-
-            ui.input(
-              type_: "time",
-              label: "Time",
-              name: "time",
-              value: model.form.time,
-              on_input: UpdatedTime,
-              is_valid: model.form.time
-                |> option.map(is_time_valid)
-                |> option.unwrap(False),
-            ),
-
-            ui.input(
-              type_: "text",
-              label: "Location",
-              name: "location",
-              value: option.Some(model.form.location),
-              on_input: UpdatedLocation,
-              is_valid: True,
-            ),
-
-            ui.textarea(
-              label: "Short description",
-              name: "short_description",
-              value: model.form.short_description,
-              on_input: UpdatedShortDescription,
-              is_valid: True,
-            ),
-
-            ui.textarea(
-              label: "Description",
-              name: "description",
-              value: model.form.description,
-              on_input: UpdatedDescription,
-              is_valid: True,
-            ),
-
-            ui.tags_input(
-              label: "Tags",
-              name: "tags",
-              sorted_tags: model.form.sorted_tags,
-              value: model.form.current_tag,
-              on_update_value: UpdateCurrentTag,
-              on_create_tags: CreatedTags,
-              on_remove_tag: DeletedTag,
-            ),
-
-            h.h3([], [h.text("Items for offer")]),
-
-            h.div([], [
-              h.div(
-                [],
-                model.form.items
-                  |> iv.to_list
-                  |> list.index_map(fn(item_type, index) {
-                    h.div([], [
-                      ui.item_type_input(
-                        item_type,
-                        "item_type_" <> int.to_string(index),
-                        UpdatedTicketType(_, index:),
-                      ),
-                      h.button(
-                        [
-                          e.on_click(DeletedTicketType(index)),
-                          a.type_("button"),
-                        ],
-                        [
-                          h.text("Delete"),
-                        ],
-                      ),
-                    ])
-                  }),
-              ),
-
-              h.button(
-                [
-                  a.type_("button"),
-                  e.on_click(
-                    AddedTicketType(listing.ItemInput(
-                      name: "",
-                      price: "",
-                      quantity: "",
-                    )),
-                  ),
-                ],
-                [h.text("Add")],
-              ),
-            ]),
-
-            ui.toggle_input(
-              label: "Published?",
-              name: "is_published",
-              is_checked: model.form.is_published,
-              on_input: UpdatedIsPublished,
-            ),
-
-            h.button([a.type_("submit")], [
-              h.text(case model.mode {
-                Create -> "Create"
-                Update(_) -> "Update"
-              }),
-            ]),
-
-            h.div([], case model.error {
-              option.Some(error) -> {
-                [
-                  h.p([], [
-                    h.text(case error {
-                      ServerCreationError(server_response) -> {
-                        case server_response {
-                          InvalidName ->
-                            "Please provide a name for the listing that is longer than 3 characters."
-                          NameAlreadyUsed ->
-                            "An listing with this name already exists."
-                          Unauthorised -> "Please log in to create an listing."
-                        }
-                      }
-
-                      NoDateProvided -> {
-                        "Please provide a date for the listing."
-                      }
-                      DateParseError(_) ->
-                        "Please provide a valid date in the future for the listing."
-                      IncompleteTicketType ->
-                        "One of the provided item types is incomplete."
-                      NoTimeProvided -> "Please provide a time for the listing."
-                      RsvpError(_) ->
-                        "A network error occurred while creating your listing. Please try again"
-                      TimeParseError(_) ->
-                        "Please provide a valid time in the future for the listing."
-                      AttemptedToEditNonexistentListing ->
-                        "The listing you are trying to edit does not exist."
-                      InvalidId ->
-                        "The listing ID contained within the URL is invalid."
-                    }),
+            h.div(
+              css.class([
+                css.width(length.percent(95)),
+                css.margin_top(length.px(20)),
+              ]),
+              [],
+              [
+                h.div(
+                  css.class([
+                    css.compose(layout.row(layout.SpaceBetween)),
+                    css.align_items("start"),
+                    css.gap(length.px(12)),
                   ]),
-                ]
-              }
-              option.None -> []
-            }),
+                  [],
+                  [
+                    h.div(css.class([css.flex("1")]), [], [
+                      ui.input_(
+                        type_: "date",
+                        label: "Date",
+                        name: "date",
+                        value: model.form.date,
+                        on_input: UpdatedDate,
+                        is_valid: date_is_valid,
+                      ),
+
+                      case date_is_valid {
+                        True -> element.none()
+                        False ->
+                          h.p_([], [
+                            h.text("Please enter a date in the future."),
+                          ])
+                      },
+                    ]),
+
+                    h.div(css.class([css.flex("1")]), [], [
+                      ui.input_(
+                        type_: "time",
+                        label: "Time",
+                        name: "time",
+                        value: model.form.time,
+                        on_input: UpdatedTime,
+                        is_valid: model.form.time
+                          |> option.map(is_time_valid)
+                          |> option.unwrap(False),
+                      ),
+                    ]),
+                  ],
+                ),
+
+                ui.input_(
+                  type_: "text",
+                  label: "Location",
+                  name: "location",
+                  value: option.Some(model.form.location),
+                  on_input: UpdatedLocation,
+                  is_valid: True,
+                ),
+
+                ui.textarea(
+                  label: "Short description",
+                  name: "short_description",
+                  value: model.form.short_description,
+                  on_input: UpdatedShortDescription,
+                  is_valid: True,
+                ),
+
+                ui.textarea(
+                  label: "Description",
+                  name: "description",
+                  value: model.form.description,
+                  on_input: UpdatedDescription,
+                  is_valid: True,
+                ),
+
+                ui.tags_input(
+                  label: "Tags",
+                  name: "tags",
+                  sorted_tags: model.form.sorted_tags,
+                  value: model.form.current_tag,
+                  on_update_value: UpdateCurrentTag,
+                  on_create_tags: CreatedTags,
+                  on_remove_tag: DeletedTag,
+                ),
+
+                h.h3_([], [h.text("Items for offer")]),
+
+                h.div_([], [
+                  h.div_(
+                    [],
+                    model.form.items
+                      |> iv.to_list
+                      |> list.index_map(fn(item_type, index) {
+                        h.div_([], [
+                          ui.item_type_input(
+                            item_type,
+                            "item_type_" <> int.to_string(index),
+                            UpdatedTicketType(_, index:),
+                          ),
+                          h.button_(
+                            [
+                              e.on_click(DeletedTicketType(index)),
+                              a.type_("button"),
+                            ],
+                            [
+                              h.text("Delete"),
+                            ],
+                          ),
+                        ])
+                      }),
+                  ),
+
+                  h.button_(
+                    [
+                      a.type_("button"),
+                      e.on_click(
+                        AddedTicketType(listing.ItemInput(
+                          name: "",
+                          price: "",
+                          quantity: "",
+                        )),
+                      ),
+                    ],
+                    [h.text("Add")],
+                  ),
+                ]),
+
+                ui.toggle_input(
+                  label: "Published?",
+                  name: "is_published",
+                  is_checked: model.form.is_published,
+                  on_input: UpdatedIsPublished,
+                ),
+
+                h.button_([a.type_("submit")], [
+                  h.text(case model.mode {
+                    Create -> "Create"
+                    Update(_) -> "Update"
+                  }),
+                ]),
+
+                h.div_([], case model.error {
+                  option.Some(error) -> {
+                    [
+                      h.p_([], [
+                        h.text(case error {
+                          ServerCreationError(server_response) -> {
+                            case server_response {
+                              InvalidName ->
+                                "Please provide a name for the listing that is longer than 3 characters."
+                              NameAlreadyUsed ->
+                                "An listing with this name already exists."
+                              Unauthorised ->
+                                "Please log in to create an listing."
+                            }
+                          }
+
+                          NoDateProvided -> {
+                            "Please provide a date for the listing."
+                          }
+                          DateParseError(_) ->
+                            "Please provide a valid date in the future for the listing."
+                          IncompleteTicketType ->
+                            "One of the provided item types is incomplete."
+                          NoTimeProvided ->
+                            "Please provide a time for the listing."
+                          RsvpError(_) ->
+                            "A network error occurred while creating your listing. Please try again"
+                          TimeParseError(_) ->
+                            "Please provide a valid time in the future for the listing."
+                          AttemptedToEditNonexistentListing ->
+                            "The listing you are trying to edit does not exist."
+                          InvalidId ->
+                            "The listing ID contained within the URL is invalid."
+                        }),
+                      ]),
+                    ]
+                  }
+                  option.None -> []
+                }),
+              ],
+            ),
           ],
         )
     },

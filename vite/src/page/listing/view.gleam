@@ -187,7 +187,7 @@ pub fn view(model: Model, shared: Shared) -> Element(Msg) {
           }
         })
         |> option.unwrap(element.none()),
-      ui.input(
+      ui.input_(
         label: "Name",
         type_: "text",
         name: "delete_modal_verify",

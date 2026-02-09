@@ -346,8 +346,14 @@ fn view_page(page: Page, shared: Shared) {
 fn nav(model: Model) -> Element(Msg) {
   h.nav(
     css.class([
-      styles.padding_md(),
-      css.background_color("#E7C6FF"),
+      css.padding_inline(length.px(10)),
+      css.padding_block(length.px(15)),
+
+      css.background_color("#E7C6FF98"),
+      css.backdrop_filter("blur(20px)"),
+      css.position("sticky"),
+      css.top(length.px(4)),
+
       css.border_radius(length.px(6)),
       css.display("flex"),
       css.align_items("center"),
@@ -362,9 +368,23 @@ fn nav(model: Model) -> Element(Msg) {
       },
       case model.shared.user {
         user.Authenticated(_) ->
-          h.button_([e.on_click(UserRequestedLogout)], [
-            element.text("Log out"),
-          ])
+          h.button(
+            css.class([
+              css.all("unset"),
+              css.font_size(length.px(16)),
+              fonts.inter(),
+              css.border_style("solid"),
+              css.border_width(length.px(1)),
+              css.border_color(colors.black),
+              css.border_radius(length.em(0.5)),
+              css.padding(length.em(0.3)),
+              css.text_align("center"),
+            ]),
+            [e.on_click(UserRequestedLogout)],
+            [
+              element.text("Log out"),
+            ],
+          )
         user.Unauthenticated | user.Unknown ->
           h.div(
             css.class([

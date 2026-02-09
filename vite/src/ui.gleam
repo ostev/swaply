@@ -24,9 +24,11 @@ import tempo/datetime
 import tempo/offset
 import ui/colors
 import ui/fonts
+import ui/layout
 import ui/styles
 
 pub fn input(
+  class: css.Class,
   type_ type_: String,
   name name: String,
   label label: String,
@@ -34,17 +36,72 @@ pub fn input(
   on_input on_input: fn(String) -> msg,
   is_valid is_valid: Bool,
 ) -> Element(msg) {
-  h.div_([], [
-    h.label_([a.for(name)], [h.text(label)]),
-    h.input_([
-      a.type_(type_),
-      a.name(name),
-      a.id(name),
-      a.value(value |> option.unwrap("")),
-      a.classes([#("invalid", !is_valid)]),
-      e.on_input(on_input),
-    ]),
-  ])
+  h.div(
+    css.class([css.compose(layout.column(layout.Start)), fonts.inter()]),
+    [],
+    [
+      h.label(
+        css.class([
+          css.margin_bottom(length.em(0.3)),
+        ]),
+        [a.for(name)],
+        [
+          h.text(label),
+        ],
+      ),
+      h.input(
+        css.class([
+          css.all("unset"),
+          css.display("block"),
+
+          css.padding(length.px(10)),
+          css.background_color(colors.input_background),
+          css.border_color(colors.black),
+          css.border_style("solid"),
+          css.border_width(length.px(1)),
+          css.border_radius(length.px(6)),
+
+          css.font_size(length.px(16)),
+
+          css.transition("box-shadow 0.3s"),
+          css.box_shadow("3px 3px 3px " <> colors.input_box_shadow),
+          css.hover([
+            css.box_shadow("1px 1px 3px " <> colors.input_box_shadow),
+          ]),
+          css.active([
+            css.box_shadow("0px 0px 2px " <> colors.input_box_shadow),
+          ]),
+
+          css.placeholder([css.color(colors.placeholder_text)]),
+
+          css.width(length.percent(100)),
+          css.box_sizing("border-box"),
+          css.text_align("start"),
+
+          css.compose(class),
+        ]),
+        [
+          a.type_(type_),
+          a.name(name),
+          a.id(name),
+          a.value(value |> option.unwrap("")),
+          a.classes([#("invalid", !is_valid)]),
+          e.on_input(on_input),
+        ],
+      ),
+    ],
+  )
+}
+
+pub fn input_(
+  type_ type_: String,
+  name name: String,
+  label label: String,
+  value value: Option(String),
+  on_input on_input: fn(String) -> msg,
+  is_valid is_valid: Bool,
+) {
+  input(css.class([]), type_, name, label, value, on_input, is_valid)
 }
 
 pub fn search_input(
@@ -71,83 +128,93 @@ pub fn toggle_input(
   is_checked is_checked: Bool,
   on_input on_input: fn(Bool) -> msg,
 ) -> Element(msg) {
-  h.div_([], [
-    h.label_([a.for(name)], [h.text(label)]),
-    h.input(
-      css.class([
-        css.appearance("none"),
-        css.position("relative"),
-        css.font_size_("inherit"),
+  h.div(
+    css.class([
+      css.compose(layout.row(layout.SpaceBetween)),
+      css.gap(length.em(1.0)),
+    ]),
+    [],
+    [
+      h.label(css.class([css.display("block"), fonts.inter()]), [a.for(name)], [
+        h.text(label),
+      ]),
+      h.input(
+        css.class([
+          css.display("block"),
+          css.appearance("none"),
+          css.position("relative"),
+          css.font_size_("inherit"),
 
-        css.width(length.em(2.3)),
-        css.height(length.em(1.3)),
+          css.width(length.em(2.3)),
+          css.height(length.em(1.3)),
 
-        css.box_sizing("content-box"),
-        css.border_width(length.px(1)),
-        css.border_style("solid"),
-        css.border_color(colors.black),
-        css.border_radius(length.em(1.0)),
-        css.vertical_align("text-bottom"),
-
-        css.margin_("auto"),
-        css.color("inherit"),
-
-        css.before([
-          css.property("content", "\"\""),
-          css.position("absolute"),
-          css.top(length.percent(50)),
-          css.left(length.percent(0)),
-
-          css.transform([
-            transform.translate(length.percent(0), length.percent(-50)),
-          ]),
-          css.box_sizing("border-box"),
-          css.width(length.em(1.0)),
-          css.height(length.em(1.0)),
-
-          css.margin_("0 0.15em"),
+          css.box_sizing("content-box"),
           css.border_width(length.px(1)),
           css.border_style("solid"),
-          css.border_radius(length.percent(50)),
-          css.background_color(colors.black),
+          css.border_color(colors.black),
+          css.border_radius(length.em(1.0)),
+          css.vertical_align("text-bottom"),
 
-          css.transition(
-            "transform 0.5s "
-            <> styles.energetic_hover_curve
-            <> ", background-color 0.5s "
-            <> styles.energetic_hover_curve
-            <> ", box-shadow 0.5s "
-            <> styles.energetic_hover_curve,
-          ),
-        ]),
-
-        css.box_shadow("1px 1px 1px rgba(41, 34, 49, 0.2) inset"),
-        css.transition("box-shadow 0.5s " <> styles.energetic_hover_curve),
-
-        css.checked([
-          css.box_shadow("2px 2px 2px rgba(41, 34, 49, 0.2) inset"),
+          css.color(colors.black),
 
           css.before([
+            css.property("content", "\"\""),
+            css.position("absolute"),
+            css.top(length.percent(50)),
+            css.left(length.percent(0)),
+
             css.transform([
-              transform.translate(length.em(1.0), length.percent(-50)),
+              transform.translate(length.percent(0), length.percent(-50)),
             ]),
+            css.box_sizing("border-box"),
+            css.width(length.em(1.0)),
+            css.height(length.em(1.0)),
 
-            css.background_color(colors.secondary),
+            css.margin_("0 0.15em"),
+            css.border_width(length.px(1)),
+            css.border_style("solid"),
+            css.border_radius(length.percent(50)),
+            css.background_color(colors.black),
 
-            css.box_shadow("2px 2px 8px 2px rgba(41, 34, 49, 0.2)"),
+            css.transition(
+              "transform 0.4s "
+              <> styles.energetic_hover_curve
+              <> ", background-color 0.4s "
+              <> styles.energetic_hover_curve
+              <> ", box-shadow 0.4s "
+              <> styles.energetic_hover_curve,
+            ),
+          ]),
+
+          css.box_shadow("1px 1px 1px " <> colors.input_box_shadow <> " inset"),
+          css.transition("box-shadow 0.4s " <> styles.energetic_hover_curve),
+
+          css.checked([
+            css.box_shadow(
+              "2px 2px 2px " <> colors.input_box_shadow <> " inset",
+            ),
+
+            css.before([
+              css.transform([
+                transform.translate(length.em(1.0), length.percent(-50)),
+              ]),
+
+              css.background_color(colors.secondary),
+              css.box_shadow("2px 2px 8px 2px " <> colors.input_box_shadow),
+            ]),
           ]),
         ]),
-      ]),
-      [
-        a.type_("checkbox"),
-        a.role("switch"),
-        a.name(name),
-        a.id(name),
-        a.checked(is_checked),
-        e.on_check(on_input),
-      ],
-    ),
-  ])
+        [
+          a.type_("checkbox"),
+          a.role("switch"),
+          a.name(name),
+          a.id(name),
+          a.checked(is_checked),
+          e.on_check(on_input),
+        ],
+      ),
+    ],
+  )
 }
 
 pub fn number_input(
@@ -307,7 +374,7 @@ pub fn tags_input(
 
 pub fn item_type_input(item_type: listing.ItemInput, name: String, on_input) {
   element.fragment([
-    input(
+    input_(
       type_: "text",
       name: name <> "_name",
       label: "Name",

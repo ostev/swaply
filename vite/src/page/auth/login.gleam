@@ -11,6 +11,7 @@ import lustre/event as e
 import modem
 import page/auth
 import rsvp
+import sketch/css
 import ui
 
 pub type Model {
@@ -95,7 +96,7 @@ fn login(form: Form) -> Effect(Msg) {
 pub fn view(model: Model) -> Element(Msg) {
   h.div([], [
     h.form([e.on_submit(fn(_) { SubmitForm })], [
-      ui.input(
+      ui.input_(
         type_: "text",
         label: "Email",
         name: "email",
@@ -103,7 +104,7 @@ pub fn view(model: Model) -> Element(Msg) {
         on_input: UpdatedEmail,
         is_valid: model.form.email |> string.contains("@"),
       ),
-      ui.input(
+      ui.input_(
         type_: "password",
         label: "Password",
         name: "password",

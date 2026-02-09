@@ -13,6 +13,7 @@ import lustre/event as e
 import modem
 import page/auth
 import rsvp
+import sketch/css
 import ui
 
 pub type Form {
@@ -109,7 +110,7 @@ pub fn signup(form: Form) {
 pub fn view(model: Model) -> Element(Msg) {
   h.div([], [
     h.form([e.on_submit(fn(_) { SubmitForm })], [
-      ui.input(
+      ui.input_(
         type_: "text",
         label: "Email",
         name: "email",
@@ -117,7 +118,7 @@ pub fn view(model: Model) -> Element(Msg) {
         on_input: UpdatedEmail,
         is_valid: model.form.email |> string.contains("@"),
       ),
-      ui.input(
+      ui.input_(
         type_: "text",
         label: "Name",
         name: "name",
@@ -125,7 +126,7 @@ pub fn view(model: Model) -> Element(Msg) {
         on_input: UpdatedName,
         is_valid: string.length(model.form.name) > 0,
       ),
-      ui.input(
+      ui.input_(
         type_: "password",
         label: "Password",
         name: "password",

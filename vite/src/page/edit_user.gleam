@@ -143,7 +143,7 @@ pub fn view(model: Model) -> Element(Msg) {
             e.on_submit(fn(_) { SubmitForm }),
           ],
           [
-            ui.input(
+            ui.input_(
               type_: "text",
               label: "Email",
               name: "email",
