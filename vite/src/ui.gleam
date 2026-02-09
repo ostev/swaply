@@ -539,3 +539,23 @@ pub fn h2(text: String) -> Element(a) {
     ],
   )
 }
+
+pub fn h3(text: String) -> Element(a) {
+  h.h3(
+    css.class([
+      fonts.merriweather(),
+      css.font_size(length.px(30)),
+      css.font_weight("500"),
+      css.margin(length.px(0)),
+
+      css.margin_block_start(length.px(8)),
+      css.margin_block_end(length.px(6)),
+
+      css.text_align("center"),
+    ]),
+    [],
+    [
+      h.text(text),
+    ],
+  )
+}

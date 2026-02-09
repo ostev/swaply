@@ -446,9 +446,53 @@ fn submit(form: Form, mode: Mode) -> Result(Effect(Msg), EditError) {
   }
 }
 
-pub fn view(model: Model) -> Element(Msg) {
+fn listing_date(model: Model) -> Element(Msg) {
   let date_is_valid = is_date_valid(model.form.date)
 
+  h.div(
+    css.class([
+      css.compose(layout.row(layout.SpaceBetween)),
+      css.align_items("start"),
+      css.gap(length.px(12)),
+    ]),
+    [],
+    [
+      h.div(css.class([css.flex("1")]), [], [
+        ui.input_(
+          type_: "date",
+          label: "Date",
+          name: "date",
+          value: model.form.date,
+          on_input: UpdatedDate,
+          is_valid: date_is_valid,
+        ),
+
+        case date_is_valid {
+          True -> element.none()
+          False ->
+            h.p_([], [
+              h.text("Please enter a date in the future."),
+            ])
+        },
+      ]),
+
+      h.div(css.class([css.flex("1")]), [], [
+        ui.input_(
+          type_: "time",
+          label: "Time",
+          name: "time",
+          value: model.form.time,
+          on_input: UpdatedTime,
+          is_valid: model.form.time
+            |> option.map(is_time_valid)
+            |> option.unwrap(False),
+        ),
+      ]),
+    ],
+  )
+}
+
+pub fn view(model: Model) -> Element(Msg) {
   h.div(layout.row(layout.Center), [], [
     case model.form.is_editable {
       False -> element.none()
@@ -461,9 +505,8 @@ pub fn view(model: Model) -> Element(Msg) {
 
             css.margin_top(length.px(8)),
 
-            // css.display("grid"),
-            // css.grid_template_columns("auto 1fr"),
             css.compose(layout.column(layout.Center)),
+            css.gap(length.px(8)),
           ]),
           [
             e.on_submit(fn(_) { SubmitForm }),
@@ -518,6 +561,8 @@ pub fn view(model: Model) -> Element(Msg) {
                 css.max_width(length.em(10.0)),
                 css.box_sizing("border-box"),
                 css.text_align("center"),
+
+                css.margin_bottom(length.px(8)),
               ]),
               [
                 a.value(model.form.name),
@@ -532,61 +577,10 @@ pub fn view(model: Model) -> Element(Msg) {
             h.div(
               css.class([
                 css.width(length.percent(95)),
-                css.margin_top(length.px(20)),
               ]),
               [],
               [
-                h.div(
-                  css.class([
-                    css.compose(layout.row(layout.SpaceBetween)),
-                    css.align_items("start"),
-                    css.gap(length.px(12)),
-                  ]),
-                  [],
-                  [
-                    h.div(css.class([css.flex("1")]), [], [
-                      ui.input_(
-                        type_: "date",
-                        label: "Date",
-                        name: "date",
-                        value: model.form.date,
-                        on_input: UpdatedDate,
-                        is_valid: date_is_valid,
-                      ),
-
-                      case date_is_valid {
-                        True -> element.none()
-                        False ->
-                          h.p_([], [
-                            h.text("Please enter a date in the future."),
-                          ])
-                      },
-                    ]),
-
-                    h.div(css.class([css.flex("1")]), [], [
-                      ui.input_(
-                        type_: "time",
-                        label: "Time",
-                        name: "time",
-                        value: model.form.time,
-                        on_input: UpdatedTime,
-                        is_valid: model.form.time
-                          |> option.map(is_time_valid)
-                          |> option.unwrap(False),
-                      ),
-                    ]),
-                  ],
-                ),
-
-                ui.input_(
-                  type_: "text",
-                  label: "Location",
-                  name: "location",
-                  value: option.Some(model.form.location),
-                  on_input: UpdatedLocation,
-                  is_valid: True,
-                ),
-
+                ui.h3("Details"),
                 ui.textarea(
                   label: "Short description",
                   name: "short_description",
@@ -613,7 +607,16 @@ pub fn view(model: Model) -> Element(Msg) {
                   on_remove_tag: DeletedTag,
                 ),
 
-                h.h3_([], [h.text("Items for offer")]),
+                ui.input_(
+                  type_: "text",
+                  label: "Pickup location",
+                  name: "location",
+                  value: option.Some(model.form.location),
+                  on_input: UpdatedLocation,
+                  is_valid: True,
+                ),
+
+                ui.h3("Items for offer"),
 
                 h.div_([], [
                   h.div_(
@@ -654,6 +657,9 @@ pub fn view(model: Model) -> Element(Msg) {
                     [h.text("Add")],
                   ),
                 ]),
+
+                ui.h3("Management"),
+                listing_date(model),
 
                 ui.toggle_input(
                   label: "Published?",
