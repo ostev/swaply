@@ -237,13 +237,18 @@ pub fn view(model: Model, shared: Shared) -> Element(Msg) {
     case model.listings {
       option.Some(search_result) -> {
         h.div_([], [
-          keyed.ol_(
+          keyed.ol(
+            css.class([
+              css.list_style("none"),
+              css.margin_("0"),
+              css.padding_("0"),
+            ]),
             [],
             search_result.listings
               |> list.map(fn(listing) {
                 #(
                   listing.id,
-                  h.li_([], [
+                  h.li(css.class([]), [], [
                     ui.listing_card_view(
                       listing,
                       is_editable: shared

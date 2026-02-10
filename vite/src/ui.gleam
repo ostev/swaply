@@ -490,10 +490,17 @@ pub fn tag(text: String) -> Element(msg) {
 }
 
 fn tag_content(text: String) -> Element(msg) {
-  h.div(css.class([css.compose(layout.row(layout.SpaceBetween))]), [], [
-    phosphor.tag_regular([]),
-    h.text(text),
-  ])
+  h.div(
+    css.class([
+      css.compose(layout.row(layout.SpaceBetween)),
+      css.gap(length.px(4)),
+    ]),
+    [],
+    [
+      phosphor.tag_regular([]),
+      h.text(text),
+    ],
+  )
 }
 
 fn tag_button(text: String, on_remove: fn(String) -> msg) -> Element(msg) {
@@ -696,67 +703,151 @@ pub fn item_type_input(item_type: listing.ItemInput, name: String, on_input) {
 }
 
 pub fn tags(tags: List(String)) {
-  h.ul_(
+  keyed.ul(
+    css.class([
+      css.compose(layout.row(layout.Start)),
+      css.gap(length.px(4)),
+      css.list_style("none"),
+      css.margin_("0"),
+      css.padding_("0"),
+
+      css.width(length.percent(100)),
+      css.overflow("auto"),
+    ]),
     [],
     tags
-      |> list.map(fn(text) { h.li_([], [tag(text)]) }),
+      |> list.map(fn(text) {
+        #(text, h.li(styles.tag(), [], [tag_content(text)]))
+      }),
   )
 }
 
 pub fn listing_card_view(listing: Listing, is_editable is_editable: Bool) {
-  h.div_([], [
-    h.h3_([], [
-      h.a_([a.href("/listing/" <> uri.percent_encode(listing.id))], [
-        h.text(listing.name),
+  let width = css.width_("calc(100% - 24px)")
+  let wrap =
+    css.compose(
+      css.class([
+        // css.white_space("nowrap"),
+        css.overflow("hidden"),
+        css.text_overflow("ellipsis"),
+        css.display("-webkit-box"),
+        css.property("-webkit-line-clamp", "2"),
+        css.property("-webkit-box-orient", "vertical"),
+        css.property("line-clamp", "3"),
       ]),
+    )
+  let detail =
+    css.compose(
+      css.class([
+        fonts.inter(),
+        fonts.size_md(),
+        css.font_weight("350"),
+        css.font_style("italic"),
+
+        css.margin_top(length.px(10)),
+        css.margin_bottom(length.px(0)),
+      ]),
+    )
+
+  h.div(
+    css.class([
+      css.compose(layout.column(layout.Start)),
+      css.compose(styles.card()),
+      css.padding(length.px(8)),
+      css.padding_left(length.px(8 + 12)),
+      css.padding_right(length.px(8 + 12)),
+
+      css.margin_block(length.px(18)),
+
+      css.compose(styles.rotate_hover(0.05)),
     ]),
-    tags(listing.tags),
-    h.p_([], [h.text(listing.location)]),
-    h.p_([], [datetime_view(listing.date)]),
+    [],
+    [
+      h.h3(
+        css.class([
+          fonts.merriweather(),
+          css.font_weight("450"),
 
-    case is_editable {
-      True ->
-        h.a_(
-          [
-            a.href("/listing/" <> uri.percent_encode(listing.id) <> "/edit"),
-          ],
-          [h.text("Edit")],
-        )
-      False -> element.none()
-    },
+          css.font_size(length.px(30)),
+          css.margin_top(length.px(0)),
 
-    h.p_([], [h.text(listing.short_description)]),
-  ])
+          width,
+          wrap,
+        ]),
+        [],
+        [
+          h.a(
+            css.class([
+              css.color(colors.black),
+              css.text_decoration("none"),
+            ]),
+            [a.href("/listing/" <> uri.percent_encode(listing.id))],
+            [
+              h.text(listing.name),
+            ],
+          ),
+        ],
+      ),
+
+      h.div(
+        css.class([
+          width,
+        ]),
+        [],
+        [
+          tags(listing.tags),
+        ],
+      ),
+      h.div(
+        css.class([css.compose(layout.row(layout.SpaceBetween)), width]),
+        [],
+        [
+          h.p(css.class([wrap, detail, css.flex_grow(1)]), [], [
+            phosphor.house_bold([a.style("font-size", "14px")]),
+            h.text(listing.location),
+          ]),
+          h.p(
+            css.class([
+              detail,
+              css.flex_basis("24ch"),
+              css.flex_grow(0),
+              css.compose(layout.row(layout.Start)),
+            ]),
+            [],
+            [
+              datetime_view(listing.date),
+            ],
+          ),
+        ],
+      ),
+
+      case is_editable {
+        True ->
+          h.a_(
+            [
+              a.href("/listing/" <> uri.percent_encode(listing.id) <> "/edit"),
+            ],
+            [h.text("Edit")],
+          )
+        False -> element.none()
+      },
+
+      h.p(css.class([width, wrap, fonts.inter(), fonts.size_md()]), [], [
+        h.text(listing.short_description),
+      ]),
+    ],
+  )
 }
 
 pub fn datetime_view(datetime: tempo.DateTime) -> Element(msg) {
   let date =
     datetime
     |> datetime.to_offset(offset.local())
-  let day =
-    datetime
-    |> datetime.get_date
-    |> date.get_day
-
   h.span_([], [
+    phosphor.clock_bold([a.style("font-size", "14px")]),
     h.text(
       date
-      |> datetime.format(tempo.Custom("h:mma on dddd")),
-    ),
-    h.text(
-      " "
-      <> int.to_string(day)
-      <> case day {
-        1 -> "st"
-        2 -> "nd"
-        3 -> "rd"
-        _ -> "th"
-      }
-      <> " ",
-    ),
-    h.text(
-      date
-      |> datetime.format(tempo.Custom("MMMM YYYY")),
+      |> datetime.format(tempo.Custom("h:mma YYYY-M-D")),
     ),
   ])
 }

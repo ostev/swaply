@@ -104,7 +104,7 @@ pub fn tag() {
     css.border_width(length.px(1)),
     css.border_radius(length.px(10)),
 
-    css.min_width(length.em(3.0)),
+    css.width_("fit-content"),
     css.color(colors.black),
   ])
 }
