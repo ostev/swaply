@@ -4,6 +4,7 @@ import gleam/dynamic/decode
 import gleam/float
 import gleam/http
 import gleam/http/request
+import gleam/http/response
 import gleam/int
 import gleam/io
 import gleam/json
@@ -126,7 +127,7 @@ pub fn init(shared_model: Shared, mode: Mode) -> #(Model, Effect(Msg)) {
 }
 
 pub type Msg {
-  ResponseReceived(Result(Listing, rsvp.Error))
+  ResponseReceived(Result(String, rsvp.Error))
   PrefillFormResponseReceived(Result(Listing, rsvp.Error))
 
   UpdatedName(String)
@@ -261,11 +262,11 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
         )
       }
     }
-    ResponseReceived(Ok(listing)) -> {
+    ResponseReceived(Ok(listing_id)) -> {
       #(
         model,
         modem.push(
-          "/listing/" <> uri.percent_encode(listing.id),
+          "/listing/" <> uri.percent_encode(listing_id),
           option.None,
           option.None,
         ),
@@ -435,7 +436,15 @@ fn submit(form: Form, mode: Mode) -> Result(Effect(Msg), EditError) {
       #("description", json.string(form.description)),
       #("location", json.string(form.location)),
     ])
-  let handler = rsvp.expect_json(listing.decoder(), ResponseReceived)
+  let handler =
+    rsvp.expect_json(
+      {
+        use id <- decode.field("id", decode.string)
+
+        decode.success(id)
+      },
+      ResponseReceived,
+    )
 
   case mode {
     Create -> Ok(rsvp.post(listing.api_prefix, body, handler))
@@ -494,7 +503,8 @@ fn error_panel(model: Model) -> Element(Msg) {
     || is_date_valid(model.form.date)
 
   h.div_([], [
-    ui.error_panel(
+    ui.panel(
+      ui.ErrorPanel,
       !date_is_valid || option.is_some(model.error),
       case model.error {
         option.Some(error) ->
@@ -502,9 +512,10 @@ fn error_panel(model: Model) -> Element(Msg) {
             ServerCreationError(server_response) -> {
               case server_response {
                 InvalidName ->
-                  "Please provide a name for the listing that is longer than 3 characters."
+                  "Please provide a name for the listing that is longer than 3 characters but less than 30 characters."
                 NameAlreadyUsed -> "An listing with this name already exists."
-                Unauthorised -> "Please log in to create an listing."
+                Unauthorised ->
+                  "You don't have access to edit this listing. Make sure you're logged in."
               }
             }
 

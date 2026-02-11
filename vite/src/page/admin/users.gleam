@@ -72,7 +72,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
 pub fn view(model: Model, shared: Shared) -> Element(Msg) {
   h.div(layout.row(layout.Center), [], [
     case shared.is_unknown(shared) || shared.is_admin(shared) {
-      False -> ui.error_panel(True, "This page is for admins only.")
+      False -> ui.panel(ui.ErrorPanel, True, "This page is for admins only.")
       True ->
         h.div(
           css.class([
@@ -131,7 +131,8 @@ pub fn view(model: Model, shared: Shared) -> Element(Msg) {
                 )
               }
               option.Some(Error(_)) ->
-                ui.error_panel(
+                ui.panel(
+                  ui.ErrorPanel,
                   True,
                   "An error occurred while fetching the list of users. Please try again.",
                 )

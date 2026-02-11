@@ -31,6 +31,7 @@ import ui/styles
 pub type ButtonRole {
   Regular
   Danger
+  Disabled
 }
 
 pub fn link_button(
@@ -42,9 +43,18 @@ pub fn link_button(
 }
 
 pub fn button(role: ButtonRole, text: String, on_click: msg) -> Element(msg) {
+  button_with_attrs(role, [], text, on_click)
+}
+
+pub fn button_with_attrs(
+  role: ButtonRole,
+  attrs: List(Attribute(msg)),
+  text: String,
+  on_click: msg,
+) -> Element(msg) {
   button_internal(
     h.button,
-    [a.type_("button"), e.on_click(on_click)],
+    [a.type_("button"), e.on_click(on_click), ..attrs],
     role,
     text,
   )
@@ -68,6 +78,7 @@ fn button_internal(
       colors.black,
     )
     Danger -> #(colors.red, colors.red_light, "black")
+    Disabled -> #(colors.disabled, colors.disabled, "black")
   }
 
   container(
@@ -79,30 +90,48 @@ fn button_internal(
       fonts.size_md(),
 
       css.border_style("solid"),
-      css.border_color("black"),
       css.border_width(length.px(1)),
       css.border_radius(length.px(6)),
 
       css.padding_inline(length.px(10)),
       css.padding_block(length.px(6)),
 
-      css.transition("box-shadow 0.3s"),
-      css.box_shadow("3px 3px 5px " <> colors.button_box_shadow),
-      css.hover([
-        css.box_shadow("2px 2px 3px " <> colors.button_box_shadow),
-      ]),
-      css.active([
-        css.box_shadow("0px 0px 2px " <> colors.button_box_shadow),
-      ]),
+      case role {
+        Disabled -> css.border_color("white")
+        _ ->
+          css.compose(
+            css.class([
+              css.border_color("black"),
+
+              css.transition("box-shadow 0.3s, border-color 0.3s"),
+              css.box_shadow("3px 3px 5px " <> colors.button_box_shadow),
+              css.hover([
+                css.box_shadow("2px 2px 3px " <> colors.button_box_shadow),
+              ]),
+              css.active([
+                css.box_shadow("0px 0px 2px " <> colors.button_box_shadow),
+              ]),
+            ]),
+          )
+      },
 
       css.transition("background-color 0.3s, box-shadow 0.3s"),
-      css.cursor("pointer"),
+      css.cursor(case role {
+        Disabled -> "not-allowed"
+        _ -> "pointer"
+      }),
 
       css.text_decoration("none"),
 
       css.hover([css.background_color(hover_color)]),
     ]),
-    attrs,
+    [
+      a.aria_disabled(case role {
+        Disabled -> True
+        _ -> False
+      }),
+      ..attrs
+    ],
     [h.text(text)],
   )
 }
@@ -258,6 +287,8 @@ pub fn toggle_input(
           css.vertical_align("text-bottom"),
 
           css.color(colors.black),
+
+          css.cursor("pointer"),
 
           css.before([
             css.property("content", "\"\""),
@@ -722,32 +753,17 @@ pub fn tags(tags: List(String)) {
   )
 }
 
+pub fn location(text: String) {
+  h.span(css.class([styles.detail()]), [], [
+    phosphor.house_bold([a.style("font-size", "14px")]),
+    h.text(text),
+  ])
+}
+
 pub fn listing_card_view(listing: Listing, is_editable is_editable: Bool) {
   let width = css.width_("calc(100% - 24px)")
-  let wrap =
-    css.compose(
-      css.class([
-        // css.white_space("nowrap"),
-        css.overflow("hidden"),
-        css.text_overflow("ellipsis"),
-        css.display("-webkit-box"),
-        css.property("-webkit-line-clamp", "2"),
-        css.property("-webkit-box-orient", "vertical"),
-        css.property("line-clamp", "3"),
-      ]),
-    )
-  let detail =
-    css.compose(
-      css.class([
-        fonts.inter(),
-        fonts.size_md(),
-        css.font_weight("350"),
-        css.font_style("italic"),
-
-        css.margin_top(length.px(10)),
-        css.margin_bottom(length.px(0)),
-      ]),
-    )
+  let wrap = styles.wrap_3_lines()
+  let detail = styles.detail()
 
   h.div(
     css.class([
@@ -802,14 +818,13 @@ pub fn listing_card_view(listing: Listing, is_editable is_editable: Bool) {
         css.class([css.compose(layout.row(layout.SpaceBetween)), width]),
         [],
         [
-          h.p(css.class([wrap, detail, css.flex_grow(1)]), [], [
-            phosphor.house_bold([a.style("font-size", "14px")]),
-            h.text(listing.location),
+          h.p(css.class([wrap, css.flex_grow(1)]), [], [
+            location(listing.location),
           ]),
           h.p(
             css.class([
               detail,
-              css.flex_basis("24ch"),
+              css.flex_basis("50ch"),
               css.flex_grow(0),
               css.compose(layout.row(layout.Start)),
             ]),
@@ -1016,15 +1031,20 @@ pub fn title_input(
   )
 }
 
-pub fn error_panel(is_error: Bool, text: String) {
+pub type PanelRole {
+  ErrorPanel
+  InfoPanel
+}
+
+pub fn panel(role: PanelRole, is_visible: Bool, text: String) {
   h.div(
     css.class([
-      css.height(length.em(1.5)),
+      css.min_height(length.em(1.5)),
       css.width(length.percent(100)),
       css.margin_block(length.px(8)),
     ]),
     [],
-    case is_error {
+    case is_visible {
       False -> []
       True -> [
         h.p(
@@ -1033,7 +1053,10 @@ pub fn error_panel(is_error: Bool, text: String) {
             fonts.size_md(),
             css.color(colors.black),
 
-            css.border_color(colors.red),
+            css.border_color(case role {
+              ErrorPanel -> colors.red
+              InfoPanel -> colors.primary_background
+            }),
             css.border_style("solid"),
             css.border_width(length.px(1)),
             css.border_radius(length.px(6)),
@@ -1041,7 +1064,10 @@ pub fn error_panel(is_error: Bool, text: String) {
             css.font_weight("500"),
             css.margin(length.px(0)),
             css.padding(length.px(8)),
-            css.background_color(colors.red_light),
+            css.background_color(case role {
+              ErrorPanel -> colors.red_light
+              InfoPanel -> colors.primary_foreground
+            }),
           ]),
           [],
           [h.text(text)],

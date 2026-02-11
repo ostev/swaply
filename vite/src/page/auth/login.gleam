@@ -136,7 +136,7 @@ pub fn view(model: Model) -> Element(Msg) {
 
           case model.error {
             option.Some(error) -> {
-              ui.error_panel(True, case error {
+              ui.panel(ui.ErrorPanel, True, case error {
                 rsvp.HttpError(response) -> {
                   case response.status {
                     401 | 422 -> "Incorrect email or password"

@@ -163,7 +163,7 @@ pub fn view(model: Model) -> Element(Msg) {
 
     case model.update_error {
       option.Some(error) -> {
-        ui.error_panel(True, case error {
+        ui.panel(ui.ErrorPanel, True, case error {
           user.InvalidEmail -> "Please provide a valid new email."
           user.EmailAlreadyUsed ->
             "The new email you provided is already in use."
@@ -175,7 +175,8 @@ pub fn view(model: Model) -> Element(Msg) {
 
     case model.delete_error {
       option.Some(_) ->
-        ui.error_panel(
+        ui.panel(
+          ui.ErrorPanel,
           True,
           "An error occurred while deleting the user. Please try again.",
         )

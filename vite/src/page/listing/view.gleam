@@ -1,3 +1,4 @@
+import gleam/dynamic/decode
 import gleam/int
 import gleam/io
 import gleam/option.{type Option}
@@ -8,16 +9,22 @@ import listing.{type Listing}
 import lustre/attribute as a
 import lustre/effect.{type Effect}
 import lustre/element.{type Element}
-import lustre/element/html as h
 import lustre/event as e
 import modem
 import rsvp
 import shared.{type Shared}
+import sketch/css
+import sketch/css/length
+import sketch/lustre/element/html as h
 import tempo
 import tempo/date
 import tempo/datetime
 import tempo/offset
 import ui
+import ui/colors
+import ui/fonts
+import ui/layout
+import ui/styles
 import user
 
 pub type Model {
@@ -57,8 +64,9 @@ fn update_delete_modal(
     option.Some(_) if !modal_is_visible -> {
       set_dialog_visibility("delete_modal", True)
     }
-    option.None if modal_is_visible ->
-      set_dialog_visibility("delete_modal", True)
+    option.None if modal_is_visible -> {
+      set_dialog_visibility("delete_modal", False)
+    }
     _ -> {
       Nil
     }
@@ -109,37 +117,55 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
 }
 
 fn view_listing(listing: Listing) -> Element(Msg) {
-  h.div([], [
-    h.div([], [
-      h.h2([], [h.text(listing.name)]),
-      ui.tags(listing.tags),
-      h.div([], [
-        h.p([], [ui.datetime_view(listing.date)]),
-        case listing.location {
+  h.div(
+    css.class([
+      css.max_width(length.rem(40.0)),
+      css.width(length.vw(90)),
+      css.margin_block(length.px(16)),
+    ]),
+    [],
+    [
+      h.div_([], [
+        ui.h2_(listing.name),
+        ui.tags(listing.tags),
+        h.p(css.class([fonts.inter(), fonts.size_md()]), [], [
+          h.span(css.class([css.font_weight("500")]), [], [h.text("Sold by ")]),
+          h.span_([], [
+            h.text(listing.seller.name <> " (" <> listing.seller.email <> ")"),
+          ]),
+        ]),
+        h.div_([], [
+          h.p(css.class([styles.detail()]), [], [ui.datetime_view(listing.date)]),
+          case listing.location {
+            "" -> element.none()
+            _ -> h.p_([], [ui.location(listing.location)])
+          },
+        ]),
+        case listing.is_published {
+          False -> h.span_([], [h.text("Private")])
+          True -> element.none()
+        },
+
+        case listing.short_description {
           "" -> element.none()
-          _ -> h.p([], [h.text(listing.location)])
+          _ ->
+            h.p(css.class([css.font_style("italic")]), [], [
+              h.text(listing.short_description),
+            ])
         },
       ]),
-      case listing.is_published {
-        False -> h.span([], [h.text("Private")])
-        True -> element.none()
-      },
-      case listing.short_description {
-        "" -> element.none()
-        _ -> h.p([], [h.text(listing.short_description)])
-      },
-    ]),
 
-    h.div([], [
-      case listing.description {
-        "" ->
-          h.p([], [
-            h.text("The seller of this listing has provided no description."),
-          ])
-        _ -> h.p([], [h.text(listing.description)])
-      },
-    ]),
-  ])
+      h.div_([], [
+        case listing.description {
+          "" ->
+            h.p_([], [
+              h.text("The seller of this listing has provided no description."),
+            ])
+          _ -> h.p_([], [h.text(listing.description)])
+        },
+      ]),
+    ],
+  )
 }
 
 fn can_delete(model: Model) -> Bool {
@@ -153,100 +179,128 @@ fn can_delete(model: Model) -> Bool {
 pub fn view(model: Model, shared: Shared) -> Element(Msg) {
   let can_delete = can_delete(model)
 
-  h.div([], [
-    case shared.user, model.listing {
-      user.Authenticated(user), option.Some(Ok(listing))
-        if user.is_admin && listing.is_published
-      -> {
-        h.p([], [
-          h.text(
+  h.div(
+    css.class([
+      css.compose(layout.column(layout.Center)),
+    ]),
+    [],
+    [
+      case shared.user, model.listing {
+        user.Authenticated(user), option.Some(Ok(listing))
+          if user.is_admin && listing.is_published
+        -> {
+          ui.panel(
+            ui.InfoPanel,
+            True,
             "This is not your listing, but since you are able to edit and/or delete it
  for moderation purposes since you are an admin and it has been published.",
-          ),
-        ])
-      }
-      _, _ -> element.none()
-    },
-    h.dialog([a.id("delete_modal")], [
-      h.p([], [
-        h.text(
-          "Please enter the name of the listing that you're about to delete to verify this action. "
-          <> "Note that all items bought for this listing will be refunded.",
-        ),
-      ]),
-      model.delete_modal
-        |> option.map(fn(delete_modal) {
-          case delete_modal.error {
-            option.Some(_) ->
-              h.p([], [
-                h.text(
-                  "There was an error while trying to delete your listing. Please try again.",
-                ),
-              ])
-            option.None -> element.none()
-          }
-        })
-        |> option.unwrap(element.none()),
-      ui.input_(
-        label: "Name",
-        type_: "text",
-        name: "delete_modal_verify",
-        value: model.delete_modal
-          |> option.map(fn(delete_modal) { delete_modal.verify }),
-        on_input: fn(value) {
-          SetDeleteModal(
-            option.Some(DeleteModal(
-              error: model.delete_modal
-                |> option.then(fn(delete_modal) { delete_modal.error }),
-              verify: value,
-            )),
           )
-        },
-        is_valid: can_delete,
-      ),
-      h.button(
+        }
+        _, _ -> element.none()
+      },
+      h.dialog(
+        css.class([
+          css.compose(styles.card()),
+        ]),
         [
-          a.type_("button"),
-          a.autofocus(True),
-          e.on_click(SetDeleteModal(option.None)),
+          a.id("delete_modal"),
+          e.advanced(
+            "close",
+            decode.success(e.handler(SetDeleteModal(option.None), False, False)),
+          ),
         ],
-        [h.text("Cancel")],
-      ),
-      h.button(
         [
-          a.type_("button"),
-          a.autofocus(True),
-          a.classes([#("disabled", !can_delete)]),
-          e.on_click(Delete),
-        ],
-        [h.text("Delete")],
-      ),
-    ]),
-    h.div([], case model.listing {
-      option.Some(result) -> {
-        case result {
-          Ok(listing) -> {
+          h.p(css.class([fonts.inter(), fonts.size_md()]), [], [
+            h.text(
+              "Please enter the name of the listing that you're about to delete to verify this action. ",
+            ),
+          ]),
+          model.delete_modal
+            |> option.map(fn(delete_modal) {
+              case delete_modal.error {
+                option.Some(_) ->
+                  ui.panel(
+                    ui.ErrorPanel,
+                    True,
+                    "There was an error while trying to delete your listing. Please try again.",
+                  )
+                option.None -> element.none()
+              }
+            })
+            |> option.unwrap(element.none()),
+          ui.input_(
+            label: "Name",
+            type_: "text",
+            name: "delete_modal_verify",
+            value: model.delete_modal
+              |> option.map(fn(delete_modal) { delete_modal.verify }),
+            on_input: fn(value) {
+              SetDeleteModal(
+                option.Some(DeleteModal(
+                  error: model.delete_modal
+                    |> option.then(fn(delete_modal) { delete_modal.error }),
+                  verify: value,
+                )),
+              )
+            },
+            is_valid: can_delete,
+          ),
+          h.div(
+            css.class([
+              css.compose(layout.row(layout.End)),
+              css.margin_top(length.px(12)),
+              css.gap(length.px(12)),
+            ]),
+            [],
             [
-              case shared.user {
-                user.Authenticated(user)
-                  if user.id == listing.seller.id
-                  || { user.is_admin && listing.is_published }
-                -> {
-                  h.div([], [
-                    h.a(
+              ui.button_with_attrs(
+                ui.Regular,
+                [
+                  a.autofocus(True),
+                ],
+                "Cancel",
+                SetDeleteModal(option.None),
+              ),
+              ui.button(
+                case can_delete {
+                  True -> ui.Danger
+                  False -> ui.Disabled
+                },
+                "Delete",
+                Delete,
+              ),
+            ],
+          ),
+        ],
+      ),
+      h.div_([], case model.listing {
+        option.Some(result) -> {
+          case result {
+            Ok(listing) -> {
+              [
+                case shared.user {
+                  user.Authenticated(user)
+                    if user.id == listing.seller.id
+                    || { user.is_admin && listing.is_published }
+                  -> {
+                    h.div(
+                      css.class([
+                        css.compose(layout.row(layout.End)),
+                        css.gap(length.px(12)),
+                      ]),
+                      [],
                       [
-                        a.href(
-                          "/listing/"
-                          <> uri.percent_encode(listing.id)
-                          <> "/edit",
+                        ui.link_button(
+                          ui.Regular,
+                          text: "Edit",
+                          to: "/listing/"
+                            <> uri.percent_encode(listing.id)
+                            <> "/edit",
                         ),
-                      ],
-                      [h.text("Edit")],
-                    ),
-                    h.button(
-                      [
-                        a.type_("Button"),
-                        e.on_click(
+
+                        ui.button(
+                          ui.Danger,
+                          "Delete",
                           SetDeleteModal(
                             option.Some(DeleteModal(
                               error: option.None,
@@ -255,46 +309,38 @@ pub fn view(model: Model, shared: Shared) -> Element(Msg) {
                           ),
                         ),
                       ],
-                      [
-                        h.text("Delete"),
-                      ],
-                    ),
-                  ])
-                }
-                _ -> {
-                  element.none()
-                }
-              },
-              view_listing(listing),
-            ]
-          }
-          Error(error) -> {
-            [
-              h.p([], [
-                case error {
-                  rsvp.HttpError(response) -> {
-                    case response.status {
-                      404 -> h.text("This listing does not exist.")
-                      _ ->
-                        h.text(
-                          "An error occurred while loading the listing. Please try again.",
-                        )
-                    }
-                  }
-                  _ -> {
-                    h.text(
-                      "An error occurred while loading the listing. Please try again.",
                     )
                   }
+                  _ -> {
+                    element.none()
+                  }
                 },
-              ]),
-            ]
+                view_listing(listing),
+              ]
+            }
+            Error(error) -> {
+              [
+                ui.panel(ui.ErrorPanel, True, case error {
+                  rsvp.HttpError(response) -> {
+                    case response.status {
+                      404 -> "This listing does not exist."
+                      401 ->
+                        "You do not have permission to access this listing."
+                      _ ->
+                        "An error occurred while loading the listing. Please try again."
+                    }
+                  }
+                  _ ->
+                    "An error occurred while loading the listing. Please try again."
+                }),
+              ]
+            }
           }
         }
-      }
-      option.None -> {
-        [element.none()]
-      }
-    }),
-  ])
+        option.None -> {
+          [element.none()]
+        }
+      }),
+    ],
+  )
 }

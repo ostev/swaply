@@ -141,7 +141,7 @@ pub fn view(model: Model) -> Element(Msg) {
           ui.input(
             spacing,
             type_: "text",
-            label: "Name",
+            label: "First name",
             name: "name",
             value: option.Some(model.form.name),
             on_input: UpdatedName,
@@ -163,7 +163,7 @@ pub fn view(model: Model) -> Element(Msg) {
 
       case model.error {
         option.Some(error) ->
-          ui.error_panel(True, case error {
+          ui.panel(ui.ErrorPanel, True, case error {
             rsvp.HttpError(response) -> {
               let parsed_status =
                 json.parse(

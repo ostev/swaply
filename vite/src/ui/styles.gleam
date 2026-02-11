@@ -120,3 +120,30 @@ pub fn focus_outline() {
     ]),
   )
 }
+
+pub fn detail() {
+  css.compose(
+    css.class([
+      fonts.inter(),
+      fonts.size_md(),
+      css.font_weight("350"),
+      css.font_style("italic"),
+
+      css.margin_top(length.px(10)),
+      css.margin_bottom(length.px(0)),
+    ]),
+  )
+}
+
+pub fn wrap_3_lines() {
+  css.compose(
+    css.class([
+      css.overflow("hidden"),
+      css.text_overflow("ellipsis"),
+      css.display("-webkit-box"),
+      css.property("-webkit-line-clamp", "2"),
+      css.property("-webkit-box-orient", "vertical"),
+      css.property("line-clamp", "3"),
+    ]),
+  )
+}

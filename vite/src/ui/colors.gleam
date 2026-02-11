@@ -35,3 +35,5 @@ pub const opposite = "hsl(74, 100%, 86%)"
 pub const red = "hsl(0, 93%, 82%)"
 
 pub const red_light = "hsl(0, 79%, 89%)"
+
+pub const disabled = "hsl(275, 100%, 94%)"

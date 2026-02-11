@@ -300,13 +300,17 @@ def get_listing(user_id: int | None, listing_id: int):
             )
         ]
 
-        (seller_email,) = globals.db.retrieve([User.email], User.id, seller_id)  # type: ignore
+        (seller_email, seller_name) = globals.db.retrieve([User.email, User.name], User.id, seller_id)  # type: ignore
 
         if is_published or (user_id is not None and int(seller_id) == user_id):
             return {
                 "id": str(listing_id),
                 "name": str(name),
-                "seller": {"id": str(seller_id), "email": str(seller_email)},
+                "seller": {
+                    "id": str(seller_id),
+                    "email": str(seller_email),
+                    "name": str(seller_name),
+                },
                 "date": datetime.fromisoformat(date).isoformat(),
                 "is_published": bool(is_published),
                 "tags": tags_from_csv(tag_string),
