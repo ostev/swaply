@@ -78,6 +78,11 @@ pub type EditError {
 pub type ServerResponse {
   Unauthorised
   InvalidName
+  InvalidDescription
+  InvalidShortDescription
+  InvalidLocation
+  TooManyTags
+  TooManyItems
   NameAlreadyUsed
 }
 
@@ -86,7 +91,12 @@ fn server_response_decoder() -> decode.Decoder(ServerResponse) {
   case variant {
     "unauthorised" -> decode.success(Unauthorised)
     "invalid_name" -> decode.success(InvalidName)
+    "invalid_description" -> decode.success(InvalidDescription)
+    "invalid_short_description" -> decode.success(InvalidShortDescription)
+    "invalid_location" -> decode.success(InvalidLocation)
     "name_already_used" -> decode.success(NameAlreadyUsed)
+    "too_many_tags" -> decode.success(TooManyTags)
+    "too_many_items" -> decode.success(TooManyItems)
     _ -> decode.failure(Unauthorised, "ServerResponse")
   }
 }
@@ -512,8 +522,16 @@ fn error_panel(model: Model) -> Element(Msg) {
             ServerCreationError(server_response) -> {
               case server_response {
                 InvalidName ->
-                  "Please provide a name for the listing that is longer than 3 characters but less than 30 characters."
-                NameAlreadyUsed -> "An listing with this name already exists."
+                  "Please provide a name for the listing that is between 3 and 30 characters long."
+                InvalidDescription ->
+                  "Please provide a description that is between 3 and 10 000 characters long."
+                InvalidShortDescription ->
+                  "Please provide a short description that is between 3 and 300 characters long."
+                InvalidLocation ->
+                  "Please provide a location that is no more than 200 characters long."
+                TooManyTags -> "Please provide no more than 6 tags."
+                TooManyItems -> "Please provide no more than 20 items."
+                NameAlreadyUsed -> "A listing with this name already exists."
                 Unauthorised ->
                   "You don't have access to edit this listing. Make sure you're logged in."
               }

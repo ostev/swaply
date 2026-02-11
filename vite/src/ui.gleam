@@ -1120,3 +1120,20 @@ pub fn labelled_pair(label: String, text: String) {
     ],
   )
 }
+
+pub fn char_count(chars chars: Int, of of: Int) {
+  h.span(
+    css.class([
+      css.compose(styles.text_italic()),
+      fonts.inter(),
+      fonts.size_md(),
+
+      css.color(case chars > of {
+        True -> colors.red
+        False -> colors.black
+      }),
+    ]),
+    [],
+    [h.text(int.to_string(chars) <> "/" <> int.to_string(of))],
+  )
+}

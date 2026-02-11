@@ -155,3 +155,7 @@ pub fn text_center() {
 pub fn text_bold() {
   css.class([css.font_weight("600")])
 }
+
+pub fn text_italic() {
+  css.class([css.font_weight("italic")])
+}

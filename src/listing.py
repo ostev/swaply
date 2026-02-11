@@ -60,7 +60,13 @@ class ListingResult(aenum.Enum):  # type: ignore
     SUCCESS = 200
     NOT_FOUND = 404
     UNAUTHORISED = 401
+
     INVALID_NAME = 400
+    INVALID_SHORT_DESCRIPTION = 400
+    INVALID_DESCRIPTION = 400
+    INVALID_LOCATION = 400
+    TOO_MANY_TAGS = 400
+    TOO_MANY_ITEMS = 400
     NAME_ALREADY_USED = 400
 
 
@@ -207,11 +213,9 @@ def insert_items(cursor: Cursor, listing_id: int, items: list[tuple[str, float, 
     )
 
 
-@listing_api.route("/", methods=["POST"])
-@protected
-def create_listing(user_id: int):
+def validate_listing_fields():
     name = str(request.json["name"])
-    if len(name) < 3:
+    if len(name) < 3 or len(name) > 30:
         return result(ListingResult.INVALID_NAME)
 
     if globals.db.run(
@@ -225,29 +229,59 @@ def create_listing(user_id: int):
     date = datetime.fromisoformat(str(request.json["date"])).astimezone(UTC)
 
     is_published = bool(request.json.get("is_published", False))
-    items = get_items()
 
-    tags = [str(tag) for tag in request.json.get("tags", [])]
-    tag_string = ",".join(tags)
+    if len(raw_tags := request.json.get("tags", [])) > 6:
+        return result(ListingResult.TOO_MANY_TAGS)
+    else:
+        tags = [str(tag) for tag in raw_tags]
+        tag_string = ",".join(tags)
 
     short_description = request.json["short_description"]
+
+    if len(short_description) < 3 or len(short_description) > 300:
+        return result(ListingResult.INVALID_SHORT_DESCRIPTION)
+
     description = request.json["description"]
+
+    if len(description) < 3 or len(description) > 10_000:
+        return result(ListingResult.INVALID_DESCRIPTION)
 
     location = request.json["location"]
 
+    if len(location) > 200:
+        return result(ListingResult.INVALID_LOCATION)
+
+    return {
+        "name": name,
+        "date": str(date),
+        "short_description": short_description,
+        "description": description,
+        "is_published": is_published,
+        "tags": tag_string,
+        "location": location,
+    }
+
+
+@listing_api.route("/", methods=["POST"])
+@protected
+def create_listing(user_id: int):
+    fields = validate_listing_fields()
+
+    if isinstance(fields, tuple):
+        return fields
+
+    items = get_items()
+
+    if len(items) > 20:
+        return result(ListingResult.TOO_MANY_ITEMS)
+
     def insert_listing(conn: Connection, cursor: Cursor):
         cursor.execute(
-            "INSERT INTO listings (name, date, is_published, seller, tags, short_description, description, location) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-            (
-                name,
-                date,
-                is_published,
-                user_id,
-                tag_string,
-                short_description,
-                description,
-                location,
-            ),
+            "INSERT INTO listings (name, date, is_published, seller, tags, short_description, description, location) VALUES (:name, :date, :is_published, :seller, :tags, :short_description, :description, :location)",
+            fields
+            | {
+                "seller": user_id,
+            },
         )
 
         if cursor.lastrowid is None:
@@ -262,7 +296,7 @@ def create_listing(user_id: int):
 
     listing_id = globals.db.run(insert_listing)
 
-    return {"id": listing_id}
+    return {"id": str(listing_id)}
 
 
 @listing_api.route("/<listing_id>", methods=["GET"])
@@ -355,31 +389,10 @@ def update_listing(user: UserData, listing_id: str):
     else:
         name = None
 
-    fields: dict = (
-        {
-            "id": listing_id_parsed,
-        }
-        | ({"name": name} if name is not None else {})
-        | (
-            {
-                "date": str(
-                    datetime.fromisoformat(str(request.json["date"])).astimezone(UTC)
-                )
-            }
-            if "date" in request.json
-            else {}
-        )
-        | (
-            {"is_published": bool(request.json["is_published"])}
-            if "is_published" in request.json
-            else {}
-        )
-        | (
-            {"location": str(request.json["location"])}
-            if "location" in request.json
-            else {}
-        )
-    )
+    fields = validate_listing_fields()
+
+    if isinstance(fields, tuple):
+        return fields
 
     if "items" in request.json:
         items = get_items()
@@ -388,7 +401,7 @@ def update_listing(user: UserData, listing_id: str):
 
     placeholders = ", ".join([f"{column} = :{column}" for column in fields.keys()])
 
-    def insert_listing(conn: Connection, cursor: Cursor):
+    def update_listing(conn: Connection, cursor: Cursor):
         cursor.execute(f"UPDATE listings SET {placeholders} WHERE id = :id", fields)
 
         if items is not None:
@@ -398,9 +411,9 @@ def update_listing(user: UserData, listing_id: str):
 
         conn.commit()
 
-    globals.db.run(insert_listing)
+    globals.db.run(update_listing)
 
-    return {"id": listing_id}
+    return {"id": str(listing_id)}
 
 
 @listing_api.route("/<listing_id>", methods=["DELETE"])
