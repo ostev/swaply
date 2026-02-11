@@ -342,28 +342,35 @@ def update_listing(user: UserData, listing_id: str):
     if "name" in request.json:
         name = str(request.json["name"])
 
-        if len(name) < 3:
+        if len(name) < 3 or len(name) > 30:
             return result(ListingResult.INVALID_NAME)
     else:
         name = None
 
-    if "date" in request.json:
-        date = str(datetime.fromisoformat(str(request.json["date"])).astimezone(UTC))
-    else:
-        date = None
-
-    if "is_published" in request.json:
-        is_published = bool(request.json["is_published"])
-    else:
-        is_published = None
-
-    fields: dict[str, str | int] = (
+    fields: dict = (
         {
             "id": listing_id_parsed,
         }
         | ({"name": name} if name is not None else {})
-        | ({"date": date} if date is not None else {})
-        | ({"is_published": is_published} if is_published is not None else {})
+        | (
+            {
+                "date": str(
+                    datetime.fromisoformat(str(request.json["date"])).astimezone(UTC)
+                )
+            }
+            if "date" in request.json
+            else {}
+        )
+        | (
+            {"is_published": bool(request.json["is_published"])}
+            if "is_published" in request.json
+            else {}
+        )
+        | (
+            {"location": str(request.json["location"])}
+            if "location" in request.json
+            else {}
+        )
     )
 
     if "items" in request.json:
