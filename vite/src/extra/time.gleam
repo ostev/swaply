@@ -50,13 +50,9 @@ pub fn parse(time: String) {
 }
 
 pub fn format_as_24hr(time: tempo.Time) {
-  int.to_string(time.get_hour(time))
+  let pad_zeroes = string.pad_start(_, to: 2, with: "0")
+
+  { int.to_string(time.get_hour(time)) |> pad_zeroes }
   <> ":"
-  <> {
-    int.to_string(time.get_minute(time)) |> string.pad_start(to: 2, with: "0")
-  }
-  <> ":"
-  <> {
-    int.to_string(time.get_second(time)) |> string.pad_start(to: 2, with: "0")
-  }
+  <> { int.to_string(time.get_minute(time)) |> pad_zeroes }
 }
