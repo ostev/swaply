@@ -41,7 +41,7 @@ class Listing:
 
 
 @table
-class TicketType:
+class Item:
     table_name = "items"
     id = PrimaryKey.integer().autoincrement()
     listing = Column.foreign(Listing.id)
@@ -151,8 +151,8 @@ def search_listings(user_id: int | None):
                 "quantity": int(ticket_quantity),
             }
             for ticket_name, ticket_price, ticket_quantity in globals.db.retrieve_all(
-                [TicketType.name, TicketType.price, TicketType.quantity],
-                TicketType.listing,
+                [Item.name, Item.price, Item.quantity],
+                Item.listing,
                 id,
             )
         ]
@@ -258,7 +258,7 @@ def create_listing(user_id: int):
 
     listing_id = globals.db.run(insert_listing)
 
-    return get_listing(listing_id)  # type: ignore
+    return {"id": listing_id}
 
 
 @listing_api.route("/<listing_id>", methods=["GET"])
@@ -294,8 +294,8 @@ def get_listing(user_id: int | None, listing_id: int):
         items = [
             {"name": str(name), "price": float(price), "quantity": int(quantity)}
             for (name, price, quantity) in globals.db.retrieve_all(
-                [TicketType.name, TicketType.price, TicketType.quantity],
-                TicketType.listing,
+                [Item.name, Item.price, Item.quantity],
+                Item.listing,
                 listing_id,
             )
         ]
@@ -392,7 +392,7 @@ def update_listing(user: UserData, listing_id: str):
 
     globals.db.run(insert_listing)
 
-    return get_listing(listing_id_parsed)  # type: ignore
+    return {"id": listing_id}
 
 
 @listing_api.route("/<listing_id>", methods=["DELETE"])
@@ -403,11 +403,10 @@ def delete_listing(user: UserData, listing_id: str):
     seller = globals.db.retrieve([Listing.seller], Listing.id, listing_id_parsed)
 
     if seller is not None and (seller[0] == user.id or user.is_admin):
-        # TODO: check and refund transactions
+
         def run_delete(conn: Connection, cursor: Cursor):
-            cursor.execute(
-                "DELETE FROM listings WHERE listing_id = ?", (listing_id_parsed,)
-            )
+            cursor.execute("DELETE FROM items WHERE listing = ?", (listing_id_parsed,))
+            cursor.execute("DELETE FROM listings WHERE id = ?", (listing_id_parsed,))
             conn.commit()
 
         globals.db.run(run_delete)

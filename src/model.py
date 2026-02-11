@@ -1,7 +1,7 @@
 from auth.session import Session
 from db.schema import Column, PrimaryKey, Schema, table
 from auth.user import User
-from listing import Listing, TicketType
+from listing import Listing, Item
 
 
 # @table
@@ -15,4 +15,4 @@ from listing import Listing, TicketType
 #     type = Column.integer()
 
 
-schema = Schema([Session, User, Listing, TicketType])
+schema = Schema([Session, User, Listing, Item])
