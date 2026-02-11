@@ -1,6 +1,8 @@
 import gleam/dynamic/decode
+import gleam/float
 import gleam/int
 import gleam/io
+import gleam/list
 import gleam/option.{type Option}
 import gleam/result
 import gleam/string
@@ -129,7 +131,7 @@ fn view_listing(listing: Listing) -> Element(Msg) {
         ui.h2_(listing.name),
         ui.tags(listing.tags),
         h.p(css.class([fonts.inter(), fonts.size_md()]), [], [
-          h.span(css.class([css.font_weight("500")]), [], [h.text("Sold by ")]),
+          h.span(styles.text_bold(), [], [h.text("Sold by ")]),
           h.span_([], [
             h.text(listing.seller.name <> " (" <> listing.seller.email <> ")"),
           ]),
@@ -164,6 +166,41 @@ fn view_listing(listing: Listing) -> Element(Msg) {
           _ -> h.p_([], [h.text(listing.description)])
         },
       ]),
+
+      ui.h3_("Items for offer"),
+
+      h.div(
+        css.class([
+          css.display("grid"),
+          css.grid_template_columns("repeat(auto-fit, minmax(12rem, 1fr))"),
+          css.gap(length.px(20)),
+        ]),
+        [],
+        listing.items
+          |> list.map(fn(item) {
+            h.div(
+              css.class([
+                css.padding(length.px(10)),
+                css.background_color(colors.primary_background),
+                css.border_radius(length.px(10)),
+              ]),
+              [],
+              [
+                ui.labelled_pair("Name", item.name),
+                ui.labelled_pair(
+                  "Price",
+                  "$"
+                    <> {
+                    item.price
+                    |> float.to_precision(2)
+                    |> float.to_string
+                  },
+                ),
+                ui.labelled_pair("Quantity", int.to_string(item.quantity)),
+              ],
+            )
+          }),
+      ),
     ],
   )
 }

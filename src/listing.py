@@ -157,13 +157,17 @@ def search_listings(user_id: int | None):
             )
         ]
 
-        (seller_email,) = globals.db.retrieve([User.email], User.id, seller_id)  # type: ignore
+        (seller_email, seller_name) = globals.db.retrieve([User.email, User.name], User.id, seller_id)  # type: ignore
 
         listings.append(
             {
                 "id": str(id),
                 "name": str(name),
-                "seller": {"id": str(seller_id), "email": seller_email},
+                "seller": {
+                    "id": str(seller_id),
+                    "email": str(seller_email),
+                    "name": seller_name,
+                },
                 "date": datetime.fromisoformat(date).isoformat(),
                 "is_published": bool(is_published),
                 "tags": tags_from_csv(tags),

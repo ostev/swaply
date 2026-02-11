@@ -1,6 +1,8 @@
+import gleam/io
 import gleam/list
 import gleam/option.{type Option}
 import gleam/order
+import gleam/result
 import gleam/string
 import listing
 import lustre/attribute as a
@@ -26,7 +28,7 @@ pub type Model {
     search_query: String,
     filter: listing.SearchFilter,
     page: Int,
-    listings: Option(listing.SearchResults),
+    listings: Option(Result(listing.SearchResults, rsvp.Error)),
   )
 }
 
@@ -99,31 +101,37 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       #(new_model, search(new_model))
     }
 
-    FetchedSearchResults(Ok(listings)) -> {
+    FetchedSearchResults(listings_result) -> {
+      case listings_result {
+        Error(error) -> error |> string.inspect |> io.println_error
+        _ -> Nil
+      }
+
       #(
         Model(..model, listings: case model.listings {
-          option.Some(previous) -> {
-            option.Some(
-              // If we've received the new search results after the previous ones,
-              // update the page. Otherwise, use the old results.
-              case listings.timestamp |> instant.compare(previous.timestamp) {
-                order.Gt | order.Eq -> {
-                  listings
+          option.Some(Ok(previous)) -> {
+            option.Some(case listings_result {
+              Ok(listings) -> {
+                // If we've received the new search results after the previous ones,
+                // update the page. Otherwise, use the old results.
+                case listings.timestamp |> instant.compare(previous.timestamp) {
+                  order.Gt | order.Eq -> {
+                    Ok(listings)
+                  }
+                  _ -> {
+                    Ok(previous)
+                  }
                 }
-                _ -> {
-                  previous
-                }
-              },
-            )
+              }
+              Error(error) -> {
+                Error(error)
+              }
+            })
           }
-          option.None -> option.Some(listings)
+          _ -> option.Some(listings_result)
         }),
         effect.none(),
       )
-    }
-
-    FetchedSearchResults(Error(_error)) -> {
-      #(Model(..model, listings: option.None), effect.none())
     }
   }
 }
@@ -235,7 +243,7 @@ pub fn view(model: Model, shared: Shared) -> Element(Msg) {
     ),
 
     case model.listings {
-      option.Some(search_result) -> {
+      option.Some(Ok(search_result)) -> {
         h.div_([], [
           keyed.ol(
             css.class([
@@ -270,11 +278,12 @@ pub fn view(model: Model, shared: Shared) -> Element(Msg) {
           ]),
         ])
       }
-      option.None -> {
+      option.Some(Error(_)) -> {
         h.text(
           "An error occurred while searching for listings. Please try again.",
         )
       }
+      option.None -> element.none()
     },
   ])
 }

@@ -147,3 +147,11 @@ pub fn wrap_3_lines() {
     ]),
   )
 }
+
+pub fn text_center() {
+  css.class([css.text_align("center")])
+}
+
+pub fn text_bold() {
+  css.class([css.font_weight("600")])
+}

@@ -603,7 +603,7 @@ pub fn view(model: Model) -> Element(Msg) {
               [],
               [
                 ui.fieldset([
-                  ui.h3("Details"),
+                  ui.h3(styles.text_center(), "Details"),
                   ui.textarea(
                     label: "Short description",
                     name: "short_description",
@@ -643,7 +643,7 @@ pub fn view(model: Model) -> Element(Msg) {
                 ]),
 
                 ui.fieldset([
-                  ui.h3("Items for offer"),
+                  ui.h3(styles.text_center(), "Items for offer"),
 
                   h.div(
                     css.class([
@@ -706,7 +706,7 @@ pub fn view(model: Model) -> Element(Msg) {
                 ]),
 
                 ui.fieldset([
-                  ui.h3("Management"),
+                  ui.h3(styles.text_center(), "Management"),
                   listing_date(model),
 
                   error_panel(model),

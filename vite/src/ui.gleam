@@ -957,7 +957,11 @@ pub fn h2(class: css.Class, text: String) -> Element(msg) {
   )
 }
 
-pub fn h3(text: String) -> Element(msg) {
+pub fn h3_(text: String) -> Element(msg) {
+  h3(css.class([]), text)
+}
+
+pub fn h3(class: css.Class, text: String) -> Element(msg) {
   h.h3(
     css.class([
       fonts.merriweather(),
@@ -968,7 +972,31 @@ pub fn h3(text: String) -> Element(msg) {
       css.margin_block_start(length.px(8)),
       css.margin_block_end(length.px(6)),
 
-      css.text_align("center"),
+      css.compose(class),
+    ]),
+    [],
+    [
+      h.text(text),
+    ],
+  )
+}
+
+pub fn h4_(text: String) -> Element(msg) {
+  h4(css.class([]), text)
+}
+
+pub fn h4(class: css.Class, text: String) -> Element(msg) {
+  h.h4(
+    css.class([
+      fonts.merriweather(),
+      css.font_size(length.px(28)),
+      css.font_weight("500"),
+      css.margin(length.px(0)),
+
+      css.margin_block_start(length.px(8)),
+      css.margin_block_end(length.px(6)),
+
+      css.compose(class),
     ]),
     [],
     [
@@ -1074,5 +1102,21 @@ pub fn panel(role: PanelRole, is_visible: Bool, text: String) {
         ),
       ]
     },
+  )
+}
+
+pub fn labelled_pair(label: String, text: String) {
+  h.p(
+    css.class([
+      fonts.inter(),
+      fonts.size_md(),
+      css.margin_("0"),
+      css.margin_bottom(length.px(4)),
+    ]),
+    [],
+    [
+      h.span(styles.text_bold(), [], [h.text(label <> ": ")]),
+      h.text(text),
+    ],
   )
 }
