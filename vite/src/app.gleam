@@ -26,12 +26,14 @@ import sketch/css
 import sketch/css/angle
 import sketch/css/keyframe
 import sketch/css/length
+import sketch/css/media
 import sketch/css/transform
 import sketch/lustre as sketch_lustre
 import sketch/lustre/element/html as h
 import ui
 import ui/colors
 import ui/fonts
+import ui/nav
 import ui/styles
 import user.{type User}
 
@@ -49,7 +51,7 @@ pub fn main() {
 }
 
 type Model {
-  Model(page: Page, shared: Shared)
+  Model(page: Page, shared: Shared, nav: nav.State)
 }
 
 type Page {
@@ -168,6 +170,8 @@ fn update_page_with(
 }
 
 type Msg {
+  ToggleNav
+
   UrlChanged(Uri)
   CurrentUserReceived(Result(User, rsvp.Error))
   UserRequestedLogout
@@ -194,7 +198,7 @@ fn init(_) -> #(Model, Effect(Msg)) {
   let #(page, page_effect) = change_page(from: uri.empty, to: url, with: shared)
 
   #(
-    Model(page: page, shared:),
+    Model(page: page, shared:, nav: nav.Closed),
     effect.batch([
       page_effect,
       modem.init(UrlChanged),
@@ -213,6 +217,10 @@ fn logout() {
 
 fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
   case msg, model.page {
+    ToggleNav, _ -> {
+      #(Model(..model, nav: nav.toggle(model.nav)), effect.none())
+    }
+
     UrlChanged(new_url), _ -> {
       let #(page, page_effect) =
         change_page(
@@ -222,7 +230,11 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
         )
 
       #(
-        Model(page:, shared: Shared(..model.shared, current_url: new_url)),
+        Model(
+          ..model,
+          page:,
+          shared: Shared(..model.shared, current_url: new_url),
+        ),
         effect.batch([page_effect, user.get_current_user(CurrentUserReceived)]),
       )
     }
@@ -351,46 +363,105 @@ fn nav(model: Model) -> Element(Msg) {
 
       css.background_color("#E7C6FF98"),
       css.backdrop_filter("blur(20px)"),
-      css.position("sticky"),
-      css.top(length.px(0)),
+
+      css.media(media.min_width(styles.mobile_width()), [
+        css.position("sticky"),
+        css.top(length.px(0)),
+      ]),
 
       css.border_radius(length.px(6)),
-      css.display("flex"),
-      css.align_items("center"),
-      css.justify_content("space-between"),
-
-      css.gap(length.px(10)),
     ]),
     [],
     [
-      action_nav(),
-      case shared.is_admin(model.shared) {
-        True -> ui.link_button(ui.Regular, "Manage users", to: "/admin/users")
-        False -> element.none()
-      },
-      case model.shared.user {
-        user.Authenticated(_) ->
-          ui.button(ui.Regular, "Log out", UserRequestedLogout)
-        user.Unauthenticated | user.Unknown ->
+      h.div(
+        css.class([
+          css.display("flex"),
+          css.align_items("center"),
+          css.justify_content("space-between"),
+
+          css.gap(length.px(10)),
+        ]),
+        [],
+        [
+          action_nav(),
+
           h.div(
             css.class([
               css.display("flex"),
+              css.flex_direction("row"),
               css.align_content("center"),
               css.justify_content("space-between"),
+              css.gap(length.px(10)),
+              css.color(colors.text),
+
+              styles.hidden_on_mobile(),
+            ]),
+            [],
+            [
+              auth_nav(model.shared),
+            ],
+          ),
+
+          h.div(css.class([styles.hidden_on_desktop()]), [], [
+            nav.menu_button(model.nav, ToggleNav),
+          ]),
+        ],
+      ),
+
+      h.div(
+        css.class([
+          styles.hidden_on_desktop(),
+
+          css.transition("max-height 0.5s ease-in-out"),
+          css.max_height_(case model.nav {
+            nav.Open -> "5.5rem"
+            nav.Closed -> "0"
+          }),
+
+          css.overflow("hidden"),
+        ]),
+        [],
+        [
+          h.div(
+            css.class([
+              css.padding_left(length.px(4)),
+              css.padding_right(length.px(8)),
+              css.padding_bottom(length.px(8)),
+
+              css.display("flex"),
+              css.flex_direction("column"),
+              css.align_content("center"),
+              css.justify_content("start"),
               css.gap(length.px(10)),
               css.color(colors.text),
             ]),
             [],
             [
-              h.a(css.class([css.color(colors.text)]), [a.href("/login")], [
-                element.text("Login"),
-              ]),
-              h.a_([a.href("/register")], [element.text("Sign up")]),
+              auth_nav(model.shared),
             ],
-          )
-      },
+          ),
+        ],
+      ),
     ],
   )
+}
+
+fn auth_nav(shared: Shared) -> Element(Msg) {
+  element.fragment([
+    case shared.is_admin(shared) {
+      True -> ui.link_button(ui.Regular, "Manage users", to: "/admin/users")
+      False -> element.none()
+    },
+    ..case shared.user {
+      user.Authenticated(_) -> [
+        ui.button(ui.Regular, "Log out", UserRequestedLogout),
+      ]
+      user.Unauthenticated | user.Unknown -> [
+        ui.link_button(ui.Regular, text: "Login", to: "/login"),
+        ui.link_button(ui.Regular, text: "Sign up", to: "/register"),
+      ]
+    }
+  ])
 }
 
 fn action_nav() -> Element(Msg) {
@@ -418,11 +489,18 @@ fn action_nav() -> Element(Msg) {
           a.title("Home"),
         ],
         [
-          h.div(css.class([css.compose(styles.rotate_hover(-10.0))]), [], [
-            phosphor.house_regular([a.style("font-size", "48px")]),
+          h.div(styles.rotate_hover(-10.0), [], [
+            phosphor.tag_regular([a.style("font-size", "48px")]),
           ]),
 
-          h.span(styles.rotate_hover(2.0), [], [ui.h1("Swaply")]),
+          h.span(
+            css.class([
+              css.compose(styles.rotate_hover(2.0)),
+              css.media(media.max_width(length.px(450)), [css.display("none")]),
+            ]),
+            [],
+            [ui.h1("Swaply")],
+          ),
         ],
       ),
       h.a(
@@ -462,6 +540,8 @@ fn action_nav() -> Element(Msg) {
               css.white_space("nowrap"),
               css.clip_path("inset(0 110% 0 0)"),
               css.transition("clip-path 0.3s " <> styles.energetic_hover_curve),
+
+              styles.hidden_on_mobile(),
             ]),
             [a.class("new_listing")],
             [h.text("Create listing")],

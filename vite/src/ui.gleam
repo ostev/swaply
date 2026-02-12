@@ -786,6 +786,7 @@ pub fn listing_card_view(listing: Listing, is_editable is_editable: Bool) {
 
           css.font_size(length.px(30)),
           css.margin_top(length.px(0)),
+          css.margin_bottom(length.px(6)),
 
           width,
           wrap,
@@ -818,9 +819,13 @@ pub fn listing_card_view(listing: Listing, is_editable is_editable: Bool) {
         css.class([css.compose(layout.row(layout.SpaceBetween)), width]),
         [],
         [
-          h.p(css.class([wrap, css.flex_grow(1)]), [], [
-            location(listing.location),
-          ]),
+          case string.trim(listing.location) {
+            "" -> element.none()
+            _ ->
+              h.p(css.class([wrap, css.flex_grow(1)]), [], [
+                location(listing.location),
+              ])
+          },
           h.p(
             css.class([
               detail,
@@ -836,20 +841,28 @@ pub fn listing_card_view(listing: Listing, is_editable is_editable: Bool) {
         ],
       ),
 
-      case is_editable {
-        True ->
-          h.a_(
-            [
-              a.href("/listing/" <> uri.percent_encode(listing.id) <> "/edit"),
-            ],
-            [h.text("Edit")],
-          )
-        False -> element.none()
-      },
-
       h.p(css.class([width, wrap, fonts.inter(), fonts.size_md()]), [], [
         h.text(listing.short_description),
       ]),
+
+      case is_editable {
+        True ->
+          h.div(
+            css.class([
+              css.compose(layout.row(layout.End)),
+              css.width(length.percent(100)),
+            ]),
+            [],
+            [
+              link_button(
+                role: Regular,
+                text: "Edit",
+                to: "/listing/" <> uri.percent_encode(listing.id) <> "/edit",
+              ),
+            ],
+          )
+        False -> element.none()
+      },
     ],
   )
 }

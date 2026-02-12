@@ -2,10 +2,27 @@ import gleam/int
 import sketch/css
 import sketch/css/angle
 import sketch/css/length
+import sketch/css/media
 import sketch/css/transform
 import ui/colors
 import ui/fonts
 import ui/layout
+
+pub fn mobile_width() {
+  length.px(610)
+}
+
+pub fn hidden_on_mobile() {
+  css.media(media.max_width(mobile_width()), [
+    css.display("none"),
+  ])
+}
+
+pub fn hidden_on_desktop() {
+  css.media(media.min_width(mobile_width()), [
+    css.display("none"),
+  ])
+}
 
 pub fn padding_sm() {
   css.padding(length.px(4))
