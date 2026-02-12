@@ -270,7 +270,7 @@ pub fn view(model: Model, shared: Shared) -> Element(Msg) {
           ),
 
           h.div_([], [
-            ui.page_control(
+            ui.paginator(
               page: model.page,
               of: search_result.number_of_pages,
               with: ChangePage,

@@ -291,7 +291,7 @@ pub fn view(model: Model, shared: Shared) -> Element(Msg) {
             [],
             [
               ui.button_with_attrs(
-                ui.Regular,
+                ui.Primary,
                 [
                   a.autofocus(True),
                 ],
@@ -328,7 +328,7 @@ pub fn view(model: Model, shared: Shared) -> Element(Msg) {
                       [],
                       [
                         ui.link_button(
-                          ui.Regular,
+                          ui.Primary,
                           text: "Edit",
                           to: "/listing/"
                             <> uri.percent_encode(listing.id)

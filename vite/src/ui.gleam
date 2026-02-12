@@ -15,6 +15,7 @@ import lustre/event as e
 import phosphor
 import sequence
 import sketch/css
+import sketch/css/angle
 import sketch/css/length.{type Length}
 import sketch/css/transform
 import sketch/lustre/element/html as h
@@ -29,7 +30,9 @@ import ui/layout
 import ui/styles
 
 pub type ButtonRole {
-  Regular
+  Primary
+  Secondary
+  Borderless
   Danger
   Disabled
 }
@@ -72,11 +75,12 @@ fn button_internal(
   text: String,
 ) -> Element(msg) {
   let #(bg_color, hover_color, text_color) = case role {
-    Regular -> #(
+    Primary | Borderless -> #(
       colors.primary_background,
       colors.primary_foreground,
       colors.black,
     )
+    Secondary -> #(colors.secondary_button, colors.four, colors.black)
     Danger -> #(colors.red, colors.red_light, "black")
     Disabled -> #(colors.disabled, colors.disabled, "black")
   }
@@ -89,8 +93,11 @@ fn button_internal(
       fonts.inter(),
       fonts.size_md(),
 
-      css.border_style("solid"),
-      css.border_width(length.px(1)),
+      css.compose(case role {
+        Borderless -> css.class([css.border("none")])
+        _ ->
+          css.class([css.border_style("solid"), css.border_width(length.px(1))])
+      }),
       css.border_radius(length.px(6)),
 
       css.padding_inline(length.px(10)),
@@ -855,7 +862,7 @@ pub fn listing_card_view(listing: Listing, is_editable is_editable: Bool) {
             [],
             [
               link_button(
-                role: Regular,
+                role: Primary,
                 text: "Edit",
                 to: "/listing/" <> uri.percent_encode(listing.id) <> "/edit",
               ),
@@ -880,22 +887,64 @@ pub fn datetime_view(datetime: tempo.DateTime) -> Element(msg) {
   ])
 }
 
-pub fn icon_button(attributes: List(a.Attribute(msg)), icon: Element(msg)) {
-  h.button_(attributes, [icon])
+pub fn icon_button(
+  class: css.Class,
+  attributes: List(a.Attribute(msg)),
+  icon: Element(msg),
+) {
+  h.button(
+    css.class([
+      css.border_color("black"),
+      css.border_style("solid"),
+      css.border_radius(length.percent(50)),
+      css.border_width(length.px(1)),
+      // css.border("none"),
+      css.width(length.px(40)),
+      css.height(length.px(40)),
+      css.padding_("0"),
+      css.display("flex"),
+      css.justify_content("center"),
+      css.align_items("center"),
+      css.cursor("pointer"),
+
+      css.compose(styles.interactive_box_shadow()),
+      css.background_color(colors.primary_background),
+
+      css.compose(class),
+    ]),
+    attributes,
+    [
+      icon,
+    ],
+  )
 }
 
-pub fn page_control(
+pub fn paginator(
   page page: Int,
   of total_pages: Int,
   with change_page: fn(Int) -> msg,
 ) {
+  let li_class =
+    css.class([
+      css.margin_("0"),
+      css.padding_("0"),
+      css.compose(styles.rotate_hover(-20.0)),
+    ])
   let page_buttons =
     sequence.new(fn(index) {
       Ok(
-        h.li_([], [
-          h.button_([e.on_click(change_page(index))], [
-            h.text(int.to_string(index + 1)),
-          ]),
+        h.li(li_class, [], [
+          //   h.button_([e.on_click(change_page(index))], [
+          //   h.text(int.to_string(index + 1)),
+          // ]),
+          button(
+            case index == page {
+              True -> Secondary
+              False -> Primary
+            },
+            int.to_string(index + 1),
+            change_page(index),
+          ),
         ]),
       )
     })
@@ -903,17 +952,54 @@ pub fn page_control(
     |> sequence.window(center: page, size: 6)
     |> sequence.generate
 
-  h.div_([], [
-    icon_button(
-      [e.on_click(change_page(page - 1)), a.disabled(page <= 0)],
-      phosphor.arrow_left_regular([]),
-    ),
-    h.ol_([], page_buttons),
-    icon_button(
-      [e.on_click(change_page(page + 1)), a.disabled(page >= total_pages)],
-      phosphor.arrow_right_regular([]),
-    ),
-  ])
+  let is_left_disabled = page <= 0
+  let is_right_disabled = page >= total_pages
+
+  h.div(
+    css.class([css.compose(layout.row(layout.Center)), css.gap(length.px(24))]),
+    [],
+    [
+      icon_button(
+        css.class([
+          css.compose(styles.rotate_hover(-20.0)),
+          css.active([css.transform([transform.rotate(angle.deg(10.0))])]),
+
+          case is_left_disabled {
+            True -> css.cursor("not-allowed")
+            False -> css.none()
+          },
+        ]),
+        [e.on_click(change_page(page - 1)), a.disabled(is_left_disabled)],
+        phosphor.arrow_left_bold([a.style("font-size", "24px")]),
+      ),
+      h.ol(
+        css.class([
+          css.list_style("none"),
+          css.margin_("0"),
+          css.padding_("0"),
+
+          css.compose(layout.row(layout.SpaceEvenly)),
+
+          css.gap(length.px(12)),
+        ]),
+        [],
+        page_buttons,
+      ),
+      icon_button(
+        css.class([
+          css.compose(styles.rotate_hover(20.0)),
+          css.active([css.transform([transform.rotate(angle.deg(-10.0))])]),
+
+          case is_right_disabled {
+            True -> css.cursor("not-allowed")
+            False -> css.none()
+          },
+        ]),
+        [e.on_click(change_page(page + 1)), a.disabled(page >= total_pages)],
+        phosphor.arrow_right_bold([a.style("font-size", "24px")]),
+      ),
+    ],
+  )
 }
 
 pub fn fieldset(children: List(Element(msg))) -> Element(msg) {

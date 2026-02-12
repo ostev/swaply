@@ -449,16 +449,16 @@ fn nav(model: Model) -> Element(Msg) {
 fn auth_nav(shared: Shared) -> Element(Msg) {
   element.fragment([
     case shared.is_admin(shared) {
-      True -> ui.link_button(ui.Regular, "Manage users", to: "/admin/users")
+      True -> ui.link_button(ui.Primary, "Manage users", to: "/admin/users")
       False -> element.none()
     },
     ..case shared.user {
       user.Authenticated(_) -> [
-        ui.button(ui.Regular, "Log out", UserRequestedLogout),
+        ui.button(ui.Primary, "Log out", UserRequestedLogout),
       ]
       user.Unauthenticated | user.Unknown -> [
-        ui.link_button(ui.Regular, text: "Login", to: "/login"),
-        ui.link_button(ui.Regular, text: "Sign up", to: "/register"),
+        ui.link_button(ui.Primary, text: "Login", to: "/login"),
+        ui.link_button(ui.Primary, text: "Sign up", to: "/register"),
       ]
     }
   ])

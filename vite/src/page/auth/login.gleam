@@ -132,7 +132,7 @@ pub fn view(model: Model) -> Element(Msg) {
             on_input: UpdatedPassword,
             is_valid: string.length(model.form.password) >= 8,
           ),
-          ui.submit(ui.Regular, "Login"),
+          ui.submit(ui.Primary, "Login"),
 
           case model.error {
             option.Some(error) -> {

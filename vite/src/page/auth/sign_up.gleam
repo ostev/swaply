@@ -157,7 +157,7 @@ pub fn view(model: Model) -> Element(Msg) {
             is_valid: string.length(model.form.password) >= 8,
           ),
 
-          ui.submit(ui.Regular, "Sign up"),
+          ui.submit(ui.Primary, "Sign up"),
         ],
       ),
 

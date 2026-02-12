@@ -154,7 +154,7 @@ pub fn view(model: Model) -> Element(Msg) {
 
             h.div(layout.row(layout.SpaceBetween), [], [
               ui.button(ui.Danger, "Delete", DeleteUser),
-              ui.submit(ui.Regular, "Update"),
+              ui.submit(ui.Primary, "Update"),
             ]),
           ],
         )

@@ -121,7 +121,7 @@ pub fn view(model: Model, shared: Shared) -> Element(Msg) {
                         [h.text(user.name)],
                         [
                           ui.link_button(
-                            ui.Regular,
+                            ui.Primary,
                             "Edit",
                             "/user/" <> uri.percent_encode(user.id) <> "/edit",
                           ),

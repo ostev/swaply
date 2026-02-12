@@ -709,7 +709,7 @@ pub fn view(model: Model) -> Element(Msg) {
                         [],
                         [
                           ui.button(
-                            ui.Regular,
+                            ui.Primary,
                             "Add",
                             AddedTicketType(listing.ItemInput(
                               name: "",
@@ -743,7 +743,7 @@ pub fn view(model: Model) -> Element(Msg) {
                         on_input: UpdatedIsPublished,
                       ),
 
-                      ui.submit(ui.Regular, case model.mode {
+                      ui.submit(ui.Primary, case model.mode {
                         Create -> "Create"
                         Update(_) -> "Update"
                       }),

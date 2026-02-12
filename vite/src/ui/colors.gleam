@@ -37,3 +37,5 @@ pub const red = "hsl(0, 93%, 82%)"
 pub const red_light = "hsl(0, 79%, 89%)"
 
 pub const disabled = "hsl(275, 100%, 94%)"
+
+pub const secondary_button = "hsl(221, 86%, 89%)"
