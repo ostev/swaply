@@ -23,7 +23,7 @@ class Session:
     token_salt = Column.blob()
 
 
-def register(user_id: int, expiry_days: int = 14):
+def register(user_id: int, expiry_days: int = 3):
     expiry_datetime = datetime.now(UTC) + timedelta(expiry_days)
 
     session_id = uuid7().bytes
@@ -78,6 +78,14 @@ def get_user_id() -> int | None:
             has_expired = datetime.fromisoformat(expiry_datetime).astimezone(
                 UTC
             ) <= datetime.now(UTC)
+
+            if has_expired:
+
+                def delete_session(conn: Connection, cursor: Cursor):
+                    cursor.execute("DELETE FROM sessions WHERE id = ?", (session_id,))
+                    conn.commit()
+
+                globals.db.run(delete_session)
 
             if hash_matches and not has_expired:
                 return user_id
