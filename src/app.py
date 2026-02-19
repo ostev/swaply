@@ -129,7 +129,7 @@ vite = Vite(app)
 
 
 def set_secrets():
-    secret_key_path = Path("secrets/secret_key")
+    secret_key_path = Path("../secrets/secret_key")
 
     try:
         with open(secret_key_path, "r") as file:
@@ -148,7 +148,7 @@ set_secrets()
 
 
 def create_default_admin():
-    default_admin_path = Path("secrets/default_admin.toml")
+    default_admin_path = Path("../secrets/default_admin.toml")
 
     with open(default_admin_path, "rb") as file:
         admin_details = tomllib.load(file)
