@@ -829,16 +829,16 @@ pub fn listing_card_view(listing: Listing, is_editable is_editable: Bool) {
           case string.trim(listing.location) {
             "" -> element.none()
             _ ->
-              h.p(css.class([wrap, css.flex_grow(1)]), [], [
+              h.p(css.class([wrap, css.flex_grow(1), css.margin_("0")]), [], [
                 location(listing.location),
               ])
           },
           h.p(
             css.class([
               detail,
-              css.flex_basis("50ch"),
               css.flex_grow(0),
-              css.compose(layout.row(layout.Start)),
+              css.margin_("0"),
+              css.compose(layout.row(layout.End)),
             ]),
             [],
             [

@@ -153,12 +153,13 @@ fn date_filter_control(
 }
 
 pub fn view(model: Model, shared: Shared) -> Element(Msg) {
-  h.div_([], [
+  h.div(css.class([css.compose(layout.column(layout.Center))]), [], [
     h.div(
       css.class([
         css.compose(layout.column(layout.Center)),
 
         css.width(length.percent(100)),
+        css.max_width(length.rem(30.0)),
 
         css.margin_top(length.rem(1.5)),
         css.margin_bottom(length.rem(2.0)),
@@ -239,51 +240,54 @@ pub fn view(model: Model, shared: Shared) -> Element(Msg) {
             },
           ],
         ),
+
+        case model.listings {
+          option.Some(Ok(search_result)) -> {
+            element.fragment([
+              keyed.ol(
+                css.class([
+                  css.list_style("none"),
+                  css.margin_("0"),
+                  css.padding_("0"),
+                  css.width(length.percent(100)),
+                ]),
+                [],
+                search_result.listings
+                  |> list.map(fn(listing) {
+                    #(
+                      listing.id,
+                      h.li(css.class([]), [], [
+                        ui.listing_card_view(
+                          listing,
+                          is_editable: shared
+                            |> shared.get_user
+                            |> option.map(fn(user) {
+                              user.id == listing.seller.id
+                            })
+                            |> option.unwrap(False),
+                        ),
+                      ]),
+                    )
+                  }),
+              ),
+
+              h.div_([], [
+                ui.paginator(
+                  page: model.page,
+                  of: search_result.number_of_pages,
+                  with: ChangePage,
+                ),
+              ]),
+            ])
+          }
+          option.Some(Error(_)) -> {
+            h.text(
+              "An error occurred while searching for listings. Please try again.",
+            )
+          }
+          option.None -> element.none()
+        },
       ],
     ),
-
-    case model.listings {
-      option.Some(Ok(search_result)) -> {
-        h.div_([], [
-          keyed.ol(
-            css.class([
-              css.list_style("none"),
-              css.margin_("0"),
-              css.padding_("0"),
-            ]),
-            [],
-            search_result.listings
-              |> list.map(fn(listing) {
-                #(
-                  listing.id,
-                  h.li(css.class([]), [], [
-                    ui.listing_card_view(
-                      listing,
-                      is_editable: shared
-                        |> shared.get_user
-                        |> option.map(fn(user) { user.id == listing.seller.id })
-                        |> option.unwrap(False),
-                    ),
-                  ]),
-                )
-              }),
-          ),
-
-          h.div_([], [
-            ui.paginator(
-              page: model.page,
-              of: search_result.number_of_pages,
-              with: ChangePage,
-            ),
-          ]),
-        ])
-      }
-      option.Some(Error(_)) -> {
-        h.text(
-          "An error occurred while searching for listings. Please try again.",
-        )
-      }
-      option.None -> element.none()
-    },
   ])
 }
