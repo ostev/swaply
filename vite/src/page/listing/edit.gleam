@@ -3,8 +3,6 @@ import extra/time as extra_time
 import gleam/dynamic/decode
 import gleam/float
 import gleam/http
-import gleam/http/request
-import gleam/http/response
 import gleam/int
 import gleam/io
 import gleam/json
@@ -16,7 +14,6 @@ import gleam/string
 import gleam/uri
 import iv
 import listing.{type Listing}
-import lustre/attribute as a
 import lustre/effect.{type Effect}
 import lustre/element.{type Element}
 import lustre/event as e
@@ -32,10 +29,10 @@ import tempo/datetime
 import tempo/error as tempo_error
 import tempo/offset
 import ui
-import ui/colors
-import ui/fonts
 import ui/layout
+import ui/listing as listing_ui
 import ui/styles
+import ui/tags
 
 pub type Model {
   Model(mode: Mode, form: Form, error: Option(EditError))
@@ -198,7 +195,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
                 ..model.form,
                 tags:,
                 current_tag: "",
-                sorted_tags: ui.sort_tags(tags),
+                sorted_tags: tags.sort(tags),
               ),
             ),
             effect.none(),
@@ -212,7 +209,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       #(
         Model(
           ..model,
-          form: Form(..model.form, tags:, sorted_tags: ui.sort_tags(tags)),
+          form: Form(..model.form, tags:, sorted_tags: tags.sort(tags)),
         ),
         effect.none(),
       )
@@ -459,7 +456,12 @@ fn submit(form: Form, mode: Mode) -> Result(Effect(Msg), EditError) {
   case mode {
     Create -> Ok(rsvp.post(listing.api_prefix, body, handler))
     Update(id) -> {
-      extra_rsvp.send(body:, to: listing.url(id), with: http.Patch, handler:)
+      extra_rsvp.send(
+        body:,
+        to: listing.api_url(id),
+        with: http.Patch,
+        handler:,
+      )
       |> result.replace_error(InvalidId)
     }
   }
@@ -640,7 +642,7 @@ pub fn view(model: Model) -> Element(Msg) {
                     height: length.em(10.0),
                   ),
 
-                  ui.tags_input(
+                  tags.tags_input(
                     label: "Tags",
                     name: "tags",
                     sorted_tags: model.form.sorted_tags,
@@ -687,7 +689,7 @@ pub fn view(model: Model) -> Element(Msg) {
                               ]),
                               [],
                               [
-                                ui.item_type_input(
+                                listing_ui.item_type_input(
                                   item_type,
                                   "item_type_" <> int.to_string(index),
                                   UpdatedTicketType(_, index:),

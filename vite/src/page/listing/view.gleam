@@ -18,15 +18,13 @@ import shared.{type Shared}
 import sketch/css
 import sketch/css/length
 import sketch/lustre/element/html as h
-import tempo
-import tempo/date
-import tempo/datetime
-import tempo/offset
 import ui
 import ui/colors
 import ui/fonts
 import ui/layout
+import ui/listing as listing_ui
 import ui/styles
+import ui/tags
 import user
 
 pub type Model {
@@ -129,7 +127,7 @@ fn view_listing(listing: Listing) -> Element(Msg) {
     [
       h.div_([], [
         ui.h2_(listing.name),
-        ui.tags(listing.tags),
+        tags.tags(listing.tags),
         h.p(css.class([fonts.inter(), fonts.size_md()]), [], [
           h.span(styles.text_bold(), [], [h.text("Sold by ")]),
           h.span_([], [
@@ -137,10 +135,12 @@ fn view_listing(listing: Listing) -> Element(Msg) {
           ]),
         ]),
         h.div_([], [
-          h.p(css.class([styles.detail()]), [], [ui.datetime_view(listing.date)]),
+          h.p(css.class([styles.detail()]), [], [
+            listing_ui.datetime_view(listing.date),
+          ]),
           case listing.location {
             "" -> element.none()
-            _ -> h.p_([], [ui.location(listing.location)])
+            _ -> h.p_([], [listing_ui.location(listing.location)])
           },
         ]),
         case listing.is_published {

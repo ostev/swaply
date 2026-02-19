@@ -9,6 +9,7 @@ import lustre/attribute as a
 import lustre/effect.{type Effect}
 import lustre/element.{type Element}
 import lustre/event as e
+import modem
 import rsvp
 import shared.{type Shared}
 import sketch/css
@@ -20,6 +21,7 @@ import tempo/instant
 import ui
 import ui/colors
 import ui/layout
+import ui/listing as listing_ui
 import ui/styles
 import user
 
@@ -37,6 +39,7 @@ pub type Msg {
   UpdatedFilter(listing.SearchFilter)
   FetchedSearchResults(Result(listing.SearchResults, rsvp.Error))
   ChangePage(Int)
+  VisitListing(String)
 }
 
 pub fn init() -> #(Model, Effect(Msg)) {
@@ -72,6 +75,10 @@ fn search(model: Model) -> Effect(Msg) {
 
 pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
   case msg {
+    VisitListing(id) -> {
+      #(model, modem.push(listing.page_url(id), option.None, option.None))
+    }
+
     UpdateSearchQuery(new_query) -> {
       case new_query == model.search_query {
         True -> {
@@ -257,7 +264,7 @@ pub fn view(model: Model, shared: Shared) -> Element(Msg) {
                     #(
                       listing.id,
                       h.li(css.class([]), [], [
-                        ui.listing_card_view(
+                        listing_ui.card_view(
                           listing,
                           is_editable: shared
                             |> shared.get_user
@@ -265,6 +272,7 @@ pub fn view(model: Model, shared: Shared) -> Element(Msg) {
                               user.id == listing.seller.id
                             })
                             |> option.unwrap(False),
+                          on_click: VisitListing(listing.id),
                         ),
                       ]),
                     )

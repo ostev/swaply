@@ -109,8 +109,12 @@ pub fn decoder() -> decode.Decoder(Listing) {
   ))
 }
 
-pub fn url(id: String) -> String {
+pub fn api_url(id: String) -> String {
   api_prefix <> "/" <> uri.percent_encode(id)
+}
+
+pub fn page_url(id: String) -> String {
+  "/listing/" <> uri.percent_encode(id)
 }
 
 pub fn get(
@@ -119,13 +123,13 @@ pub fn get(
 ) -> Effect(a) {
   let rsvp_handler = rsvp.expect_json(decoder(), handler)
 
-  rsvp.get(url(id), rsvp_handler)
+  rsvp.get(api_url(id), rsvp_handler)
 }
 
 pub fn delete(id: String, handler: fn(Result(Nil, rsvp.Error)) -> msg) {
   extra_rsvp.send(
     body: json.object([]),
-    to: url(id),
+    to: api_url(id),
     with: http.Delete,
     handler: rsvp.expect_ok_response(fn(result) {
       result
