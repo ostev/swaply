@@ -1,4 +1,5 @@
 import json
+import pathlib
 import re
 from typing import Any
 
@@ -19,3 +20,14 @@ def check_sql_identifier(name: str) -> str:
         return name
     else:
         raise ValueError(f"Illegal SQL identifier: {name}")
+
+
+def load_newline_seperated_values(path) -> set[str]:
+    with open(path) as file:
+        return set(map(lambda line: line.strip().lower(), file.readlines()))
+
+
+def load_data(filename) -> set[str]:
+    return load_newline_seperated_values(
+        pathlib.Path(__file__).parent.resolve() / "data" / filename
+    )

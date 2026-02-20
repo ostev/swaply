@@ -48,6 +48,8 @@ pub type SignUpResponse {
   InvalidPassword
   InvalidEmail
   EmailAlreadyUsed
+  PasswordIsCommon
+  PasswordIsWord
 }
 
 fn sign_up_response_decoder() -> decode.Decoder(SignUpResponse) {
@@ -57,6 +59,8 @@ fn sign_up_response_decoder() -> decode.Decoder(SignUpResponse) {
     "invalid_password" -> decode.success(InvalidPassword)
     "invalid_email" -> decode.success(InvalidEmail)
     "email_already_used" -> decode.success(EmailAlreadyUsed)
+    "password_is_common" -> decode.success(PasswordIsCommon)
+    "password_is_word" -> decode.success(PasswordIsWord)
     _ -> decode.failure(InvalidPassword, "LoginResponse")
   }
 }
@@ -176,7 +180,11 @@ pub fn view(model: Model) -> Element(Msg) {
                     EmailAlreadyUsed ->
                       "The email you've provided already has an account associated with it"
                     InvalidPassword ->
-                      "The password you've entered is invalid. Make sure it contains at least 8 characters."
+                      "Your password needs to be at least 8 characters long."
+                    PasswordIsCommon ->
+                      "Your password is of the 1000 most common. Please choose a different one."
+                    PasswordIsWord ->
+                      "Your password is a word in the English language. Please choose a different one."
                     Success -> "Error signing up. Please try again."
                   }
                 _, _ -> "Error signing up. Please try again."

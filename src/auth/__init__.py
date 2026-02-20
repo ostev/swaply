@@ -10,10 +10,13 @@ from auth.user import PrivilegeLevel, User
 import auth.session
 
 from api import API_PREFIX
-from utils import result
+from utils import load_data, load_newline_seperated_values, result
 import globals
 
 auth_api = Blueprint("auth", __name__, url_prefix=API_PREFIX + "/auth")
+
+words = load_data("words.txt")
+common_passwords = load_data("Pwdb_top-1000.txt")
 
 
 class LoginResult(aenum.Enum):  # type: ignore
@@ -66,6 +69,9 @@ class SignupResult(aenum.Enum):  # type: ignore
     INVALID_PASSWORD = 422
     INVALID_EMAIL = 422
     EMAIL_ALREADY_USED = 422
+    PASSWORD_IS_COMMON = 422
+    PASSWORD_CONTAINS_EMAIL = 422
+    PASSWORD_IS_WORD = 422
 
 
 MIN_PASSWORD_LENGTH = 8
@@ -98,9 +104,9 @@ def create_user(email: str, name: str, password: str, is_admin: bool) -> int:
 
 @auth_api.route("/signup", methods=["POST"])
 def signup():
-    email = request.json["email"]
-    name = request.json["name"]
-    password = request.json["password"]
+    email = str(request.json["email"])
+    name = str(request.json["name"])
+    password = str(request.json["password"])
 
     try:
         normalized_email = validate_email(
@@ -111,6 +117,12 @@ def signup():
 
     if len(password) < MIN_PASSWORD_LENGTH:
         return result(SignupResult.INVALID_PASSWORD)
+
+    lowercase_password = password.lower()
+    if lowercase_password in words:
+        return result(SignupResult.PASSWORD_IS_WORD)
+    if lowercase_password in common_passwords:
+        return result(SignupResult.PASSWORD_IS_COMMON)
 
     if globals.db.contains(User.email, normalized_email):
         return result(SignupResult.EMAIL_ALREADY_USED)
