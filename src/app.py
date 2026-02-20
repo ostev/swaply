@@ -3,10 +3,14 @@ import secrets
 import sqlite3
 import tomllib
 
-from flask import Flask, g, render_template, request
+from flask import Flask, render_template
 from flask_vite import Vite
+from flask_apscheduler import APScheduler
 
+
+from auth import session
 import auth.user_api
+import auth.session
 from db import Database
 from model import schema
 import listing
@@ -15,12 +19,25 @@ import globals
 import model
 
 app = Flask(__name__, template_folder="templates")
+app.config["SESSION_COOKIE_SECURE"] = True
 app.register_blueprint(listing.listing_api)
 app.register_blueprint(auth.auth_api)
 app.register_blueprint(auth.user_api.user_api)
 
 globals.db = Database("db.sqlite3", model.schema)
 globals.db.create()
+
+scheduler = APScheduler()
+scheduler.init_app(app)
+scheduler.start()
+
+
+@scheduler.task("interval", id="cleanup_sessions", minutes=30, misfire_grace_time=2000)
+def cleanup_expired_sessions():
+    with scheduler.app.app_context():  # type: ignore
+        app.logger.info("=== Cleaning expired sessions ===")
+        auth.session.clear_expired()
+        app.logger.info("=== Finished cleaning expired sessions ===")
 
 
 def create_search_index(conn: sqlite3.Connection, cursor: sqlite3.Cursor):

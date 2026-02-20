@@ -128,3 +128,11 @@ def authenticated(route):
         return route(user_id, *args, **kwargs)
 
     return protected_route
+
+
+def clear_expired():
+    def delete_sessions(conn: Connection, cursor: Cursor):
+        cursor.execute("DELETE FROM sessions WHERE expiry_datetime < datetime('now')")
+        conn.commit()
+
+    globals.db.run(delete_sessions)
