@@ -1,12 +1,9 @@
 import api
 import extra/decode as extra_decode
-import extra/list as extra_list
 import extra/rsvp as extra_rsvp
 import gleam/bool
 import gleam/dynamic/decode
-import gleam/float
 import gleam/http
-import gleam/http/request
 import gleam/int
 import gleam/json.{type Json}
 import gleam/list
@@ -15,17 +12,11 @@ import gleam/result
 import gleam/string
 import gleam/uri
 import lenient_parse
-import lustre/attribute as a
 import lustre/effect.{type Effect}
-import lustre/element.{type Element}
-import lustre/element/html as h
-import lustre/event as e
 import rsvp
 import seller.{type Seller}
 import tempo.{type DateTime}
-import tempo/date
 import tempo/datetime
-import tempo/instant
 import tempo/offset
 import tempo/time
 

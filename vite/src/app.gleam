@@ -1,13 +1,11 @@
 import gleam/http/response.{type Response}
 import gleam/json
-import gleam/option.{type Option}
 import gleam/result
 import gleam/uri.{type Uri}
 import lustre
 import lustre/attribute as a
 import lustre/effect.{type Effect}
 import lustre/element.{type Element}
-import lustre/event as e
 import modem
 import page/admin/users as manage_users
 import page/auth
@@ -24,7 +22,6 @@ import shared.{type Shared, Shared}
 import sketch
 import sketch/css
 import sketch/css/angle
-import sketch/css/keyframe
 import sketch/css/length
 import sketch/css/media
 import sketch/css/transform
@@ -249,7 +246,7 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
                 True -> user.Authenticated(user)
                 False -> user.Unauthenticated
               }
-            Error(error) -> {
+            Error(_) -> {
               user.Unauthenticated
             }
           }),

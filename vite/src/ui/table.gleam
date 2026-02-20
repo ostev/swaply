@@ -1,27 +1,10 @@
-import gleam/dynamic/decode
-import gleam/float
 import gleam/int
 import gleam/list
-import gleam/option.{type Option}
-import gleam/result
-import gleam/set.{type Set}
-import gleam/string
-import gleam/uri
-import lenient_parse
-import listing.{type Listing}
-import lustre/attribute as a
 import lustre/element.{type Element}
-import lustre/event as e
-import phosphor
-import sequence
 import sketch/css
 import sketch/css/length
 import sketch/lustre/element/html as h
 import sketch/lustre/element/keyed
-import tempo
-import tempo/date
-import tempo/datetime
-import tempo/offset
 import ui/fonts
 import ui/styles
 

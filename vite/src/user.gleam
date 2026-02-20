@@ -1,17 +1,14 @@
 import api
 import extra/rsvp as extra_rsvp
-import gleam/bool
 import gleam/dynamic/decode
 import gleam/http
 import gleam/int
-import gleam/io
 import gleam/json
 import gleam/list
 import gleam/option.{type Option}
 import gleam/result
 import gleam/uri
 import lustre/effect.{type Effect}
-import page/auth
 import rsvp
 
 const api_prefix = api.prefix <> "/user"

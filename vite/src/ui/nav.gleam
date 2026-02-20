@@ -1,12 +1,9 @@
-import gleam/json
-import lustre/attribute.{type Attribute}
 import lustre/attribute as a
 import lustre/element.{type Element}
 import lustre/event as e
 import sketch/css
 import sketch/css/length
 import sketch/lustre/element/html as h
-import sketch/lustre/element/keyed
 
 fn hamburger() -> Element(msg) {
   // The SVG code in the string in this function is modified from https://codepen.io/ainalem/pen/wvKOEMV

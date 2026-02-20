@@ -6,7 +6,6 @@ import sketch/css/media
 import sketch/css/transform
 import ui/colors
 import ui/fonts
-import ui/layout
 
 pub fn mobile_width() {
   length.px(610)

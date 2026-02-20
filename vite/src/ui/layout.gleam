@@ -1,8 +1,4 @@
-import gleam/json
-import lustre/attribute.{type Attribute}
 import sketch/css
-import sketch/lustre/element.{type Element}
-import sketch/lustre/element/html as h
 
 pub type Spacing {
   Center
