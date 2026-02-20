@@ -1,16 +1,15 @@
 import aenum
 
 from sqlite3 import Connection, Cursor
-import sys
-from flask import Blueprint, current_app, make_response, request, session
+from flask import Blueprint, current_app, request
 from email_validator import EmailNotValidError, validate_email
 
 from auth.hasher import ArgonHasher
-from auth.user import PrivilegeLevel, User
+from auth.user import User
 import auth.session
 
 from api import API_PREFIX
-from utils import load_data, load_newline_seperated_values, result
+from utils import load_data, result
 import globals
 
 auth_api = Blueprint("auth", __name__, url_prefix=API_PREFIX + "/auth")
