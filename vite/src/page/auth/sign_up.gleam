@@ -1,11 +1,8 @@
 import gleam/dynamic/decode
-import gleam/http/response.{type Response}
 import gleam/json
 import gleam/option.{type Option}
-import gleam/result
 import gleam/string
 import gleam/uri.{type Uri}
-import lustre/attribute as a
 import lustre/effect.{type Effect}
 import lustre/element.{type Element}
 import lustre/event as e

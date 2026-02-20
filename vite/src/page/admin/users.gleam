@@ -1,16 +1,8 @@
-import gleam/dynamic/decode
-import gleam/json
 import gleam/list
 import gleam/option.{type Option}
-import gleam/result
-import gleam/string
-import gleam/uri.{type Uri}
-import lustre/attribute as a
+import gleam/uri
 import lustre/effect.{type Effect}
 import lustre/element.{type Element}
-import lustre/event as e
-import modem
-import page/auth
 import rsvp
 import shared.{type Shared}
 import sketch/css
@@ -19,7 +11,7 @@ import sketch/lustre/element/html as h
 import ui
 import ui/layout
 import ui/table
-import user.{type User}
+import user
 
 pub type Model {
   Model(

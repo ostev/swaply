@@ -1,16 +1,10 @@
-import gleam/dynamic/decode
-import gleam/json
-import gleam/list
 import gleam/option.{type Option}
 import gleam/result
 import gleam/string
-import gleam/uri.{type Uri}
-import lustre/attribute as a
 import lustre/effect.{type Effect}
 import lustre/element.{type Element}
 import lustre/event as e
 import modem
-import page/auth
 import rsvp
 import shared.{type Shared}
 import sketch/css
@@ -18,7 +12,6 @@ import sketch/lustre/element/html as h
 import ui
 import ui/layout
 import ui/styles
-import ui/table
 import user.{type User}
 
 pub type Model {
@@ -61,7 +54,6 @@ pub type Msg {
 pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
   case msg {
     UserReceived(result) -> {
-      echo result
       #(
         Model(
           ..model,

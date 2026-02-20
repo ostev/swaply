@@ -1,12 +1,6 @@
-import gleam/list
-import gleam/option.{type Option}
-import listing
-import lustre/attribute as a
 import lustre/effect.{type Effect}
 import lustre/element.{type Element}
 import lustre/element/html as h
-import lustre/event as e
-import rsvp
 
 pub type Model {
   Model

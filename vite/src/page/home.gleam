@@ -2,7 +2,6 @@ import gleam/io
 import gleam/list
 import gleam/option.{type Option}
 import gleam/order
-import gleam/result
 import gleam/string
 import listing
 import lustre/attribute as a
@@ -16,7 +15,6 @@ import sketch/css
 import sketch/css/length
 import sketch/lustre/element/html as h
 import sketch/lustre/element/keyed
-import tempo
 import tempo/instant
 import ui
 import ui/colors
@@ -141,22 +139,6 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       )
     }
   }
-}
-
-fn date_filter_control(
-  label: String,
-  name: String,
-  value: Option(tempo.Date),
-  on_input: fn(Option(tempo.Date)) -> msg,
-) -> Element(msg) {
-  h.div_([], [
-    ui.toggle_input(
-      label: "Filter by " <> string.lowercase(label) <> "?",
-      name: "toggle_" <> name,
-      is_checked: option.is_some(value),
-      on_input: todo,
-    ),
-  ])
 }
 
 pub fn view(model: Model, shared: Shared) -> Element(Msg) {
