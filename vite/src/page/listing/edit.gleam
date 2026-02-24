@@ -426,6 +426,8 @@ fn submit(form: Form, mode: Mode) -> Result(Effect(Msg), EditError) {
     |> result.replace_error(IncompleteItem),
   )
 
+  let tags = form.tags |> set.insert(form.current_tag)
+
   let body =
     json.object([
       #("name", json.string(form.name)),
@@ -434,10 +436,7 @@ fn submit(form: Form, mode: Mode) -> Result(Effect(Msg), EditError) {
       #("items", json.preprocessed_array(json_items)),
       #(
         "tags",
-        json.array(
-          set.to_list(form.tags) |> list.sort(string.compare),
-          json.string,
-        ),
+        json.array(set.to_list(tags) |> list.sort(string.compare), json.string),
       ),
       #("short_description", json.string(form.short_description)),
       #("description", json.string(form.description)),
