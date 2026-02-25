@@ -560,9 +560,6 @@ pub fn paginator(
     sequence.new(fn(index) {
       Ok(
         h.li(li_class, [], [
-          //   h.button_([e.on_click(change_page(index))], [
-          //   h.text(int.to_string(index + 1)),
-          // ]),
           button(
             case index == page {
               True -> Secondary
