@@ -6,6 +6,7 @@ import tomllib
 from flask import Flask, render_template
 from flask_vite import Vite
 from flask_apscheduler import APScheduler
+from flask_talisman import Talisman
 
 
 from auth import session
@@ -23,6 +24,13 @@ app.config["SESSION_COOKIE_SECURE"] = True
 app.register_blueprint(listing.listing_api)
 app.register_blueprint(auth.auth_api)
 app.register_blueprint(auth.user_api.user_api)
+
+csp = {"default-src": "'self'", "object-src": "'none'"}
+Talisman(
+    app,
+    content_security_policy=csp,
+    frame_options="DENY",
+)
 
 globals.db = Database("db.sqlite3", model.schema)
 globals.db.create()
