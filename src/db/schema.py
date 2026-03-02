@@ -65,7 +65,7 @@ class NamedColumn:
 
     def to_sql_schema(self) -> str:
         autoincrement = " AUTOINCREMENT" if self.column.is_autoincrement else ""
-        nullable = "" if self.column.is_nullable else "NOT NULL"
+        nullable = "" if self.column.is_nullable else " NOT NULL"
 
         if self.column.foreign_reference is None:
             foreign_reference = ""
@@ -103,7 +103,7 @@ class NamedPrimaryKey:
         self.table = table
 
     def to_sql_schema(self) -> str:
-        return f"{self.name} {self.column.type.value} PRIMARY KEY {"AUTOINCREMENT" if self.column.is_autoincrement else ""} NOT NULL"
+        return f"{self.name} {self.column.type.value} PRIMARY KEY{" AUTOINCREMENT" if self.column.is_autoincrement else ""} NOT NULL"
 
 
 class Table(Protocol):

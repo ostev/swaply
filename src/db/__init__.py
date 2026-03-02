@@ -61,12 +61,17 @@ class Database:
             [check_sql_identifier(column.name) for column in select_columns]
         )
 
-        return self.run(
+        values = self.run(
             lambda conn, cursor: cursor.execute(
                 f"SELECT {select_columns_list} FROM {table_name} WHERE {column_name} = ?",
                 (value,),
             ).fetchone()
         )
+
+        if values is not None and len(values) == 1:
+            return values[0]
+        else:
+            return values
 
     def contains(self, column, value) -> bool:
         column_name = check_sql_identifier(column.name)

@@ -423,7 +423,7 @@ def delete_listing(user: UserData, listing_id: str):
 
     seller = globals.db.retrieve([Listing.seller], Listing.id, listing_id_parsed)
 
-    if seller is not None and (seller[0] == user.id or user.is_admin):
+    if seller is not None and (seller == user.id or user.is_admin):
 
         def run_delete(conn: Connection, cursor: Cursor):
             cursor.execute("DELETE FROM items WHERE listing = ?", (listing_id_parsed,))
