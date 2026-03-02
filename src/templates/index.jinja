@@ -8,6 +8,8 @@
     <link rel="preload" as="style" href="{{ url_for('static', filename='css/baseline.css') }}">
     <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/baseline.css') }}">
     {{ vite_tags() }}
+
+    <meta name="csrf-token" content="{{ csrf_token() }}">
 </head>
 
 <body>
