@@ -10,6 +10,7 @@ from flask_talisman import Talisman
 
 
 from auth import session
+import auth.pre_session
 import auth.user_api
 import auth.session
 from db import Database
@@ -20,12 +21,40 @@ import globals
 import model
 
 app = Flask(__name__, template_folder="templates")
-app.config["SESSION_COOKIE_SECURE"] = True
+with app.app_context():
+    if not app.debug:
+        app.config["SESSION_COOKIE_SECURE"] = True
+        app.config["SESSION_COOKIE_SAMESITE"] = "Strict"
 app.register_blueprint(listing.listing_api)
 app.register_blueprint(auth.auth_api)
 app.register_blueprint(auth.user_api.user_api)
 
-csp = {"default-src": "'self'", "object-src": "'none'"}
+
+@app.context_processor
+def inject_csrf_token():
+    def csrf_token():
+        auth_csrf = auth.session.authenticated_csrf_token()
+        if auth_csrf is None:
+            return auth.pre_session.unauthenticated_csrf_token()
+        else:
+            return auth_csrf
+
+    return {"csrf_token": csrf_token}
+
+
+if app.debug:
+    csp = {
+        "default-src": "'self' http://localhost:3000 ws://localhost:3000",
+        "object-src": "'none'",
+        "style-src": "'self' 'unsafe-inline'",
+    }
+else:
+    csp = {
+        "default-src": "'self'",
+        "object-src": "'none'",
+        "style-src": "'self' 'unsafe-inline'",
+    }
+
 Talisman(
     app,
     content_security_policy=csp,
@@ -40,11 +69,12 @@ scheduler.init_app(app)
 scheduler.start()
 
 
-@scheduler.task("interval", id="cleanup_sessions", minutes=30, misfire_grace_time=2000)
+@scheduler.task("interval", id="cleanup_sessions", minutes=20, misfire_grace_time=2000)
 def cleanup_expired_sessions():
     with scheduler.app.app_context():  # type: ignore
         app.logger.info("=== Cleaning expired sessions ===")
         auth.session.clear_expired()
+        auth.pre_session.clear_expired()
         app.logger.info("=== Finished cleaning expired sessions ===")
 
 
