@@ -1,4 +1,6 @@
+import api
 import gleam/dynamic/decode
+import gleam/http
 import gleam/json
 import gleam/option.{type Option}
 import gleam/string
@@ -9,6 +11,7 @@ import lustre/event as e
 import modem
 import page/auth
 import rsvp
+import shared.{type Shared}
 import sketch/css
 import sketch/css/length
 import sketch/lustre/element/html as h
@@ -54,12 +57,9 @@ fn login_response_decoder() -> decode.Decoder(LoginResponse) {
   }
 }
 
-pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
+pub fn update(shared: Shared, model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
   case msg {
-    LoginResponseReceived(Ok(_)) -> #(
-      model,
-      modem.push(model.origin.path, model.origin.query, model.origin.fragment),
-    )
+    LoginResponseReceived(Ok(_)) -> #(model, modem.load(model.origin))
     LoginResponseReceived(Error(error)) -> #(
       Model(..model, error: option.Some(error)),
       effect.none(),
@@ -75,23 +75,25 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
     )
 
     SubmitForm -> {
-      #(model, login(model.form))
+      #(model, login(model.form, with_token: shared.csrf_token))
     }
   }
 }
 
-fn login(form: Form) -> Effect(Msg) {
-  let url = auth.api_prefix <> "/login"
+fn login(form: Form, with_token csrf_token: String) -> Effect(Msg) {
+  let url = auth.api_root <> "/login"
   let body =
     json.object([
       #("email", json.string(form.email)),
       #("password", json.string(form.password)),
     ])
 
-  rsvp.post(
-    url,
-    body,
-    rsvp.expect_json(login_response_decoder(), LoginResponseReceived),
+  api.send_with_known_url(
+    body:,
+    to: url,
+    with: http.Post,
+    handler: rsvp.expect_json(login_response_decoder(), LoginResponseReceived),
+    with_token: csrf_token,
   )
 }
 

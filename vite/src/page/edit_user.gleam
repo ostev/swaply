@@ -51,7 +51,7 @@ pub type Msg {
   DeleteUser
 }
 
-pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
+pub fn update(shared: Shared, model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
   case msg {
     UserReceived(result) -> {
       #(
@@ -73,7 +73,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
     SubmitForm -> {
       #(model, case model.form, model.user {
         option.Some(form), option.Some(Ok(user)) -> {
-          submit(form, user)
+          submit(form, user, with_token: shared.csrf_token)
         }
         _, _ -> effect.none()
       })
@@ -82,7 +82,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       case model.user {
         option.Some(Ok(user)) -> #(
           model,
-          user.delete(user.id, DeleteResponseReceived)
+          user.delete(user.id, DeleteResponseReceived, shared.csrf_token)
             |> result.unwrap(effect.none()),
         )
         _ -> #(model, effect.none())
@@ -108,12 +108,13 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
   }
 }
 
-fn submit(form: Form, user: User) {
+fn submit(form: Form, user: User, with_token csrf_token: String) {
   user.update(
     id: user.id,
     email: option.Some(form.email),
     is_admin: option.Some(form.is_admin),
     handler: UpdateResponseReceived,
+    with_token: csrf_token,
   )
   |> result.unwrap(effect.none())
 }

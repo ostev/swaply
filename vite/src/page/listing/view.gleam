@@ -73,7 +73,7 @@ fn update_delete_modal(
   }
 }
 
-pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
+pub fn update(shared: Shared, model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
   case msg {
     ListingReceived(listing) -> {
       case listing {
@@ -93,7 +93,11 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
     Delete -> {
       #(model, case model.listing {
         option.Some(Ok(listing)) ->
-          listing.delete(listing.id, DeletedResponseReceived)
+          listing.delete(
+            listing.id,
+            DeletedResponseReceived,
+            with_token: shared.csrf_token,
+          )
           |> result.unwrap(effect.none())
         _ -> effect.none()
       })

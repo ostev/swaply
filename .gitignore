@@ -5,9 +5,7 @@ __pycache__/
 .ruff_cache/
 .pdm-python
 
-db.sqlite3
-db.sqlite3-*
-
+db/
 secrets/
 
 .DS_Store

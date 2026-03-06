@@ -1,4 +1,4 @@
-import extra/rsvp as extra_rsvp
+import api
 import extra/time as extra_time
 import gleam/dynamic/decode
 import gleam/float
@@ -155,7 +155,7 @@ pub type Msg {
   NoOp
 }
 
-pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
+pub fn update(shared: Shared, model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
   case msg {
     NoOp -> #(model, effect.none())
 
@@ -261,7 +261,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
     }
 
     SubmitForm -> {
-      case submit(model.form, model.mode) {
+      case submit(model.form, model.mode, shared.csrf_token) {
         Ok(create_effect) -> #(model, create_effect)
         Error(error) -> #(
           Model(..model, error: option.Some(error)),
@@ -413,7 +413,11 @@ fn get_datetime(
   Ok(datetime.new(date, time, offset.local()))
 }
 
-fn submit(form: Form, mode: Mode) -> Result(Effect(Msg), EditError) {
+fn submit(
+  form: Form,
+  mode: Mode,
+  with_token csrf_token: String,
+) -> Result(Effect(Msg), EditError) {
   use datetime <- result.try(get_datetime(form.date, form.time))
 
   use json_items <- result.try(
@@ -455,11 +459,12 @@ fn submit(form: Form, mode: Mode) -> Result(Effect(Msg), EditError) {
   case mode {
     Create -> Ok(rsvp.post(listing.api_prefix, body, handler))
     Update(id) -> {
-      extra_rsvp.send(
+      api.send(
         body:,
         to: listing.api_url(id),
         with: http.Patch,
         handler:,
+        with_token: csrf_token,
       )
       |> result.replace_error(InvalidId)
     }

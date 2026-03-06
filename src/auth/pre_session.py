@@ -49,8 +49,8 @@ def create_csrf_token() -> bytes:
 
 
 def get_or_create_csrf_token() -> bytes:
-    if "pre_session_id" in session:
-        return typing.cast(bytes, get_csrf_token())
+    if (token := get_csrf_token()) is not None:
+        return typing.cast(bytes, token)
     else:
         return create_csrf_token()
 

@@ -29,6 +29,8 @@ app.register_blueprint(listing.listing_api)
 app.register_blueprint(auth.auth_api)
 app.register_blueprint(auth.user_api.user_api)
 
+secrets_dir = Path(__file__).parent.parent.resolve() / "secrets"
+
 
 @app.context_processor
 def inject_csrf_token():
@@ -47,6 +49,7 @@ if app.debug:
         "default-src": "'self' http://localhost:3000 ws://localhost:3000",
         "object-src": "'none'",
         "style-src": "'self' 'unsafe-inline'",
+        "worker-src": "'self' blob:",
     }
 else:
     csp = {
@@ -61,7 +64,9 @@ Talisman(
     frame_options="DENY",
 )
 
-globals.db = Database("db.sqlite3", model.schema)
+globals.db = Database(
+    Path(__file__).parent.parent.resolve() / "db" / "db.sqlite3", model.schema
+)
 globals.db.create()
 
 scheduler = APScheduler()
@@ -184,7 +189,7 @@ vite = Vite(app)
 
 
 def set_secrets():
-    secret_key_path = Path("../secrets/secret_key")
+    secret_key_path = secrets_dir / "secret_key"
 
     try:
         with open(secret_key_path, "r") as file:
@@ -203,7 +208,7 @@ set_secrets()
 
 
 def create_default_admin():
-    default_admin_path = Path("../secrets/default_admin.toml")
+    default_admin_path = secrets_dir / "admin.toml"
 
     with open(default_admin_path, "rb") as file:
         admin_details = tomllib.load(file)

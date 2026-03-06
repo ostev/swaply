@@ -1,5 +1,4 @@
 import api
-import extra/rsvp as extra_rsvp
 import gleam/dynamic/decode
 import gleam/http
 import gleam/int
@@ -52,9 +51,9 @@ pub fn get(
   id: String,
   handler: fn(Result(User, rsvp.Error)) -> msg,
 ) -> Effect(msg) {
-  echo api_prefix <> "/" <> uri.percent_encode(id)
+  echo api_prefix <> uri.percent_encode(id)
   rsvp.get(
-    api_prefix <> "/" <> uri.percent_encode(id),
+    api_prefix <> uri.percent_encode(id),
     rsvp.expect_json(decoder(), handler),
   )
 }
@@ -81,16 +80,18 @@ pub fn list_all(
 pub fn delete(
   id: String,
   handler: fn(Result(Nil, rsvp.Error)) -> msg,
+  with_token csrf_token: String,
 ) -> Result(Effect(msg), Nil) {
-  extra_rsvp.send(
+  api.send(
     body: json.object([]),
-    to: api_prefix <> "/" <> uri.percent_encode(id),
+    to: api_prefix <> uri.percent_encode(id),
     with: http.Delete,
     handler: rsvp.expect_ok_response(fn(response) {
       response
       |> result.replace(Nil)
       |> handler
     }),
+    with_token: csrf_token,
   )
 }
 
@@ -114,6 +115,7 @@ pub fn update(
   email email: Option(String),
   is_admin is_admin: Option(Bool),
   handler handler: fn(Result(User, UpdateError)) -> msg,
+  with_token csrf_token: String,
 ) {
   let body =
     json.object(
@@ -128,10 +130,11 @@ pub fn update(
       }),
     )
 
-  extra_rsvp.send(
+  api.send(
     body:,
-    to: api_prefix <> "/" <> uri.percent_encode(id),
+    to: api_prefix <> uri.percent_encode(id),
     with: http.Patch,
+    with_token: csrf_token,
     handler: rsvp.expect_json(decoder(), fn(result) {
       case result {
         Ok(user) -> handler(Ok(user))

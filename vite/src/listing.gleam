@@ -1,6 +1,5 @@
 import api
 import extra/decode as extra_decode
-import extra/rsvp as extra_rsvp
 import gleam/bool
 import gleam/dynamic/decode
 import gleam/http
@@ -101,7 +100,7 @@ pub fn decoder() -> decode.Decoder(Listing) {
 }
 
 pub fn api_url(id: String) -> String {
-  api_prefix <> "/" <> uri.percent_encode(id)
+  uri.percent_encode(id)
 }
 
 pub fn page_url(id: String) -> String {
@@ -117,8 +116,12 @@ pub fn get(
   rsvp.get(api_url(id), rsvp_handler)
 }
 
-pub fn delete(id: String, handler: fn(Result(Nil, rsvp.Error)) -> msg) {
-  extra_rsvp.send(
+pub fn delete(
+  id: String,
+  handler: fn(Result(Nil, rsvp.Error)) -> msg,
+  with_token csrf_token: String,
+) {
+  api.send(
     body: json.object([]),
     to: api_url(id),
     with: http.Delete,
@@ -127,6 +130,7 @@ pub fn delete(id: String, handler: fn(Result(Nil, rsvp.Error)) -> msg) {
       |> result.replace(Nil)
       |> handler
     }),
+    with_token: csrf_token,
   )
 }
 

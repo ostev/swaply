@@ -1,3 +1,5 @@
+import api
+import gleam/http
 import gleam/http/response.{type Response}
 import gleam/json
 import gleam/result
@@ -190,7 +192,9 @@ fn init(_) -> #(Model, Effect(Msg)) {
   let url =
     modem.initial_uri()
     |> result.unwrap(uri.empty)
-  let shared = Shared(current_url: url, user: user.Unknown)
+  let shared =
+    shared.new(url)
+    |> result.lazy_unwrap(fn() { panic as "CSRF token not found!" })
 
   let #(page, page_effect) = change_page(from: uri.empty, to: url, with: shared)
 
@@ -204,11 +208,13 @@ fn init(_) -> #(Model, Effect(Msg)) {
   )
 }
 
-fn logout() {
-  rsvp.post(
-    auth.api_prefix <> "/logout",
-    json.object([]),
-    rsvp.expect_ok_response(LogoutResponseReceived),
+fn logout(csrf_token: String) {
+  api.send(
+    body: json.object([]),
+    to: "logout",
+    with: http.Post,
+    handler: rsvp.expect_ok_response(LogoutResponseReceived),
+    with_token: csrf_token,
   )
 }
 
@@ -256,7 +262,13 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
     }
 
     UserRequestedLogout, _ -> {
-      #(model, logout())
+      #(
+        model,
+        logout(model.shared.csrf_token)
+          |> result.lazy_unwrap(fn() {
+            panic as "Logout URL failed to parse. This shouldn't happen."
+          }),
+      )
     }
 
     LogoutResponseReceived(Ok(_)), _ -> {
@@ -265,7 +277,12 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
           ..model,
           shared: Shared(..model.shared, user: user.Unauthenticated),
         ),
-        effect.none(),
+        modem.load(
+          uri.origin(model.shared.current_url)
+          |> result.map(uri.parse)
+          |> result.flatten
+          |> result.unwrap(model.shared.current_url),
+        ),
       )
     }
 
@@ -282,27 +299,27 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       |> update_with(Home, GotHomeMsg, model)
 
     GotLoginMsg(sub_msg), Login(sub_model) ->
-      login.update(sub_model, sub_msg)
+      login.update(model.shared, sub_model, sub_msg)
       |> update_with(Login, GotLoginMsg, model)
 
     GotSignUpMsg(sub_msg), SignUp(sub_model) ->
-      sign_up.update(sub_model, sub_msg)
+      sign_up.update(model.shared, sub_model, sub_msg)
       |> update_with(SignUp, GotSignUpMsg, model)
 
     GotCreateListingMsg(sub_msg), CreateListing(sub_model) ->
-      edit_listing.update(sub_model, sub_msg)
+      edit_listing.update(model.shared, sub_model, sub_msg)
       |> update_with(CreateListing, GotCreateListingMsg, model)
 
     GotUpdateListingMsg(sub_msg), UpdateListing(sub_model) ->
-      edit_listing.update(sub_model, sub_msg)
+      edit_listing.update(model.shared, sub_model, sub_msg)
       |> update_with(UpdateListing, GotUpdateListingMsg, model)
 
     GotViewListingMsg(sub_msg), ViewListing(sub_model) ->
-      view_listing.update(sub_model, sub_msg)
+      view_listing.update(model.shared, sub_model, sub_msg)
       |> update_with(ViewListing, GotViewListingMsg, model)
 
     GotEditUserMsg(sub_msg), EditUser(sub_model) ->
-      edit_user.update(sub_model, sub_msg)
+      edit_user.update(model.shared, sub_model, sub_msg)
       |> update_with(EditUser, GotEditUserMsg, model)
 
     GotManageUsersMsg(sub_msg), ManageUsers(sub_model) ->

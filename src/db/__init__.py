@@ -1,3 +1,4 @@
+from pathlib import Path
 import sqlite3
 from typing import Any, Callable
 
@@ -9,7 +10,7 @@ from utils import check_sql_identifier
 
 
 class LockedConnection:
-    def __init__(self, path: str):
+    def __init__(self, path: str | Path):
         self.db_conn = sqlite3.connect(path, check_same_thread=False)
 
         self.lock = Lock()
@@ -20,7 +21,9 @@ class LockedConnection:
 
 
 class Database:
-    def __init__(self, path: str, schema: Schema, number_of_connections=8) -> None:
+    def __init__(
+        self, path: str | Path, schema: Schema, number_of_connections=8
+    ) -> None:
         self._schema = schema
 
         self._connections = [

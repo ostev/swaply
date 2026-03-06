@@ -1,11 +1,27 @@
 import gleam/option.{type Option}
+import gleam/result
 import gleam/uri.{type Uri}
 import lustre/effect
 import modem
 import user.{type User}
 
 pub type Shared {
-  Shared(current_url: Uri, user: user.Status)
+  Shared(current_url: Uri, user: user.Status, csrf_token: String)
+}
+
+pub type InitError {
+  CSRFTokenNotFound
+}
+
+@external(javascript, "./csrf.mjs", "get_csrf_token")
+fn get_csrf_token() -> String
+
+pub fn new(url: Uri) -> Result(Shared, InitError) {
+  use csrf_token <- result.try(case get_csrf_token() {
+    "" -> Error(CSRFTokenNotFound)
+    token -> Ok(token)
+  })
+  Ok(Shared(current_url: url, user: user.Unknown, csrf_token:))
 }
 
 pub fn check_authentication(shared: Shared) {
