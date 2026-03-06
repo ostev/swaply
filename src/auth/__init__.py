@@ -5,7 +5,6 @@ from flask import Blueprint, current_app, request
 from email_validator import EmailNotValidError, validate_email
 
 from auth.hasher import ArgonHasher
-from auth.pre_session import unauthenticated_csrf_protected
 from auth.user import User
 import auth.session
 
@@ -28,7 +27,6 @@ class LoginResult(aenum.Enum):  # type: ignore
 
 
 @auth_api.route("/login", methods=["POST"])
-@unauthenticated_csrf_protected
 def login():
     email = request.json["email"]
     password = request.json["password"]
@@ -106,7 +104,6 @@ def create_user(email: str, name: str, password: str, is_admin: bool) -> int:
 
 
 @auth_api.route("/signup", methods=["POST"])
-@unauthenticated_csrf_protected
 def signup():
     email = str(request.json["email"])
     name = str(request.json["name"])

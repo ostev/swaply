@@ -4,9 +4,8 @@ import secrets
 from sqlite3 import Connection, Cursor
 from uuid import uuid7
 
-from flask import request, session
+from flask import session
 
-from auth import pre_session
 from auth.hasher import BlakeHasher, SaltedHash
 from db.schema import Column, PrimaryKey, table
 from auth.user import User
@@ -23,11 +22,8 @@ class Session:
     hashed_token = Column.blob()
     token_salt = Column.blob()
 
-    csrf_token = Column.blob()
-
 
 def register(user_id: int, expiry_days: int = 3) -> str:
-    pre_session.delete()
 
     expiry_datetime = datetime.now(UTC) + timedelta(expiry_days)
 
@@ -40,8 +36,8 @@ def register(user_id: int, expiry_days: int = 3) -> str:
     def insert_session(conn: Connection, cursor: Cursor):
         cursor.execute(
             """
-            INSERT INTO sessions (id, user_id, expiry_datetime, hashed_token, token_salt, csrf_token)
-            VALUES (?, ?, ?, ?, ?, ?)
+            INSERT INTO sessions (id, user_id, expiry_datetime, hashed_token, token_salt)
+            VALUES (?, ?, ?, ?, ?)
             """,
             (
                 session_id,
@@ -49,7 +45,6 @@ def register(user_id: int, expiry_days: int = 3) -> str:
                 expiry_datetime.isoformat(),
                 salted_hash.hash,
                 salted_hash.salt,
-                csrf_token,
             ),
         )
         conn.commit()
@@ -62,40 +57,28 @@ def register(user_id: int, expiry_days: int = 3) -> str:
     return csrf_token.hex()
 
 
-def authenticated_csrf_token() -> str | None:
-    csrf_token = None
-    if "auth_session_id" in session:
-        csrf_token: bytes | None = globals.db.retrieve(
-            [Session.csrf_token], Session.id, session["auth_session_id"]
-        )
-
-    return csrf_token.hex() if csrf_token is not None else None
-
-
 def get_user_id() -> int | None:
-    if (
-        "auth_session_id" in session
-        and "auth_token" in session
-        # and "X-CSRF-Token" in request.headers
-    ):
+    if "auth_session_id" in session and "auth_token" in session:
         session_id = bytes(session["auth_session_id"])
         token = bytes(session["auth_token"])
-        # csrf_header = str(request.headers["X-CSRF-Token"])
 
         def get_session(
             conn: Connection, cursor: Cursor
-        ) -> tuple[int, bytes, bytes, str, bytes] | None:
+        ) -> tuple[int, bytes, bytes, str] | None:
             return cursor.execute(
-                "SELECT user_id, hashed_token, token_salt, expiry_datetime, csrf_token FROM sessions WHERE id = ?",
+                "SELECT user_id, hashed_token, token_salt, expiry_datetime FROM sessions WHERE id = ?",
                 (session_id,),
             ).fetchone()
 
         maybe_session = globals.db.run(get_session)
 
         if maybe_session is not None:
-            user_id, hashed_token, token_salt, expiry_datetime, csrf_token = (
-                maybe_session
-            )
+            (
+                user_id,
+                hashed_token,
+                token_salt,
+                expiry_datetime,
+            ) = maybe_session
 
             hash_matches = BlakeHasher().verify(
                 token, SaltedHash(hashed_token, token_salt)

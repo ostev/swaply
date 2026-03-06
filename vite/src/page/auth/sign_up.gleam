@@ -70,7 +70,10 @@ fn sign_up_response_decoder() -> decode.Decoder(SignUpResponse) {
 
 pub fn update(shared: Shared, model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
   case msg {
-    SignUpResponseReceived(Ok(_)) -> #(model, modem.load(model.origin))
+    SignUpResponseReceived(Ok(_)) -> #(
+      model,
+      modem.push(model.origin.path, model.origin.query, model.origin.fragment),
+    )
     SignUpResponseReceived(Error(error)) -> #(
       Model(..model, error: option.Some(error)),
       effect.none(),

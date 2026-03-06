@@ -59,7 +59,10 @@ fn login_response_decoder() -> decode.Decoder(LoginResponse) {
 
 pub fn update(shared: Shared, model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
   case msg {
-    LoginResponseReceived(Ok(_)) -> #(model, modem.load(model.origin))
+    LoginResponseReceived(Ok(_)) -> #(
+      model,
+      modem.push(model.origin.path, model.origin.query, model.origin.fragment),
+    )
     LoginResponseReceived(Error(error)) -> #(
       Model(..model, error: option.Some(error)),
       effect.none(),

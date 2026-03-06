@@ -211,7 +211,7 @@ fn init(_) -> #(Model, Effect(Msg)) {
 fn logout(csrf_token: String) {
   api.send(
     body: json.object([]),
-    to: "logout",
+    to: auth.api_root <> "/logout",
     with: http.Post,
     handler: rsvp.expect_ok_response(LogoutResponseReceived),
     with_token: csrf_token,

@@ -457,7 +457,15 @@ fn submit(
     )
 
   case mode {
-    Create -> Ok(rsvp.post(listing.api_prefix, body, handler))
+    Create ->
+      api.send(
+        body:,
+        to: listing.api_root,
+        with: http.Post,
+        handler:,
+        with_token: csrf_token,
+      )
+      |> result.replace_error(InvalidId)
     Update(id) -> {
       api.send(
         body:,

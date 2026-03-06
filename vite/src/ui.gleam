@@ -93,6 +93,8 @@ fn button_internal(
       css.padding_inline(length.px(10)),
       css.padding_block(length.px(6)),
 
+      css.text_align("center"),
+
       case role {
         Disabled -> css.border_color("white")
         _ ->

@@ -10,7 +10,7 @@ import gleam/uri
 import lustre/effect.{type Effect}
 import rsvp
 
-const api_prefix = api.prefix <> "/user"
+const api_root = "/user"
 
 pub type User {
   User(
@@ -42,18 +42,17 @@ fn decoder() -> decode.Decoder(User) {
 pub fn get_current_user(
   handler: fn(Result(User, rsvp.Error)) -> msg,
 ) -> Effect(msg) {
-  let url = api_prefix <> "/current"
+  let url = api_root <> "/current"
 
-  rsvp.get(url, rsvp.expect_json(decoder(), fn(response) { handler(response) }))
+  api.get(url, rsvp.expect_json(decoder(), fn(response) { handler(response) }))
 }
 
 pub fn get(
   id: String,
   handler: fn(Result(User, rsvp.Error)) -> msg,
 ) -> Effect(msg) {
-  echo api_prefix <> uri.percent_encode(id)
-  rsvp.get(
-    api_prefix <> uri.percent_encode(id),
+  api.get(
+    api_root <> uri.percent_encode(id),
     rsvp.expect_json(decoder(), handler),
   )
 }
@@ -63,8 +62,8 @@ pub fn list_all(
   page page: Int,
   handler handler: fn(Result(List(User), rsvp.Error)) -> msg,
 ) -> Effect(msg) {
-  rsvp.get(
-    api_prefix
+  api.get(
+    api_root
       <> "?"
       <> uri.query_to_string([
       #("p", int.to_string(page)),
@@ -84,7 +83,7 @@ pub fn delete(
 ) -> Result(Effect(msg), Nil) {
   api.send(
     body: json.object([]),
-    to: api_prefix <> uri.percent_encode(id),
+    to: api_root <> uri.percent_encode(id),
     with: http.Delete,
     handler: rsvp.expect_ok_response(fn(response) {
       response
@@ -132,7 +131,7 @@ pub fn update(
 
   api.send(
     body:,
-    to: api_prefix <> uri.percent_encode(id),
+    to: api_root <> uri.percent_encode(id),
     with: http.Patch,
     with_token: csrf_token,
     handler: rsvp.expect_json(decoder(), fn(result) {

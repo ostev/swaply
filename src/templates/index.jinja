@@ -9,7 +9,7 @@
     <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/baseline.css') }}">
     {{ vite_tags() }}
 
-    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <meta name="csrf-header-value" content="{{ csrf_header_value }}">
 </head>
 
 <body>

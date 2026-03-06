@@ -41,3 +41,7 @@ pub fn send(
     ))
   }
 }
+
+pub fn get(to relative_url: String, handler handler: rsvp.Handler(msg)) {
+  rsvp.get(prefix <> relative_url, handler)
+}

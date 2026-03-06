@@ -19,7 +19,7 @@ import tempo/datetime
 import tempo/offset
 import tempo/time
 
-pub const api_prefix = api.prefix <> "/listings"
+pub const api_root = "/listings"
 
 pub type Listing {
   Listing(
@@ -100,7 +100,7 @@ pub fn decoder() -> decode.Decoder(Listing) {
 }
 
 pub fn api_url(id: String) -> String {
-  uri.percent_encode(id)
+  api_root <> "/" <> uri.percent_encode(id)
 }
 
 pub fn page_url(id: String) -> String {
@@ -113,7 +113,7 @@ pub fn get(
 ) -> Effect(a) {
   let rsvp_handler = rsvp.expect_json(decoder(), handler)
 
-  rsvp.get(api_url(id), rsvp_handler)
+  api.get(api_url(id), rsvp_handler)
 }
 
 pub fn delete(
@@ -184,7 +184,7 @@ pub fn search(
         |> list.filter_map(option.to_result(_, Nil))
       }
     ])
-  let url = api_prefix <> "/search?" <> query_string
+  let url = api_root <> "/search?" <> query_string
 
   let decoder = {
     use listings <- decode.field("listings", decode.list(of: decoder()))
@@ -205,14 +205,5 @@ pub fn search(
       |> handler
     })
 
-  rsvp.get(url, rsvp_handler)
-}
-
-pub fn get_user_listings(handler) {
-  let url = api_prefix <> "/selling"
-
-  let decoder = decode.list(of: decoder())
-  let rsvp_handler = rsvp.expect_json(decoder, handler)
-
-  rsvp.get(url, rsvp_handler)
+  api.get(url, rsvp_handler)
 }

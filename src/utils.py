@@ -1,6 +1,7 @@
 import json
 import pathlib
 import re
+import secrets
 from typing import Any
 
 
@@ -31,3 +32,17 @@ def load_data(filename) -> set[str]:
     return load_newline_seperated_values(
         pathlib.Path(__file__).parent.resolve() / "data" / filename
     )
+
+
+def get_secret(path: pathlib.Path, num_bytes: int = 16) -> str:
+    try:
+        with open(path, "r") as file:
+            return file.read()
+    except FileNotFoundError:
+        path.parent.mkdir(parents=True, exist_ok=True)
+
+        with open(path, "w") as file:
+            secret_key = secrets.token_hex(num_bytes)
+            file.write(secret_key)
+
+            return secret_key
