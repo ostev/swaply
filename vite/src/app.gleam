@@ -272,17 +272,17 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
     }
 
     LogoutResponseReceived(Ok(_)), _ -> {
+      let root_url =
+        uri.origin(model.shared.current_url)
+        |> result.map(uri.parse)
+        |> result.flatten
+        |> result.unwrap(model.shared.current_url)
       #(
         Model(
           ..model,
           shared: Shared(..model.shared, user: user.Unauthenticated),
         ),
-        modem.load(
-          uri.origin(model.shared.current_url)
-          |> result.map(uri.parse)
-          |> result.flatten
-          |> result.unwrap(model.shared.current_url),
-        ),
+        modem.push(root_url.path, root_url.query, root_url.fragment),
       )
     }
 

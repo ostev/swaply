@@ -56,7 +56,6 @@ def login():
 
 
 @auth_api.route("/logout", methods=["POST"])
-@auth.session.protected
 def logout():
     auth.session.logout()
 
