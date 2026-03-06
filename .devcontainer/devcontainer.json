@@ -5,7 +5,7 @@
     "customizations": {
         "vscode": {
             "extensions": [
-                "prettier.prettier-vscode",
+                "esbenp.prettier-vscode",
                 "tamasfe.even-better-toml",
                 "gleam.gleam",
                 "samuelcolvin.jinjahtml",
