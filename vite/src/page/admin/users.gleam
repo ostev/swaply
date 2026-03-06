@@ -9,6 +9,8 @@ import sketch/css
 import sketch/css/length
 import sketch/lustre/element/html as h
 import ui
+import ui/button
+import ui/input
 import ui/layout
 import ui/table
 import user
@@ -90,7 +92,7 @@ pub fn view(model: Model, shared: Shared) -> Element(Msg) {
                   ]),
                   [],
                   [
-                    ui.search_input(
+                    input.search(
                       label: "Email",
                       name: "email",
                       placeholder: "Search by email...",
@@ -112,8 +114,8 @@ pub fn view(model: Model, shared: Shared) -> Element(Msg) {
                         [h.text(user.email)],
                         [h.text(user.name)],
                         [
-                          ui.link_button(
-                            ui.Primary,
+                          button.link(
+                            button.Primary,
                             "Edit",
                             "/user/" <> uri.percent_encode(user.id) <> "/edit",
                           ),

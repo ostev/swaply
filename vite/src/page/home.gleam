@@ -18,6 +18,7 @@ import sketch/lustre/element/keyed
 import tempo/instant
 import ui
 import ui/colors
+import ui/input
 import ui/layout
 import ui/listing as listing_ui
 import ui/styles
@@ -211,7 +212,7 @@ pub fn view(model: Model, shared: Shared) -> Element(Msg) {
 
             case shared.user {
               user.Authenticated(_) -> {
-                ui.toggle_input(
+                input.toggle(
                   label: "Only your listings?",
                   name: "filter_owned",
                   is_checked: model.filter.only_owned,

@@ -11,6 +11,8 @@ import sketch/css
 import sketch/css/length
 import sketch/lustre/element/html as h
 import ui
+import ui/button.{button}
+import ui/input
 import ui/layout
 import ui/styles
 import user.{type User}
@@ -148,7 +150,7 @@ pub fn view(model: Model) -> Element(Msg) {
             e.on_submit(fn(_) { SubmitForm }),
           ],
           [
-            ui.input_(
+            input.generic_(
               type_: "text",
               label: "Email",
               name: "email",
@@ -156,7 +158,7 @@ pub fn view(model: Model) -> Element(Msg) {
               on_input: fn(email) { UpdateForm(Form(..form, email:)) },
               is_valid: form.email |> string.contains("@"),
             ),
-            ui.toggle_input(
+            input.toggle(
               label: "Is admin?",
               name: "is_admin",
               is_checked: form.is_admin,
@@ -164,8 +166,8 @@ pub fn view(model: Model) -> Element(Msg) {
             ),
 
             h.div(layout.row(layout.SpaceBetween), [], [
-              ui.button(ui.Danger, "Delete", DeleteUser),
-              ui.submit(ui.Primary, "Update"),
+              button(button.Danger, "Delete", DeleteUser),
+              button.submit(button.Primary, "Update"),
             ]),
           ],
         )

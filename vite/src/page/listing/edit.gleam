@@ -29,6 +29,8 @@ import tempo/datetime
 import tempo/error as tempo_error
 import tempo/offset
 import ui
+import ui/button.{button}
+import ui/input
 import ui/layout
 import ui/listing as listing_ui
 import ui/styles
@@ -494,7 +496,7 @@ fn listing_date(model: Model) -> Element(Msg) {
       [],
       [
         h.div(css.class([css.flex("1")]), [], [
-          ui.input_(
+          input.generic_(
             type_: "date",
             label: "Date",
             name: "date",
@@ -505,7 +507,7 @@ fn listing_date(model: Model) -> Element(Msg) {
         ]),
 
         h.div(css.class([css.flex("1")]), [], [
-          ui.input_(
+          input.generic_(
             type_: "time",
             label: "Time",
             name: "time",
@@ -620,7 +622,7 @@ pub fn view(model: Model) -> Element(Msg) {
             }),
           ],
           [
-            ui.title_input(
+            input.title(
               css.class([]),
               name: "title",
               label: "Title",
@@ -636,7 +638,7 @@ pub fn view(model: Model) -> Element(Msg) {
               [
                 ui.fieldset([
                   ui.h3(styles.text_center(), "Details"),
-                  ui.textarea(
+                  input.textarea(
                     label: "Short description",
                     name: "short_description",
                     value: model.form.short_description,
@@ -645,7 +647,7 @@ pub fn view(model: Model) -> Element(Msg) {
                     height: length.em(4.0),
                   ),
 
-                  ui.textarea(
+                  input.textarea(
                     label: "Description",
                     name: "description",
                     value: model.form.description,
@@ -664,7 +666,7 @@ pub fn view(model: Model) -> Element(Msg) {
                     on_remove_tag: DeletedTag,
                   ),
 
-                  ui.input_(
+                  input.generic_(
                     type_: "text",
                     label: "Pickup location",
                     name: "location",
@@ -706,8 +708,8 @@ pub fn view(model: Model) -> Element(Msg) {
                                   "item_type_" <> int.to_string(index),
                                   UpdatedTicketType(_, index:),
                                 ),
-                                ui.button(
-                                  ui.Danger,
+                                button(
+                                  button.Danger,
                                   "Delete",
                                   DeletedTicketType(index),
                                 ),
@@ -722,8 +724,8 @@ pub fn view(model: Model) -> Element(Msg) {
                         ]),
                         [],
                         [
-                          ui.button(
-                            ui.Primary,
+                          button(
+                            button.Primary,
                             "Add",
                             AddedTicketType(listing.ItemInput(
                               name: "",
@@ -750,14 +752,14 @@ pub fn view(model: Model) -> Element(Msg) {
                     ]),
                     [],
                     [
-                      ui.toggle_input(
+                      input.toggle(
                         label: "Published?",
                         name: "is_published",
                         is_checked: model.form.is_published,
                         on_input: UpdatedIsPublished,
                       ),
 
-                      ui.submit(ui.Primary, case model.mode {
+                      button.submit(button.Primary, case model.mode {
                         Create -> "Create"
                         Update(_) -> "Update"
                       }),

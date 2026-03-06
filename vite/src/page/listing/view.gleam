@@ -19,8 +19,10 @@ import sketch/css
 import sketch/css/length
 import sketch/lustre/element/html as h
 import ui
+import ui/button.{button}
 import ui/colors
 import ui/fonts
+import ui/input
 import ui/layout
 import ui/listing as listing_ui
 import ui/styles
@@ -230,14 +232,14 @@ fn action_footer(shared: Shared, listing: Listing) -> Element(Msg) {
         ]),
         [],
         [
-          ui.link_button(
-            ui.Primary,
+          button.link(
+            button.Primary,
             text: "Edit",
             to: "/listing/" <> uri.percent_encode(listing.id) <> "/edit",
           ),
 
-          ui.button(
-            ui.Danger,
+          button(
+            button.Danger,
             "Delete",
             SetDeleteModal(
               option.Some(DeleteModal(error: option.None, verify: "")),
@@ -304,7 +306,7 @@ pub fn view(model: Model, shared: Shared) -> Element(Msg) {
               }
             })
             |> option.unwrap(element.none()),
-          ui.input_(
+          input.generic_(
             label: "Name",
             type_: "text",
             name: "delete_modal_verify",
@@ -329,18 +331,18 @@ pub fn view(model: Model, shared: Shared) -> Element(Msg) {
             ]),
             [],
             [
-              ui.button_with_attrs(
-                ui.Primary,
+              button.with_attrs(
+                button.Primary,
                 [
                   a.autofocus(True),
                 ],
                 "Cancel",
                 SetDeleteModal(option.None),
               ),
-              ui.button(
+              button(
                 case can_delete {
-                  True -> ui.Danger
-                  False -> ui.Disabled
+                  True -> button.Danger
+                  False -> button.Disabled
                 },
                 "Delete",
                 Delete,

@@ -30,6 +30,7 @@ import sketch/css/transform
 import sketch/lustre as sketch_lustre
 import sketch/lustre/element/html as h
 import ui
+import ui/button.{button}
 import ui/colors
 import ui/fonts
 import ui/nav
@@ -463,16 +464,16 @@ fn nav(model: Model) -> Element(Msg) {
 fn auth_nav(shared: Shared) -> Element(Msg) {
   element.fragment([
     case shared.is_admin(shared) {
-      True -> ui.link_button(ui.Primary, "Manage users", to: "/admin/users")
+      True -> button.link(button.Primary, "Manage users", to: "/admin/users")
       False -> element.none()
     },
     ..case shared.user {
       user.Authenticated(_) -> [
-        ui.button(ui.Primary, "Log out", UserRequestedLogout),
+        button(button.Primary, "Log out", UserRequestedLogout),
       ]
       user.Unauthenticated | user.Unknown -> [
-        ui.link_button(ui.Primary, text: "Login", to: "/login"),
-        ui.link_button(ui.Primary, text: "Sign up", to: "/register"),
+        button.link(button.Primary, text: "Login", to: "/login"),
+        button.link(button.Primary, text: "Sign up", to: "/register"),
       ]
     }
   ])

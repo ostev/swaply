@@ -16,6 +16,8 @@ import sketch/css
 import sketch/css/length
 import sketch/lustre/element/html as h
 import ui
+import ui/button
+import ui/input
 import ui/layout
 import ui/styles
 
@@ -118,7 +120,7 @@ pub fn view(model: Model) -> Element(Msg) {
         ]),
         [e.on_submit(fn(_) { SubmitForm })],
         [
-          ui.input(
+          input.generic(
             spacing,
             type_: "text",
             label: "Email",
@@ -127,7 +129,7 @@ pub fn view(model: Model) -> Element(Msg) {
             on_input: UpdatedEmail,
             is_valid: model.form.email |> string.contains("@"),
           ),
-          ui.input(
+          input.generic(
             spacing,
             type_: "password",
             label: "Password",
@@ -136,7 +138,7 @@ pub fn view(model: Model) -> Element(Msg) {
             on_input: UpdatedPassword,
             is_valid: string.length(model.form.password) >= 8,
           ),
-          ui.submit(ui.Primary, "Login"),
+          button.submit(button.Primary, "Login"),
 
           case model.error {
             option.Some(error) -> {

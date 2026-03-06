@@ -12,8 +12,10 @@ import tempo
 import tempo/datetime
 import tempo/offset
 import ui
+import ui/button
 import ui/colors
 import ui/fonts
+import ui/input
 import ui/layout
 import ui/styles
 import ui/tags
@@ -117,8 +119,8 @@ pub fn card_view(
             ]),
             [],
             [
-              ui.link_button(
-                role: ui.Primary,
+              button.link(
+                role: button.Primary,
                 text: "Edit",
                 to: "/listing/" <> uri.percent_encode(listing.id) <> "/edit",
               ),
@@ -150,7 +152,7 @@ fn tag_content(text: String) -> Element(msg) {
 
 pub fn item_type_input(item_type: listing.ItemInput, name: String, on_input) {
   ui.fieldset([
-    ui.title_input(
+    input.title(
       css.class([
         css.max_width(length.percent(100)),
         css.width(length.percent(100)),
@@ -171,7 +173,7 @@ pub fn item_type_input(item_type: listing.ItemInput, name: String, on_input) {
       ]),
       [],
       [
-        ui.number_input(
+        input.number(
           name: name <> "_price",
           label: "Price (AUD)",
           value: item_type.price,
@@ -182,7 +184,7 @@ pub fn item_type_input(item_type: listing.ItemInput, name: String, on_input) {
           max: 1_000_000.0,
           step: 0.01,
         ),
-        ui.number_input(
+        input.number(
           name: name <> "_quantity",
           label: "Quantity",
           value: item_type.quantity,
