@@ -52,7 +52,7 @@ pub fn get(
   handler: fn(Result(User, rsvp.Error)) -> msg,
 ) -> Effect(msg) {
   api.get(
-    api_root <> uri.percent_encode(id),
+    api_root <> "/" <> uri.percent_encode(id),
     rsvp.expect_json(decoder(), handler),
   )
 }

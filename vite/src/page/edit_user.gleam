@@ -8,16 +8,20 @@ import modem
 import rsvp
 import shared.{type Shared}
 import sketch/css
+import sketch/css/length
 import sketch/lustre/element/html as h
 import ui
 import ui/layout
 import ui/styles
 import user.{type User}
 
+pub type UserData {
+  UserData(user: User, form: Form)
+}
+
 pub type Model {
   Model(
-    user: Option(Result(User, rsvp.Error)),
-    form: Option(Form),
+    user: Option(Result(UserData, rsvp.Error)),
     update_error: Option(user.UpdateError),
     delete_error: Option(rsvp.Error),
   )
@@ -31,7 +35,6 @@ pub fn init(user_id: String, shared: Shared) -> #(Model, Effect(Msg)) {
   #(
     Model(
       user: option.None,
-      form: option.None,
       update_error: option.None,
       delete_error: option.None,
     ),
@@ -57,32 +60,39 @@ pub fn update(shared: Shared, model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       #(
         Model(
           ..model,
-          user: option.Some(result),
-          form: result
-            |> option.from_result
-            |> option.map(fn(user) {
-              Form(email: user.email, is_admin: user.is_admin)
+          user: option.Some(
+            result
+            |> result.map(fn(user) {
+              UserData(user, Form(email: user.email, is_admin: user.is_admin))
             }),
+          ),
         ),
         effect.none(),
       )
     }
     UpdateForm(form) -> {
-      #(Model(..model, form: option.Some(form)), effect.none())
+      #(
+        Model(
+          ..model,
+          user: model.user
+            |> option.map(result.map(_, fn(data) { UserData(..data, form:) })),
+        ),
+        effect.none(),
+      )
     }
     SubmitForm -> {
-      #(model, case model.form, model.user {
-        option.Some(form), option.Some(Ok(user)) -> {
-          submit(form, user, with_token: shared.csrf_token)
+      #(model, case model.user {
+        option.Some(Ok(user)) -> {
+          submit(user, with_token: shared.csrf_token)
         }
-        _, _ -> effect.none()
+        _ -> effect.none()
       })
     }
     DeleteUser -> {
       case model.user {
-        option.Some(Ok(user)) -> #(
+        option.Some(Ok(data)) -> #(
           model,
-          user.delete(user.id, DeleteResponseReceived, shared.csrf_token)
+          user.delete(data.user.id, DeleteResponseReceived, shared.csrf_token)
             |> result.unwrap(effect.none()),
         )
         _ -> #(model, effect.none())
@@ -108,11 +118,11 @@ pub fn update(shared: Shared, model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
   }
 }
 
-fn submit(form: Form, user: User, with_token csrf_token: String) {
+fn submit(data: UserData, with_token csrf_token: String) {
   user.update(
-    id: user.id,
-    email: option.Some(form.email),
-    is_admin: option.Some(form.is_admin),
+    id: data.user.id,
+    email: option.Some(data.form.email),
+    is_admin: option.Some(data.form.is_admin),
     handler: UpdateResponseReceived,
     with_token: csrf_token,
   )
@@ -121,11 +131,19 @@ fn submit(form: Form, user: User, with_token csrf_token: String) {
 
 pub fn view(model: Model) -> Element(Msg) {
   h.div(layout.row(layout.Center), [], [
-    case model.form {
+    case model.user {
       option.None -> element.none()
-      option.Some(form) -> {
+      option.Some(Error(_)) -> {
+        ui.panel(
+          ui.ErrorPanel,
+          True,
+          "An error occured while fetching information about this user.",
+        )
+      }
+      option.Some(Ok(data)) -> {
+        let form = data.form
         h.form(
-          css.class([css.compose(styles.card())]),
+          css.class([css.compose(styles.card()), css.margin(length.px(20))]),
           [
             e.on_submit(fn(_) { SubmitForm }),
           ],

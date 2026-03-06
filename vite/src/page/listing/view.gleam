@@ -217,6 +217,41 @@ fn can_delete(model: Model) -> Bool {
   }
 }
 
+fn action_footer(shared: Shared, listing: Listing) -> Element(Msg) {
+  case shared.user {
+    user.Authenticated(user)
+      if user.id == listing.seller.id
+      || { user.is_admin && listing.is_published }
+    -> {
+      h.div(
+        css.class([
+          css.compose(layout.row(layout.End)),
+          css.gap(length.px(12)),
+        ]),
+        [],
+        [
+          ui.link_button(
+            ui.Primary,
+            text: "Edit",
+            to: "/listing/" <> uri.percent_encode(listing.id) <> "/edit",
+          ),
+
+          ui.button(
+            ui.Danger,
+            "Delete",
+            SetDeleteModal(
+              option.Some(DeleteModal(error: option.None, verify: "")),
+            ),
+          ),
+        ],
+      )
+    }
+    _ -> {
+      element.none()
+    }
+  }
+}
+
 pub fn view(model: Model, shared: Shared) -> Element(Msg) {
   let can_delete = can_delete(model)
 
@@ -318,46 +353,7 @@ pub fn view(model: Model, shared: Shared) -> Element(Msg) {
         option.Some(result) -> {
           case result {
             Ok(listing) -> {
-              [
-                case shared.user {
-                  user.Authenticated(user)
-                    if user.id == listing.seller.id
-                    || { user.is_admin && listing.is_published }
-                  -> {
-                    h.div(
-                      css.class([
-                        css.compose(layout.row(layout.End)),
-                        css.gap(length.px(12)),
-                      ]),
-                      [],
-                      [
-                        ui.link_button(
-                          ui.Primary,
-                          text: "Edit",
-                          to: "/listing/"
-                            <> uri.percent_encode(listing.id)
-                            <> "/edit",
-                        ),
-
-                        ui.button(
-                          ui.Danger,
-                          "Delete",
-                          SetDeleteModal(
-                            option.Some(DeleteModal(
-                              error: option.None,
-                              verify: "",
-                            )),
-                          ),
-                        ),
-                      ],
-                    )
-                  }
-                  _ -> {
-                    element.none()
-                  }
-                },
-                view_listing(listing),
-              ]
+              [view_listing(listing), action_footer(shared, listing)]
             }
             Error(error) -> {
               [
