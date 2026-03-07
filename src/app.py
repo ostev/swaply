@@ -202,6 +202,7 @@ def create_search_index(conn: sqlite3.Connection, cursor: sqlite3.Cursor):
 
 
 globals.db.run(create_search_index)
+app.config["VITE_FOLDER_PATH"] = Path(__file__).parent.parent.resolve() / "vite"
 vite = Vite(app)
 
 
