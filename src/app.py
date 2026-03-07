@@ -66,14 +66,16 @@ if app.debug:
     csp = {
         "default-src": "'self' http://localhost:3000 ws://localhost:3000",
         "object-src": "'none'",
-        "style-src": "'self' 'unsafe-inline'",
+        "style-src": "'self' 'unsafe-inline' https://fonts.googleapis.com",
+        "font-src": "'self' https://fonts.gstatic.com",
         "worker-src": "'self' blob:",
     }
 else:
     csp = {
         "default-src": "'self'",
         "object-src": "'none'",
-        "style-src": "'self' 'unsafe-inline'",
+        "style-src": "'self' 'unsafe-inline' https://fonts.googleapis.com",
+        "font-src": "'self' https://fonts.gstatic.com",
     }
 
 Talisman(
