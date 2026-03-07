@@ -15,6 +15,8 @@ class LockedConnection:
 
         self.db_conn = sqlite3.connect(path.resolve(), check_same_thread=False)
 
+        # Use a lock to ensure that only one thread is accessing the database
+        # connection at a time.
         self.lock = Lock()
 
         # Enable checking foreign key constraints
