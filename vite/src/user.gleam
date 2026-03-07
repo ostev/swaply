@@ -9,6 +9,8 @@ import gleam/result
 import gleam/uri
 import lustre/effect.{type Effect}
 import rsvp
+import search
+import tempo
 
 const api_root = "/user"
 
@@ -60,8 +62,16 @@ pub fn get(
 pub fn list_all(
   with_email email_filter: Option(String),
   page page: Int,
-  handler handler: fn(Result(List(User), rsvp.Error)) -> msg,
+  at_timestamp timestamp: tempo.Instant,
+  handler handler: fn(Result(search.Results(User), rsvp.Error)) -> msg,
 ) -> Effect(msg) {
+  let results_decoder = {
+    use number_of_pages <- decode.field("number_of_pages", decode.int)
+    use users <- decode.field("users", decode.list(of: decoder()))
+
+    decode.success(search.Results(values: users, number_of_pages:, timestamp:))
+  }
+
   api.get(
     api_root
       <> "?"
@@ -72,7 +82,7 @@ pub fn list_all(
         option.None -> []
       }
     ]),
-    rsvp.expect_json(decode.list(of: decoder()), handler),
+    rsvp.expect_json(results_decoder, handler),
   )
 }
 

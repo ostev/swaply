@@ -115,28 +115,40 @@ def get_current_user():
 @user_api.route("/")
 @admin_only
 def get_all(current_user: UserData):
-    page = request.args.get("p", 0)
+    page = int(request.args.get("p", 0))
     email = request.args.get("email", None)
 
     results_per_page = 20
 
-    where_expr = " WHERE email LIKE %:email%" if email is not None else ""
+    where_expr = " WHERE INSTR(LOWER(email), LOWER(:email)) > 0" if email is not None else ""
     params = {"limit": results_per_page, "offset": page * results_per_page} | (
         {"email": email} if email is not None else {}
     )
 
+    def retrieve_users_with_count(conn: Connection, cursor: Cursor):
+        users = cursor.execute(
+            f"SELECT id, email, name, privilege_level FROM users{where_expr} LIMIT :limit OFFSET :offset",
+            params,
+            ).fetchall() 
+        count = cursor.execute(
+                f"""
+                SELECT COUNT(users.id)
+                FROM users{where_expr}
+                """,
+                params,
+            ).fetchone()[0]
+
+        return (users, count)
+
+    users, count = globals.db.run(retrieve_users_with_count)
+
     users = [
         {"is_logged_in": current_user.id == id}
         | UserData(id, email, name, bool(privilege_level)).to_dict()
-        for (id, email, name, privilege_level) in globals.db.run(
-            lambda conn, cursor: cursor.execute(
-                f"SELECT id, email, name, privilege_level FROM users{where_expr} LIMIT :limit OFFSET :offset",
-                params,
-            ).fetchall()
-        )
+        for (id, email, name, privilege_level) in users
     ]
 
-    return users
+    return {"users": users, "number_of_pages": count // results_per_page}
 
 
 class UserResult(aenum.Enum):  # type: ignore

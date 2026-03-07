@@ -13,6 +13,7 @@ import gleam/uri
 import lenient_parse
 import lustre/effect.{type Effect}
 import rsvp
+import search
 import seller.{type Seller}
 import tempo.{type DateTime}
 import tempo/datetime
@@ -134,14 +135,6 @@ pub fn delete(
   )
 }
 
-pub type SearchResults {
-  ListingSearchResults(
-    listings: List(Listing),
-    number_of_pages: Int,
-    timestamp: tempo.Instant,
-  )
-}
-
 pub type SearchFilter {
   SearchFilter(
     only_owned: Bool,
@@ -155,7 +148,7 @@ pub fn search(
   page page: Int,
   filter filter: SearchFilter,
   timestamp timestamp: tempo.Instant,
-  handler handler: fn(Result(SearchResults, rsvp.Error)) -> msg,
+  handler handler: fn(Result(search.Results(Listing), rsvp.Error)) -> msg,
 ) -> Effect(msg) {
   let query_string =
     uri.query_to_string([
@@ -199,7 +192,7 @@ pub fn search(
       |> result.map(fn(listings_with_pages) {
         case listings_with_pages {
           #(listings, number_of_pages) ->
-            ListingSearchResults(listings:, number_of_pages:, timestamp:)
+            search.Results(values: listings, number_of_pages:, timestamp:)
         }
       })
       |> handler

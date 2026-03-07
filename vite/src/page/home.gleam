@@ -1,15 +1,15 @@
 import gleam/io
 import gleam/list
 import gleam/option.{type Option}
-import gleam/order
 import gleam/string
-import listing
+import listing.{type Listing}
 import lustre/attribute as a
 import lustre/effect.{type Effect}
 import lustre/element.{type Element}
 import lustre/event as e
 import modem
 import rsvp
+import search
 import shared.{type Shared}
 import sketch/css
 import sketch/css/length
@@ -29,14 +29,14 @@ pub type Model {
     search_query: String,
     filter: listing.SearchFilter,
     page: Int,
-    listings: Option(Result(listing.SearchResults, rsvp.Error)),
+    listings: Option(Result(search.Results(Listing), rsvp.Error)),
   )
 }
 
 pub type Msg {
   UpdateSearchQuery(String)
   UpdatedFilter(listing.SearchFilter)
-  FetchedSearchResults(Result(listing.SearchResults, rsvp.Error))
+  FetchedSearchResults(Result(search.Results(Listing), rsvp.Error))
   ChangePage(Int)
   VisitListing(String)
 }
@@ -118,16 +118,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
           option.Some(Ok(previous)) -> {
             option.Some(case listings_result {
               Ok(listings) -> {
-                // If we've received the new search results after the previous ones,
-                // update the page. Otherwise, use the old results.
-                case listings.timestamp |> instant.compare(previous.timestamp) {
-                  order.Gt | order.Eq -> {
-                    Ok(listings)
-                  }
-                  _ -> {
-                    Ok(previous)
-                  }
-                }
+                Ok(previous |> search.update(listings))
               }
               Error(error) -> {
                 Error(error)
@@ -242,7 +233,7 @@ pub fn view(model: Model, shared: Shared) -> Element(Msg) {
                   css.width(length.percent(100)),
                 ]),
                 [],
-                search_result.listings
+                search_result.values
                   |> list.map(fn(listing) {
                     #(
                       listing.id,
