@@ -11,6 +11,9 @@ class Type(Enum):
 
 type ForeignReference = NamedColumn | NamedPrimaryKey
 
+class Table(Protocol):
+    table_name: str
+
 
 class Column:
     def __init__(self, type: Type):
@@ -106,8 +109,7 @@ class NamedPrimaryKey:
         return f"{self.name} {self.column.type.value} PRIMARY KEY{" AUTOINCREMENT" if self.column.is_autoincrement else ""} NOT NULL"
 
 
-class Table(Protocol):
-    table_name: str
+
 
 
 def table[T: type[Table]](schema: T) -> T:
