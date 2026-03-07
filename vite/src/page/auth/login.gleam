@@ -86,7 +86,6 @@ pub fn update(shared: Shared, model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
 }
 
 fn login(form: Form, with_token csrf_token: String) -> Effect(Msg) {
-  let url = auth.api_root <> "/login"
   let body =
     json.object([
       #("email", json.string(form.email)),
@@ -95,7 +94,7 @@ fn login(form: Form, with_token csrf_token: String) -> Effect(Msg) {
 
   api.send_with_known_url(
     body:,
-    to: url,
+    to: auth.api_root <> "/login",
     with: http.Post,
     handler: rsvp.expect_json(login_response_decoder(), LoginResponseReceived),
     with_token: csrf_token,

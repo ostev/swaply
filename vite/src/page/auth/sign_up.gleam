@@ -9,6 +9,7 @@ import lustre/effect.{type Effect}
 import lustre/element.{type Element}
 import lustre/event as e
 import modem
+import page/auth
 import rsvp
 import shared.{type Shared}
 import sketch/css
@@ -109,7 +110,7 @@ pub fn signup(form: Form, with_token token: String) {
 
   api.send_with_known_url(
     body:,
-    to: "signup",
+    to: auth.api_root <> "/signup",
     with: http.Post,
     handler: rsvp.expect_json(
       sign_up_response_decoder(),
