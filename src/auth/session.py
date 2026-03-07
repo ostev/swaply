@@ -2,7 +2,7 @@ from datetime import datetime, timedelta, UTC
 from functools import wraps
 import secrets
 from sqlite3 import Connection, Cursor
-from uuid import uuid7
+from uuid import uuid4
 
 from flask import session
 
@@ -27,7 +27,7 @@ def register(user_id: int, expiry_days: int = 3) -> str:
 
     expiry_datetime = datetime.now(UTC) + timedelta(expiry_days)
 
-    session_id = uuid7().bytes
+    session_id = uuid4().bytes
     token = secrets.token_bytes(32)
     salted_hash = BlakeHasher().hash(token)
 
