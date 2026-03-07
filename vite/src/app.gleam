@@ -291,6 +291,10 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       #(model, effect.none())
     }
 
+    // The following structure for routing sub-pages definitely isn't the
+    // prettiest, but is basically the only way to do it using Lustre.
+    // Despite its verbosity, it does make it pretty simple to track the
+    // flow of data.
     GotNotFoundMsg(sub_msg), NotFound(sub_model) ->
       not_found.update(sub_model, sub_msg)
       |> update_with(NotFound, GotNotFoundMsg, model)
