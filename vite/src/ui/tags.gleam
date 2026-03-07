@@ -10,6 +10,7 @@ import sketch/css
 import sketch/css/length
 import sketch/lustre/element/html as h
 import sketch/lustre/element/keyed
+import ui/button.{button}
 import ui/colors
 import ui/fonts
 import ui/layout
@@ -176,6 +177,8 @@ pub fn tags_input(
               #(tag, h.li_([], [tag_button(tag, on_remove_tag)]))
             }),
         ),
+
+        button(button.Primary, "Add", create_tags(value)),
       ],
     ),
   ])
