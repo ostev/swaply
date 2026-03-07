@@ -740,7 +740,7 @@ pub fn view(model: Model) -> Element(Msg) {
                 ]),
 
                 ui.fieldset([
-                  ui.h3(styles.text_center(), "Management"),
+                  ui.h3(styles.text_center(), "Ending"),
                   listing_date(model),
 
                   error_panel(model),
