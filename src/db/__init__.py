@@ -30,15 +30,6 @@ class Database:
             LockedConnection(path) for _ in range(number_of_connections)
         ]
 
-    # def retrieve_all(self, column, value) -> list[Any]:
-    #     column_name = check_sql_identifier(column.name)
-    #     table_name = check_sql_identifier(column.table.table_name)
-
-    #     return self.run(
-    #         lambda conn, cursor: cursor.execute(
-    #             f"SELECT * FROM {table_name} WHERE {column_name} = ?", value
-    #         ).fetchall()
-    #     )
     def retrieve_all(self, select_columns, where_column, value) -> list[Any]:
         column_name = check_sql_identifier(where_column.name)
         table_name = check_sql_identifier(where_column.table.table_name)
