@@ -1,5 +1,4 @@
 import gleam/dynamic/decode
-import tempo
 import tempo/datetime
 
 pub fn datetime() {
