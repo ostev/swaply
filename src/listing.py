@@ -213,12 +213,12 @@ def insert_items(cursor: Cursor, listing_id: int, items: list[tuple[str, float, 
     )
 
 
-def validate_listing_fields():
+def validate_listing_fields(is_unique: bool):
     name = str(request.json["name"])
     if len(name) < 3 or len(name) > 30:
         return result(ListingResult.INVALID_NAME)
 
-    if globals.db.run(
+    if is_unique and globals.db.run(
         lambda _, cursor: cursor.execute(
             "SELECT id FROM listings WHERE name LIKE ?", (name,)
         ).fetchone()
@@ -265,7 +265,7 @@ def validate_listing_fields():
 @listing_api.route("/", methods=["POST"])
 @protected
 def create_listing(user_id: int):
-    fields = validate_listing_fields()
+    fields = validate_listing_fields(is_unique=True)
 
     if isinstance(fields, tuple):
         return fields
@@ -389,7 +389,7 @@ def update_listing(user: UserData, listing_id: str):
     else:
         name = None
 
-    fields = validate_listing_fields()
+    fields = validate_listing_fields(is_unique=False) | {"id": listing_id}  # type: ignore
 
     if isinstance(fields, tuple):
         return fields
