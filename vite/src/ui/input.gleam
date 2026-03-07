@@ -65,7 +65,10 @@ pub fn generic(
           a.type_(type_),
           a.name(name),
           a.id(name),
-          a.value(value |> option.unwrap("")),
+          case value {
+            option.Some(valid_value) -> a.value(valid_value)
+            option.None -> a.none()
+          },
           a.classes([#("invalid", !is_valid)]),
           e.on_input(on_input),
         ],
