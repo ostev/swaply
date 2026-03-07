@@ -1,3 +1,4 @@
+import gleam/float
 import gleam/string
 import gleam/uri
 import listing.{type Listing}
@@ -29,6 +30,11 @@ pub fn card_view(
   let wrap = styles.wrap_3_lines()
   let detail = styles.detail()
 
+  let price = case listing.items {
+    [item] -> "$" <> float.to_string(item.price)
+    _ -> "Varies"
+  }
+
   h.div(
     css.class([
       css.compose(layout.column(layout.Start)),
@@ -44,28 +50,52 @@ pub fn card_view(
     ]),
     [e.on_click(on_click)],
     [
-      h.h3(
+      h.div(
         css.class([
-          fonts.merriweather(),
-          css.font_weight("450"),
+          css.compose(layout.row(layout.SpaceBetween)),
 
-          css.font_size(length.px(30)),
-          css.margin_top(length.px(0)),
-          css.margin_bottom(length.px(6)),
-
-          width,
-          wrap,
+          css.width(length.percent(100)),
         ]),
         [],
         [
-          h.a(
+          h.h3(
             css.class([
-              css.color(colors.black),
-              css.text_decoration("none"),
+              fonts.merriweather(),
+              css.font_weight("450"),
+
+              css.font_size(length.px(30)),
+              css.margin_top(length.px(0)),
+              css.margin_bottom(length.px(6)),
+
+              css.flex_grow(1),
+
+              width,
+              wrap,
             ]),
-            [a.href(listing.page_url(listing.id))],
+            [],
             [
-              h.text(listing.name),
+              h.a(
+                css.class([
+                  css.color(colors.black),
+                  css.text_decoration("none"),
+                ]),
+                [a.href(listing.page_url(listing.id))],
+                [
+                  h.text(listing.name),
+                ],
+              ),
+            ],
+          ),
+
+          h.div(
+            css.class([
+              fonts.merriweather(),
+              css.font_size(length.px(18)),
+              css.font_weight("400"),
+            ]),
+            [],
+            [
+              h.span_([], [h.text(price)]),
             ],
           ),
         ],
