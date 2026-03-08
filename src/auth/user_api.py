@@ -241,7 +241,11 @@ def update_user(current_user: UserData, user_id: str):
 
     params = (
         {"id": id}
-        | ({"privilege_level": int(is_admin)} if is_admin is not None else {})
+        | (
+            {"privilege_level": int(is_admin)}
+            if is_admin is not None and current_user.is_admin
+            else {}
+        )
         | ({"email": email} if email is not None else {})
     )
 
