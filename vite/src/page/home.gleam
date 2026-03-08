@@ -42,12 +42,7 @@ pub type Msg {
 }
 
 pub fn init() -> #(Model, Effect(Msg)) {
-  let filter =
-    listing.SearchFilter(
-      only_owned: False,
-      start_date: option.None,
-      end_date: option.None,
-    )
+  let filter = listing.SearchFilter(only_owned: False)
   let page = 0
 
   #(
