@@ -7,10 +7,13 @@ from flask import Flask, abort, render_template, request
 from flask_vite import Vite
 from flask_apscheduler import APScheduler
 from flask_talisman import Talisman
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 
 
 from auth import session
 import auth.user_api
+import auth.user
 import auth.session
 from db import Database
 from model import schema
@@ -28,6 +31,13 @@ with app.app_context():
 app.register_blueprint(listing.listing_api)
 app.register_blueprint(auth.auth_api)
 app.register_blueprint(auth.user_api.user_api)
+
+limiter = Limiter(
+    get_remote_address,
+    app=app,
+    default_limits=["240 per minute"],
+    storage_uri="memory://",
+)
 
 secrets_dir = Path(__file__).parent.parent.resolve() / "secrets"
 # Secret key used to sign cookies etc.
@@ -226,7 +236,7 @@ def create_default_admin():
         )[0]
         == 0
     ):
-        auth.create_user(email, name, password, is_admin=True)
+        auth.user.create(email, name, password, is_admin=True)
 
 
 create_default_admin()
