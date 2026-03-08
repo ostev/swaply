@@ -249,9 +249,9 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
 
       #(
         Model(
-          ..model,
           page:,
           shared: Shared(..model.shared, current_url: new_url),
+          nav: nav.Closed,
         ),
         effect.batch([page_effect, user.get_current_user(CurrentUserReceived)]),
       )
