@@ -9,7 +9,6 @@ import lustre/attribute as a
 import lustre/effect.{type Effect}
 import lustre/element.{type Element}
 import modem
-import page/admin/edit_user
 import page/admin/users as manage_users
 import page/auth
 import page/auth/login
@@ -18,6 +17,7 @@ import page/home
 import page/listing/edit as edit_listing
 import page/listing/view as view_listing
 import page/not_found
+import page/user/edit as edit_user
 import phosphor
 import rsvp
 import shared.{type Shared, Shared}
@@ -379,7 +379,7 @@ fn view_page(page: Page, shared: Shared) {
       |> element.map(GotViewListingMsg)
 
     EditUser(sub_model) ->
-      edit_user.view(sub_model)
+      edit_user.view(sub_model, shared)
       |> element.map(GotEditUserMsg)
 
     ManageUsers(sub_model) ->
@@ -486,7 +486,12 @@ fn auth_nav(shared: Shared) -> Element(Msg) {
       False -> element.none()
     },
     ..case shared.user {
-      user.Authenticated(_) -> [
+      user.Authenticated(user) -> [
+        button.link(
+          button.Primary,
+          text: "Settings",
+          to: "/user/" <> uri.percent_encode(user.id) <> "/edit",
+        ),
         button(button.Primary, "Log out", UserRequestedLogout),
       ]
       user.Unauthenticated | user.Unknown -> [

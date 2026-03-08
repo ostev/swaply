@@ -128,7 +128,7 @@ fn submit(data: UserData, with_token csrf_token: String) {
   |> result.unwrap(effect.none())
 }
 
-pub fn view(model: Model) -> Element(Msg) {
+pub fn view(model: Model, shared: Shared) -> Element(Msg) {
   h.div(layout.column(layout.Center), [], [
     case model.user {
       option.None -> element.none()
@@ -161,17 +161,29 @@ pub fn view(model: Model) -> Element(Msg) {
               on_input: fn(email) { UpdateForm(Form(..form, email:)) },
               is_valid: form.email |> string.contains("@"),
             ),
-            input.toggle(
-              label: "Is admin?",
-              name: "is_admin",
-              is_checked: form.is_admin,
-              on_input: fn(is_admin) { UpdateForm(Form(..form, is_admin:)) },
-            ),
 
-            h.div(layout.row(layout.SpaceBetween), [], [
-              button(button.Danger, "Delete", DeleteUser),
-              button.submit(button.Primary, "Update"),
-            ]),
+            case shared.is_admin(shared) {
+              True ->
+                input.toggle(
+                  label: "Is admin?",
+                  name: "is_admin",
+                  is_checked: form.is_admin,
+                  on_input: fn(is_admin) { UpdateForm(Form(..form, is_admin:)) },
+                )
+              False -> element.none()
+            },
+
+            h.div(
+              css.class([
+                css.compose(layout.row(layout.SpaceBetween)),
+                css.margin_top(length.px(4)),
+              ]),
+              [],
+              [
+                button(button.Danger, "Delete", DeleteUser),
+                button.submit(button.Primary, "Update"),
+              ],
+            ),
           ],
         )
       }
