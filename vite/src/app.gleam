@@ -447,7 +447,7 @@ fn nav(model: Model) -> Element(Msg) {
 
           css.transition("max-height 0.5s ease-in-out"),
           css.max_height_(case model.nav {
-            nav.Open -> "5.5rem"
+            nav.Open -> "8rem"
             nav.Closed -> "0"
           }),
 
@@ -482,7 +482,7 @@ fn nav(model: Model) -> Element(Msg) {
 fn auth_nav(shared: Shared) -> Element(Msg) {
   element.fragment([
     case shared.is_admin(shared) {
-      True -> button.link(button.Primary, "Manage users", to: "/admin/users")
+      True -> button.link(button.Secondary, "Manage users", to: "/admin/users")
       False -> element.none()
     },
     ..case shared.user {
