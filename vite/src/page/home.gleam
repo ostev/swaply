@@ -203,12 +203,7 @@ pub fn view(model: Model, shared: Shared) -> Element(Msg) {
                   name: "filter_owned",
                   is_checked: model.filter.only_owned,
                   on_input: fn(is_checked) {
-                    UpdateFilter(
-                      listing.SearchFilter(
-                        ..model.filter,
-                        only_owned: is_checked,
-                      ),
-                    )
+                    UpdateFilter(listing.SearchFilter(only_owned: is_checked))
                   },
                 )
               }

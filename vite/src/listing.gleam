@@ -5,8 +5,6 @@ import gleam/dynamic/decode
 import gleam/http
 import gleam/int
 import gleam/json.{type Json}
-import gleam/list
-import gleam/option.{type Option}
 import gleam/result
 import gleam/string
 import gleam/uri
@@ -16,9 +14,6 @@ import rsvp
 import search
 import seller.{type Seller}
 import tempo.{type DateTime}
-import tempo/datetime
-import tempo/offset
-import tempo/time
 
 pub const api_root = "/listings"
 
