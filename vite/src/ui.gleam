@@ -1,17 +1,12 @@
-import gleam/float
 import gleam/int
-import gleam/option.{type Option}
-import gleam/result
-import gleam/string
-import lenient_parse
-import lustre/attribute.{type Attribute} as a
+import lustre/attribute as a
 import lustre/element.{type Element}
 import lustre/event as e
 import phosphor
 import sequence
 import sketch/css
 import sketch/css/angle
-import sketch/css/length.{type Length}
+import sketch/css/length
 import sketch/css/transform
 import sketch/lustre/element/html as h
 import ui/button.{button}

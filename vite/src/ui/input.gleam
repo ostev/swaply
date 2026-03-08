@@ -16,7 +16,6 @@ import sketch/lustre/element/html as h
 import ui/colors
 import ui/fonts
 import ui/layout
-import ui/layout/container
 import ui/styles
 
 fn error_icon() {
