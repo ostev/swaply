@@ -24,7 +24,7 @@ pub type UserData {
 pub type Model {
   Model(
     user: Option(Result(UserData, rsvp.Error)),
-    update_error: Option(user.UpdateError),
+    updated: Option(Result(Nil, user.UpdateError)),
     delete_error: Option(rsvp.Error),
   )
 }
@@ -35,13 +35,9 @@ pub type Form {
 
 pub fn init(user_id: String, shared: Shared) -> #(Model, Effect(Msg)) {
   #(
-    Model(
-      user: option.None,
-      update_error: option.None,
-      delete_error: option.None,
-    ),
+    Model(user: option.None, updated: option.None, delete_error: option.None),
     effect.batch([
-      shared.check_authentication(shared),
+      shared.check_authenticated(shared),
       user.get(user_id, UserReceived),
     ]),
   )
@@ -78,6 +74,7 @@ pub fn update(shared: Shared, model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
           ..model,
           user: model.user
             |> option.map(result.map(_, fn(data) { UserData(..data, form:) })),
+          updated: option.None,
         ),
         effect.none(),
       )
@@ -102,11 +99,11 @@ pub fn update(shared: Shared, model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
     }
 
     UpdateResponseReceived(Ok(_)) -> #(
-      model,
-      modem.push("/admin/users", option.None, option.None),
+      Model(..model, updated: option.Some(Ok(Nil))),
+      effect.none(),
     )
     UpdateResponseReceived(Error(error)) -> #(
-      Model(..model, update_error: option.Some(error)),
+      Model(..model, updated: option.Some(Error(error))),
       effect.none(),
     )
     DeleteResponseReceived(Ok(_)) -> #(
@@ -132,7 +129,7 @@ fn submit(data: UserData, with_token csrf_token: String) {
 }
 
 pub fn view(model: Model) -> Element(Msg) {
-  h.div(layout.row(layout.Center), [], [
+  h.div(layout.column(layout.Center), [], [
     case model.user {
       option.None -> element.none()
       option.Some(Error(_)) -> {
@@ -145,7 +142,13 @@ pub fn view(model: Model) -> Element(Msg) {
       option.Some(Ok(data)) -> {
         let form = data.form
         h.form(
-          css.class([css.compose(styles.card()), css.margin(length.px(20))]),
+          css.class([
+            css.compose(styles.card()),
+            css.margin(length.px(20)),
+            css.width(length.percent(100)),
+            css.max_width(length.rem(20.0)),
+            css.padding(length.rem(1.0)),
+          ]),
           [
             e.on_submit(fn(_) { SubmitForm }),
           ],
@@ -174,8 +177,11 @@ pub fn view(model: Model) -> Element(Msg) {
       }
     },
 
-    case model.update_error {
-      option.Some(error) -> {
+    case model.updated {
+      option.Some(Ok(_)) -> {
+        ui.panel(ui.InfoPanel, True, "Account updated!")
+      }
+      option.Some(Error(error)) -> {
         ui.panel(ui.ErrorPanel, True, case error {
           user.InvalidEmail -> "Please provide a valid new email."
           user.EmailAlreadyUsed ->

@@ -9,11 +9,11 @@ import lustre/attribute as a
 import lustre/effect.{type Effect}
 import lustre/element.{type Element}
 import modem
+import page/admin/edit_user
 import page/admin/users as manage_users
 import page/auth
 import page/auth/login
 import page/auth/sign_up
-import page/edit_user
 import page/home
 import page/listing/edit as edit_listing
 import page/listing/view as view_listing
@@ -155,6 +155,20 @@ fn update_with(
 
   #(
     Model(..model, page: to_page(page_model)),
+    page_effect |> effect.map(to_msg),
+  )
+}
+
+fn update_with_shared(
+  init_result: #(page_model, Shared, Effect(page_msg)),
+  to_page: fn(page_model) -> Page,
+  to_msg: fn(page_msg) -> Msg,
+  model: Model,
+) -> #(Model, Effect(Msg)) {
+  let #(page_model, shared, page_effect) = init_result
+
+  #(
+    Model(..model, page: to_page(page_model), shared:),
     page_effect |> effect.map(to_msg),
   )
 }
@@ -305,11 +319,11 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
 
     GotLoginMsg(sub_msg), Login(sub_model) ->
       login.update(model.shared, sub_model, sub_msg)
-      |> update_with(Login, GotLoginMsg, model)
+      |> update_with_shared(Login, GotLoginMsg, model)
 
     GotSignUpMsg(sub_msg), SignUp(sub_model) ->
       sign_up.update(model.shared, sub_model, sub_msg)
-      |> update_with(SignUp, GotSignUpMsg, model)
+      |> update_with_shared(SignUp, GotSignUpMsg, model)
 
     GotCreateListingMsg(sub_msg), CreateListing(sub_model) ->
       edit_listing.update(model.shared, sub_model, sub_msg)
@@ -576,6 +590,6 @@ fn view(model: Model, stylesheet: sketch.StyleSheet) -> Element(Msg) {
 
   h.div_([], [
     nav(model),
-    h.div_([], [view_page(model.page, model.shared)]),
+    h.main_([], [view_page(model.page, model.shared)]),
   ])
 }

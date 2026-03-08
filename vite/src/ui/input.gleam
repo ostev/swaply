@@ -1,3 +1,4 @@
+import gleam/bool
 import gleam/float
 import gleam/int
 import gleam/option.{type Option}
@@ -7,6 +8,7 @@ import lenient_parse
 import lustre/attribute as a
 import lustre/element.{type Element}
 import lustre/event as e
+import phosphor
 import sketch/css
 import sketch/css/length.{type Length}
 import sketch/css/transform
@@ -14,7 +16,40 @@ import sketch/lustre/element/html as h
 import ui/colors
 import ui/fonts
 import ui/layout
+import ui/layout/container
 import ui/styles
+
+fn error_icon() {
+  h.span(css.class([css.color(colors.black)]), [], [
+    phosphor.warning_circle_bold([a.style("font-size", "24px")]),
+  ])
+}
+
+fn validated_label(is_valid: Bool, name: String, label: String) {
+  h.div(
+    css.class([
+      css.compose(layout.row(layout.Start)),
+      css.min_height(length.em(2.0)),
+    ]),
+    [],
+    [
+      h.label(
+        css.class([
+          css.margin_bottom(length.em(0.1)),
+          css.margin_right(length.em(0.3)),
+        ]),
+        [a.for(name)],
+        [
+          h.text(label),
+        ],
+      ),
+      case is_valid {
+        True -> element.none()
+        False -> error_icon()
+      },
+    ],
+  )
+}
 
 pub fn generic(
   class: css.Class,
@@ -29,15 +64,7 @@ pub fn generic(
     css.class([css.compose(layout.column(layout.Start)), fonts.inter()]),
     [],
     [
-      h.label(
-        css.class([
-          css.margin_bottom(length.em(0.3)),
-        ]),
-        [a.for(name)],
-        [
-          h.text(label),
-        ],
-      ),
+      validated_label(is_valid, name, label),
       h.input(
         css.class([
           css.display("block"),
@@ -48,6 +75,11 @@ pub fn generic(
           css.border_style("solid"),
           css.border_width(length.px(1)),
           css.border_radius(length.px(6)),
+
+          case is_valid {
+            True -> css.none()
+            False -> css.border_color(colors.red)
+          },
 
           fonts.size_md(),
 
@@ -69,7 +101,7 @@ pub fn generic(
             option.Some(valid_value) -> a.value(valid_value)
             option.None -> a.none()
           },
-          a.classes([#("invalid", !is_valid)]),
+          a.aria_invalid(!is_valid |> bool.to_string |> string.lowercase),
           e.on_input(on_input),
         ],
       ),
@@ -259,8 +291,7 @@ pub fn number(
   step step: Float,
 ) -> Element(msg) {
   let is_invalid =
-    !string.is_empty(value)
-    && value
+    value
     |> lenient_parse.to_float
     |> result.map(fn(value) {
       !{
@@ -277,28 +308,22 @@ pub fn number(
     css.class([css.compose(layout.column(layout.Start)), fonts.inter()]),
     [],
     [
-      h.label(
-        css.class([
-          css.margin_bottom(length.em(0.3)),
-        ]),
-        [a.for(name)],
-        [
-          h.text(label),
-        ],
-      ),
+      validated_label(!is_invalid, name, label),
       h.input(
         css.class([
           css.display("block"),
 
           css.padding(length.px(10)),
           css.background_color(colors.input_background),
-          css.border_color(case is_invalid {
-            False -> colors.black
-            True -> colors.red
-          }),
+          css.border_color(colors.black),
           css.border_style("solid"),
           css.border_width(length.px(1)),
           css.border_radius(length.px(6)),
+
+          case is_invalid {
+            False -> css.none()
+            True -> css.border_color(colors.red)
+          },
 
           fonts.size_md(),
 
@@ -315,9 +340,8 @@ pub fn number(
           a.name(name),
           a.id(name),
           a.value(value),
-          a.min(float.to_string(min)),
-          a.max(float.to_string(max)),
-          a.step(float.to_string(step)),
+
+          a.aria_invalid(is_invalid |> bool.to_string |> string.lowercase),
 
           e.on_input(fn(text) {
             let trimmed_text = string.trim(text)
@@ -402,7 +426,7 @@ pub fn textarea(
 pub fn char_count(chars chars: Int, of of: Int) {
   h.span(
     css.class([
-      css.compose(styles.text_italic()),
+      styles.text_italic(),
       fonts.inter(),
       fonts.size_md(),
 

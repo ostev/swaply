@@ -9,7 +9,7 @@ from email_validator import EmailNotValidError, validate_email
 from utils import check_sql_identifier, result
 import aenum
 from api import API_PREFIX
-from flask import Blueprint, request
+from flask import Blueprint, current_app, request
 
 
 @dataclass
@@ -120,7 +120,9 @@ def get_all(current_user: UserData):
 
     results_per_page = 20
 
-    where_expr = " WHERE INSTR(LOWER(email), LOWER(:email)) > 0" if email is not None else ""
+    where_expr = (
+        " WHERE INSTR(LOWER(email), LOWER(:email)) > 0" if email is not None else ""
+    )
     params = {"limit": results_per_page, "offset": page * results_per_page} | (
         {"email": email} if email is not None else {}
     )
@@ -129,14 +131,14 @@ def get_all(current_user: UserData):
         users = cursor.execute(
             f"SELECT id, email, name, privilege_level FROM users{where_expr} LIMIT :limit OFFSET :offset",
             params,
-            ).fetchall() 
+        ).fetchall()
         count = cursor.execute(
-                f"""
+            f"""
                 SELECT COUNT(users.id)
                 FROM users{where_expr}
                 """,
-                params,
-            ).fetchone()[0]
+            params,
+        ).fetchone()[0]
 
         return (users, count)
 
@@ -189,6 +191,10 @@ def delete_user(current_user: UserData, user_id: str):
 
         globals.db.run(run_delete_user)
 
+        current_app.logger.info(
+            f"User with ID {id} was deleted by user with ID {current_user.id}."
+        )
+
         return "", 204
     else:
         return result(UserResult.FORBIDDEN)
@@ -225,7 +231,8 @@ def update_user(current_user: UserData, user_id: str):
     except EmailNotValidError:
         return result(UpdateUserError.INVALID_EMAIL)
 
-    if globals.db.contains(User.email, email):
+    id_with_email = globals.db.retrieve([User.id], User.email, email)
+    if id_with_email is not None and id_with_email != id:
         return result(UpdateUserError.EMAIL_ALREADY_USED)
 
     params = (
@@ -241,6 +248,11 @@ def update_user(current_user: UserData, user_id: str):
     def run_update_user(conn: Connection, cursor: Cursor):
         cursor.execute(f"UPDATE users SET {columns} WHERE id = :id", params)
         conn.commit()
+
+    if current_user.is_admin:
+        current_app.logger.info(
+            f"Admin with ID {current_user.id} updated the user account with ID {id}."
+        )
 
     globals.db.run(run_update_user)
 

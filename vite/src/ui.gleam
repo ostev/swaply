@@ -68,6 +68,7 @@ pub fn paginator(
           },
         ]),
         [e.on_click(change_page(page - 1)), a.disabled(is_left_disabled)],
+        "Previous results page",
         phosphor.arrow_left_bold([a.style("font-size", "24px")]),
       ),
       h.ol(
@@ -94,6 +95,7 @@ pub fn paginator(
           },
         ]),
         [e.on_click(change_page(page + 1)), a.disabled(page >= total_pages)],
+        "Next results page",
         phosphor.arrow_right_bold([a.style("font-size", "24px")]),
       ),
     ],
@@ -209,6 +211,8 @@ pub fn panel(role: PanelRole, is_visible: Bool, text: String) {
       css.min_height(length.em(1.5)),
       css.width(length.percent(100)),
       css.margin_block(length.px(8)),
+
+      css.max_width(length.rem(30.0)),
     ]),
     [],
     case is_visible {

@@ -123,6 +123,7 @@ fn button_internal(
 pub fn icon(
   class: css.Class,
   attributes: List(a.Attribute(msg)),
+  label: String,
   icon: Element(msg),
 ) {
   h.button(
@@ -131,7 +132,6 @@ pub fn icon(
       css.border_style("solid"),
       css.border_radius(length.percent(50)),
       css.border_width(length.px(1)),
-      // css.border("none"),
       css.width(length.px(40)),
       css.height(length.px(40)),
       css.padding_("0"),
@@ -145,7 +145,7 @@ pub fn icon(
 
       css.compose(class),
     ]),
-    attributes,
+    [a.aria_label(label), ..attributes],
     [
       icon,
     ],

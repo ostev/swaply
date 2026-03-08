@@ -30,6 +30,7 @@ import tempo/error as tempo_error
 import tempo/offset
 import ui
 import ui/button.{button}
+import ui/fonts
 import ui/input
 import ui/layout
 import ui/listing as listing_ui
@@ -77,12 +78,15 @@ pub type EditError {
 pub type ServerResponse {
   Unauthorised
   InvalidName
+  InvalidPricing
   InvalidDescription
   InvalidShortDescription
+  InvalidQuantity
   InvalidLocation
   TooManyTags
   TooManyItems
   NameAlreadyUsed
+  DateInPast
 }
 
 fn server_response_decoder() -> decode.Decoder(ServerResponse) {
@@ -90,18 +94,21 @@ fn server_response_decoder() -> decode.Decoder(ServerResponse) {
   case variant {
     "unauthorised" -> decode.success(Unauthorised)
     "invalid_name" -> decode.success(InvalidName)
+    "invalid_pricing" -> decode.success(InvalidPricing)
+    "invalid_quantity" -> decode.success(InvalidQuantity)
     "invalid_description" -> decode.success(InvalidDescription)
     "invalid_short_description" -> decode.success(InvalidShortDescription)
     "invalid_location" -> decode.success(InvalidLocation)
     "name_already_used" -> decode.success(NameAlreadyUsed)
     "too_many_tags" -> decode.success(TooManyTags)
     "too_many_items" -> decode.success(TooManyItems)
+    "date_in_past" -> decode.success(DateInPast)
     _ -> decode.failure(Unauthorised, "ServerResponse")
   }
 }
 
 pub fn init(shared_model: Shared, mode: Mode) -> #(Model, Effect(Msg)) {
-  let check_auth = shared.check_authentication(shared_model)
+  let check_auth = shared.check_authenticated(shared_model)
 
   #(
     Model(
@@ -482,10 +489,6 @@ fn submit(
 }
 
 fn listing_date(model: Model) -> Element(Msg) {
-  let date_is_valid =
-    { model.form.date |> option.map(string.is_empty) |> option.unwrap(True) }
-    || is_date_valid(model.form.date)
-
   h.div_([], [
     h.div(
       css.class([
@@ -502,7 +505,7 @@ fn listing_date(model: Model) -> Element(Msg) {
             name: "date",
             value: model.form.date,
             on_input: UpdatedDate,
-            is_valid: date_is_valid,
+            is_valid: is_date_valid(model.form.date),
           ),
         ]),
 
@@ -539,6 +542,10 @@ fn error_panel(model: Model) -> Element(Msg) {
               case server_response {
                 InvalidName ->
                   "Please provide a name for the listing that is between 3 and 30 characters long."
+                InvalidPricing ->
+                  "One of the items on offer has a price that is lower than $0 or higher than $1 000 000."
+                InvalidQuantity ->
+                  "One of the items on offer has a quantity that is lower than 0 or higher than 1 000 000."
                 InvalidDescription ->
                   "Please provide a description that is between 3 and 10 000 characters long."
                 InvalidShortDescription ->
@@ -548,6 +555,7 @@ fn error_panel(model: Model) -> Element(Msg) {
                 TooManyTags -> "Please provide no more than 6 tags."
                 TooManyItems -> "Please provide no more than 20 items."
                 NameAlreadyUsed -> "A listing with this name already exists."
+                DateInPast -> "The date you provided is in the past."
                 Unauthorised ->
                   "You don't have access to edit this listing. Make sure you're logged in."
               }
@@ -672,7 +680,8 @@ pub fn view(model: Model) -> Element(Msg) {
                     name: "location",
                     value: option.Some(model.form.location),
                     on_input: UpdatedLocation,
-                    is_valid: True,
+                    is_valid: string.length(model.form.location |> string.trim)
+                      > 2,
                   ),
                 ]),
 
@@ -740,7 +749,24 @@ pub fn view(model: Model) -> Element(Msg) {
                 ]),
 
                 ui.fieldset([
-                  ui.h3(styles.text_center(), "Ending"),
+                  ui.h3(
+                    css.class([
+                      css.compose(styles.text_center()),
+                      css.margin_block_end(length.px(0)),
+                    ]),
+                    "End date",
+                  ),
+                  h.p(
+                    css.class([
+                      fonts.inter(),
+                      fonts.size_md(),
+                      styles.text_italic(),
+                    ]),
+                    [],
+                    [
+                      h.text("When your listing will be hidden"),
+                    ],
+                  ),
                   listing_date(model),
 
                   error_panel(model),

@@ -4,12 +4,18 @@ import re
 import secrets
 from typing import Any
 
+from flask import abort
+
 
 def result(result, json_response: dict[str, Any] = {}) -> tuple[dict[str, Any], int]:
     message = result.name.lower()
     status_code = int(result.value)
 
     return {"result": message} | json_response, status_code
+
+
+def error(result):
+    abort(int(result.value), {"result": result.name.lower()})
 
 
 def normalise_json_str_array(input: str) -> str:

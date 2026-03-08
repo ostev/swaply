@@ -93,7 +93,7 @@ pub fn delete(
 ) -> Result(Effect(msg), Nil) {
   api.send(
     body: json.object([]),
-    to: api_root <> uri.percent_encode(id),
+    to: api_root <> "/" <> uri.percent_encode(id),
     with: http.Delete,
     handler: rsvp.expect_ok_response(fn(response) {
       response
@@ -141,7 +141,7 @@ pub fn update(
 
   api.send(
     body:,
-    to: api_root <> uri.percent_encode(id),
+    to: api_root <> "/" <> uri.percent_encode(id),
     with: http.Patch,
     with_token: csrf_token,
     handler: rsvp.expect_json(decoder(), fn(result) {

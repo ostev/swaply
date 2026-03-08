@@ -173,5 +173,5 @@ pub fn text_bold() {
 }
 
 pub fn text_italic() {
-  css.class([css.font_weight("italic")])
+  css.font_style("italic")
 }

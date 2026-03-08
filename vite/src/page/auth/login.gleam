@@ -1,4 +1,5 @@
 import api
+import extra/url
 import gleam/dynamic/decode
 import gleam/http
 import gleam/json
@@ -20,6 +21,7 @@ import ui/button
 import ui/input
 import ui/layout
 import ui/styles
+import user
 
 pub type Model {
   Model(origin: Uri, form: Form, error: Option(rsvp.Error))
@@ -59,28 +61,40 @@ fn login_response_decoder() -> decode.Decoder(LoginResponse) {
   }
 }
 
-pub fn update(shared: Shared, model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
+pub fn update(
+  shared: Shared,
+  model: Model,
+  msg: Msg,
+) -> #(Model, Shared, Effect(Msg)) {
   case msg {
     LoginResponseReceived(Ok(_)) -> #(
       model,
-      modem.push(model.origin.path, model.origin.query, model.origin.fragment),
+      shared.Shared(..shared, user: user.Unknown),
+      modem.push(
+        url.replace_empty_with_root(model.origin.path),
+        model.origin.query,
+        model.origin.fragment,
+      ),
     )
     LoginResponseReceived(Error(error)) -> #(
       Model(..model, error: option.Some(error)),
+      shared,
       effect.none(),
     )
 
     UpdatedEmail(new_email) -> #(
       Model(..model, form: Form(..model.form, email: new_email)),
+      shared,
       effect.none(),
     )
     UpdatedPassword(new_password) -> #(
       Model(..model, form: Form(..model.form, password: new_password)),
+      shared,
       effect.none(),
     )
 
     SubmitForm -> {
-      #(model, login(model.form, with_token: shared.csrf_token))
+      #(model, shared, login(model.form, with_token: shared.csrf_token))
     }
   }
 }

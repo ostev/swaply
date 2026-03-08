@@ -31,7 +31,7 @@ pub fn init(shared: Shared) -> #(Model, Effect(Msg)) {
   #(
     Model(page:, email_filter: option.None, users: option.None),
     effect.batch([
-      shared.check_authentication(shared),
+      shared.check_authenticated(shared),
       user.list_all(
         page:,
         with_email: option.None,
@@ -86,7 +86,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
 }
 
 pub fn view(model: Model, shared: Shared) -> Element(Msg) {
-  h.div(layout.row(layout.Center), [], [
+  h.div(layout.column(layout.Center), [], [
     case shared.is_unknown(shared) || shared.is_admin(shared) {
       False -> ui.panel(ui.ErrorPanel, True, "This page is for admins only.")
       True ->
@@ -94,6 +94,7 @@ pub fn view(model: Model, shared: Shared) -> Element(Msg) {
           css.class([
             css.width(length.percent(100)),
             css.max_width(length.rem(30.0)),
+            css.margin_top(length.px(24)),
           ]),
           [],
           [

@@ -24,10 +24,17 @@ pub fn new(url: Uri) -> Result(Shared, InitError) {
   Ok(Shared(current_url: url, user: user.Unknown, csrf_token:))
 }
 
-pub fn check_authentication(shared: Shared) {
+pub fn check_authenticated(shared: Shared) {
   case shared.user {
     user.Unknown | user.Authenticated(_) -> effect.none()
     user.Unauthenticated -> modem.push("/login", option.None, option.None)
+  }
+}
+
+pub fn check_unauthenticated(shared: Shared) {
+  case shared.user {
+    user.Unknown | user.Unauthenticated -> effect.none()
+    user.Authenticated(_) -> modem.push("/", option.None, option.None)
   }
 }
 
