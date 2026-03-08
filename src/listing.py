@@ -83,9 +83,9 @@ def search_listings(user_id: int | None):
     results_per_page = 10
 
     is_authorized_expr = (
-        "((listings.is_published = 1 AND date < datetime('now')) OR seller = :user_id)"
+        "((listings.is_published = 1 AND date > datetime('now')) OR seller = :user_id)"
         if user_id is not None
-        else "(listings.is_published = 1 AND date < datetime('now'))"
+        else "(listings.is_published = 1 AND date > datetime('now'))"
     )
 
     filter_expr = (
@@ -345,6 +345,11 @@ def get_listing(user_id: int | None, listing_id: int):
             location,
         ) = maybe_listing
 
+        parsed_date = datetime.fromisoformat(date).astimezone(UTC)
+
+        if parsed_date <= datetime.now(UTC):
+            return result(ListingResult.UNAUTHORISED)
+
         items = [
             {"name": str(name), "price": float(price), "quantity": int(quantity)}
             for (name, price, quantity) in globals.db.retrieve_all(
@@ -365,7 +370,7 @@ def get_listing(user_id: int | None, listing_id: int):
                     "email": str(seller_email),
                     "name": str(seller_name),
                 },
-                "date": datetime.fromisoformat(date).isoformat(),
+                "date": parsed_date.isoformat(),
                 "is_published": bool(is_published),
                 "tags": tags_from_csv(tag_string),
                 "short_description": str(short_description),
