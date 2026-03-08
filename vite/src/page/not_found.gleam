@@ -1,6 +1,10 @@
 import lustre/effect.{type Effect}
 import lustre/element.{type Element}
-import lustre/element/html as h
+import sketch/css
+import sketch/css/length
+import sketch/lustre/element/html as h
+import ui
+import ui/layout
 
 pub type Model {
   Model
@@ -12,10 +16,17 @@ pub fn init() -> #(Model, Effect(Msg)) {
   #(Model, effect.none())
 }
 
-pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
+pub fn update(model: Model, _msg: Msg) -> #(Model, Effect(Msg)) {
   #(model, effect.none())
 }
 
-pub fn view(model: Model) -> Element(Msg) {
-  h.h1([], [h.text("Page not found")])
+pub fn view(_model: Model) -> Element(Msg) {
+  h.div(
+    css.class([
+      css.compose(layout.column(layout.Center)),
+      css.margin_top(length.px(24)),
+    ]),
+    [],
+    [ui.h1("Page not found")],
+  )
 }
