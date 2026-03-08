@@ -265,7 +265,9 @@ pub fn view(model: Model, shared: Shared) -> Element(Msg) {
     [
       case shared.user, model.listing {
         user.Authenticated(user), option.Some(Ok(listing))
-          if user.is_admin && listing.is_published
+          if user.is_admin
+          && listing.is_published
+          && listing.seller.id != user.id
         -> {
           ui.panel(
             ui.InfoPanel,
