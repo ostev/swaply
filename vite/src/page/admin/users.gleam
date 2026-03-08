@@ -44,7 +44,7 @@ pub fn init(shared: Shared) -> #(Model, Effect(Msg)) {
 
 pub type Msg {
   UsersReceived(response: Result(search.Results(User), rsvp.Error))
-  UpdatedEmailFilter(String)
+  UpdateEmailFilter(String)
   ChangePage(Int)
 }
 
@@ -54,7 +54,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       Model(..model, users: option.Some(response)),
       effect.none(),
     )
-    UpdatedEmailFilter(email) -> {
+    UpdateEmailFilter(email) -> {
       let email_filter = case email {
         "" -> option.None
         email -> option.Some(email)
@@ -120,7 +120,7 @@ pub fn view(model: Model, shared: Shared) -> Element(Msg) {
                       name: "email",
                       placeholder: "Search by email...",
                       value: model.email_filter |> option.unwrap(""),
-                      on_input: UpdatedEmailFilter,
+                      on_input: UpdateEmailFilter,
                     ),
                   ],
                 ),

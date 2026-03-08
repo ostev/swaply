@@ -40,8 +40,8 @@ pub fn init(origin: Uri) -> #(Model, Effect(msg)) {
 
 pub type Msg {
   LoginResponseReceived(Result(LoginResponse, rsvp.Error))
-  UpdatedEmail(String)
-  UpdatedPassword(String)
+  UpdateEmail(String)
+  UpdatePassword(String)
   SubmitForm
 }
 
@@ -82,12 +82,12 @@ pub fn update(
       effect.none(),
     )
 
-    UpdatedEmail(new_email) -> #(
+    UpdateEmail(new_email) -> #(
       Model(..model, form: Form(..model.form, email: new_email)),
       shared,
       effect.none(),
     )
-    UpdatedPassword(new_password) -> #(
+    UpdatePassword(new_password) -> #(
       Model(..model, form: Form(..model.form, password: new_password)),
       shared,
       effect.none(),
@@ -139,7 +139,7 @@ pub fn view(model: Model) -> Element(Msg) {
             label: "Email",
             name: "email",
             value: option.Some(model.form.email),
-            on_input: UpdatedEmail,
+            on_input: UpdateEmail,
             is_valid: model.form.email |> string.contains("@"),
           ),
           input.generic(
@@ -148,7 +148,7 @@ pub fn view(model: Model) -> Element(Msg) {
             label: "Password",
             name: "password",
             value: option.Some(model.form.password),
-            on_input: UpdatedPassword,
+            on_input: UpdatePassword,
             is_valid: string.length(model.form.password) >= 8,
           ),
           button.submit(button.Primary, "Login"),

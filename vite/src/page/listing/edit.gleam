@@ -146,19 +146,19 @@ pub type Msg {
   ResponseReceived(Result(String, rsvp.Error))
   PrefillFormResponseReceived(Result(Listing, rsvp.Error))
 
-  UpdatedName(String)
-  UpdatedDate(String)
-  UpdatedTime(String)
-  UpdatedShortDescription(String)
-  UpdatedDescription(String)
-  UpdatedLocation(String)
-  UpdatedIsPublished(Bool)
+  UpdateName(String)
+  UpdateDate(String)
+  UpdateTime(String)
+  UpdateShortDescription(String)
+  UpdateDescription(String)
+  UpdateLocation(String)
+  UpdateIsPublished(Bool)
 
-  CreatedTags(List(String))
-  DeletedTag(String)
-  UpdatedTicketType(listing.ItemInput, index: Int)
-  DeletedTicketType(index: Int)
-  AddedTicketType(listing.ItemInput)
+  CreateTags(List(String))
+  DeleteTag(String)
+  UpdateTicketType(listing.ItemInput, index: Int)
+  DeleteTicketType(index: Int)
+  AddTicketType(listing.ItemInput)
   UpdateCurrentTag(String)
   SubmitForm
   NoOp
@@ -168,17 +168,17 @@ pub fn update(shared: Shared, model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
   case msg {
     NoOp -> #(model, effect.none())
 
-    UpdatedName(name) -> #(
+    UpdateName(name) -> #(
       Model(..model, form: Form(..model.form, name:)),
       effect.none(),
     )
-    UpdatedDate(date) -> {
+    UpdateDate(date) -> {
       #(
         Model(..model, form: Form(..model.form, date: option.Some(date))),
         effect.none(),
       )
     }
-    UpdatedTime(time) -> {
+    UpdateTime(time) -> {
       #(
         Model(..model, form: Form(..model.form, time: option.Some(time))),
         effect.none(),
@@ -187,7 +187,7 @@ pub fn update(shared: Shared, model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
     UpdateCurrentTag(current_tag) -> {
       #(Model(..model, form: Form(..model.form, current_tag:)), effect.none())
     }
-    CreatedTags(new_tags) -> {
+    CreateTags(new_tags) -> {
       case new_tags {
         [] -> {
           #(model, effect.none())
@@ -212,7 +212,7 @@ pub fn update(shared: Shared, model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
         }
       }
     }
-    DeletedTag(tag) -> {
+    DeleteTag(tag) -> {
       let tags = model.form.tags |> set.delete(tag)
 
       #(
@@ -224,7 +224,7 @@ pub fn update(shared: Shared, model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       )
     }
 
-    UpdatedTicketType(item_type, index) -> {
+    UpdateTicketType(item_type, index) -> {
       let items =
         model.form.items
         |> iv.set(index, item_type)
@@ -233,7 +233,7 @@ pub fn update(shared: Shared, model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       #(Model(..model, form: Form(..model.form, items:)), effect.none())
     }
 
-    DeletedTicketType(index) -> {
+    DeleteTicketType(index) -> {
       let items =
         model.form.items
         |> iv.delete(index)
@@ -242,7 +242,7 @@ pub fn update(shared: Shared, model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       #(Model(..model, form: Form(..model.form, items:)), effect.none())
     }
 
-    AddedTicketType(item_type) -> {
+    AddTicketType(item_type) -> {
       let items =
         model.form.items
         |> iv.append(item_type)
@@ -250,22 +250,22 @@ pub fn update(shared: Shared, model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       #(Model(..model, form: Form(..model.form, items:)), effect.none())
     }
 
-    UpdatedShortDescription(short_description) -> {
+    UpdateShortDescription(short_description) -> {
       #(
         Model(..model, form: Form(..model.form, short_description:)),
         effect.none(),
       )
     }
 
-    UpdatedDescription(description) -> {
+    UpdateDescription(description) -> {
       #(Model(..model, form: Form(..model.form, description:)), effect.none())
     }
 
-    UpdatedLocation(location) -> {
+    UpdateLocation(location) -> {
       #(Model(..model, form: Form(..model.form, location:)), effect.none())
     }
 
-    UpdatedIsPublished(is_published) -> {
+    UpdateIsPublished(is_published) -> {
       #(Model(..model, form: Form(..model.form, is_published:)), effect.none())
     }
 
@@ -504,7 +504,7 @@ fn listing_date(model: Model) -> Element(Msg) {
             label: "Date",
             name: "date",
             value: model.form.date,
-            on_input: UpdatedDate,
+            on_input: UpdateDate,
             is_valid: is_date_valid(model.form.date),
           ),
         ]),
@@ -515,7 +515,7 @@ fn listing_date(model: Model) -> Element(Msg) {
             label: "Time",
             name: "time",
             value: model.form.time,
-            on_input: UpdatedTime,
+            on_input: UpdateTime,
             is_valid: model.form.time
               |> option.map(is_time_valid)
               |> option.unwrap(False),
@@ -635,7 +635,7 @@ pub fn view(model: Model) -> Element(Msg) {
               name: "title",
               label: "Title",
               value: model.form.name,
-              on_input: UpdatedName,
+              on_input: UpdateName,
             ),
 
             h.div(
@@ -650,7 +650,7 @@ pub fn view(model: Model) -> Element(Msg) {
                     label: "Short description",
                     name: "short_description",
                     value: model.form.short_description,
-                    on_input: UpdatedShortDescription,
+                    on_input: UpdateShortDescription,
                     is_valid: True,
                     height: length.em(4.0),
                   ),
@@ -659,7 +659,7 @@ pub fn view(model: Model) -> Element(Msg) {
                     label: "Description",
                     name: "description",
                     value: model.form.description,
-                    on_input: UpdatedDescription,
+                    on_input: UpdateDescription,
                     is_valid: True,
                     height: length.em(10.0),
                   ),
@@ -670,8 +670,8 @@ pub fn view(model: Model) -> Element(Msg) {
                     sorted_tags: model.form.sorted_tags,
                     value: model.form.current_tag,
                     on_update_value: UpdateCurrentTag,
-                    on_create_tags: CreatedTags,
-                    on_remove_tag: DeletedTag,
+                    on_create_tags: CreateTags,
+                    on_remove_tag: DeleteTag,
                   ),
 
                   input.generic_(
@@ -679,7 +679,7 @@ pub fn view(model: Model) -> Element(Msg) {
                     label: "Pickup location",
                     name: "location",
                     value: option.Some(model.form.location),
-                    on_input: UpdatedLocation,
+                    on_input: UpdateLocation,
                     is_valid: string.length(model.form.location |> string.trim)
                       > 2,
                   ),
@@ -715,12 +715,12 @@ pub fn view(model: Model) -> Element(Msg) {
                                 listing_ui.item_type_input(
                                   item_type,
                                   "item_type_" <> int.to_string(index),
-                                  UpdatedTicketType(_, index:),
+                                  UpdateTicketType(_, index:),
                                 ),
                                 button(
                                   button.Danger,
                                   "Delete",
-                                  DeletedTicketType(index),
+                                  DeleteTicketType(index),
                                 ),
                               ],
                             )
@@ -736,7 +736,7 @@ pub fn view(model: Model) -> Element(Msg) {
                           button(
                             button.Primary,
                             "Add",
-                            AddedTicketType(listing.ItemInput(
+                            AddTicketType(listing.ItemInput(
                               name: "",
                               price: "",
                               quantity: "",
@@ -782,7 +782,7 @@ pub fn view(model: Model) -> Element(Msg) {
                         label: "Published?",
                         name: "is_published",
                         is_checked: model.form.is_published,
-                        on_input: UpdatedIsPublished,
+                        on_input: UpdateIsPublished,
                       ),
 
                       button.submit(button.Primary, case model.mode {

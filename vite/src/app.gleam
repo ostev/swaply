@@ -188,7 +188,7 @@ type Msg {
 
   UrlChanged(Uri)
   CurrentUserReceived(Result(User, rsvp.Error))
-  UserRequestedLogout
+  Logout
   LogoutResponseReceived(Result(Response(String), rsvp.Error))
   GotHomeMsg(home.Msg)
   GotNotFoundMsg(not_found.Msg)
@@ -276,7 +276,7 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       )
     }
 
-    UserRequestedLogout, _ -> {
+    Logout, _ -> {
       #(
         model,
         logout(model.shared.csrf_token)
@@ -492,7 +492,7 @@ fn auth_nav(shared: Shared) -> Element(Msg) {
           text: "Settings",
           to: "/user/" <> uri.percent_encode(user.id) <> "/edit",
         ),
-        button(button.Primary, "Log out", UserRequestedLogout),
+        button(button.Primary, "Log out", Logout),
       ]
       user.Unauthenticated | user.Unknown -> [
         button.link(button.Primary, text: "Login", to: "/login"),

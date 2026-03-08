@@ -44,9 +44,9 @@ pub fn init(origin: Uri) -> #(Model, Effect(msg)) {
 
 pub type Msg {
   SignUpResponseReceived(Result(SignUpResponse, rsvp.Error))
-  UpdatedEmail(String)
-  UpdatedName(String)
-  UpdatedPassword(String)
+  UpdateEmail(String)
+  UpdateName(String)
+  UpdatePassword(String)
   SubmitForm
 }
 
@@ -95,17 +95,17 @@ pub fn update(
       effect.none(),
     )
 
-    UpdatedEmail(new_email) -> #(
+    UpdateEmail(new_email) -> #(
       Model(..model, form: Form(..model.form, email: new_email)),
       shared,
       effect.none(),
     )
-    UpdatedName(new_name) -> #(
+    UpdateName(new_name) -> #(
       Model(..model, form: Form(..model.form, name: new_name)),
       shared,
       effect.none(),
     )
-    UpdatedPassword(new_password) -> #(
+    UpdatePassword(new_password) -> #(
       Model(..model, form: Form(..model.form, password: new_password)),
       shared,
       effect.none(),
@@ -169,7 +169,7 @@ pub fn view(model: Model) -> Element(Msg) {
                 label: "Email",
                 name: "email",
                 value: option.Some(model.form.email),
-                on_input: UpdatedEmail,
+                on_input: UpdateEmail,
                 is_valid: model.form.email |> string.contains("@"),
               ),
               input.generic(
@@ -178,7 +178,7 @@ pub fn view(model: Model) -> Element(Msg) {
                 label: "First name",
                 name: "name",
                 value: option.Some(model.form.name),
-                on_input: UpdatedName,
+                on_input: UpdateName,
                 is_valid: string.length(model.form.name) > 0,
               ),
               input.generic(
@@ -187,7 +187,7 @@ pub fn view(model: Model) -> Element(Msg) {
                 label: "Password",
                 name: "password",
                 value: option.Some(model.form.password),
-                on_input: UpdatedPassword,
+                on_input: UpdatePassword,
                 is_valid: string.length(model.form.password) >= 8,
               ),
 

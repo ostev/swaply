@@ -35,7 +35,7 @@ pub type Model {
 
 pub type Msg {
   UpdateSearchQuery(String)
-  UpdatedFilter(listing.SearchFilter)
+  UpdateFilter(listing.SearchFilter)
   FetchedSearchResults(Result(search.Results(Listing), rsvp.Error))
   ChangePage(Int)
   VisitListing(String)
@@ -85,7 +85,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       }
     }
 
-    UpdatedFilter(new_filter) -> {
+    UpdateFilter(new_filter) -> {
       case new_filter == model.filter {
         True -> {
           #(model, effect.none())
@@ -203,7 +203,7 @@ pub fn view(model: Model, shared: Shared) -> Element(Msg) {
                   name: "filter_owned",
                   is_checked: model.filter.only_owned,
                   on_input: fn(is_checked) {
-                    UpdatedFilter(
+                    UpdateFilter(
                       listing.SearchFilter(
                         ..model.filter,
                         only_owned: is_checked,
