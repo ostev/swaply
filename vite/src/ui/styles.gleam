@@ -6,6 +6,7 @@ import sketch/css/media
 import sketch/css/transform
 import ui/colors
 import ui/fonts
+import ui/layout
 
 pub fn mobile_width() {
   length.px(610)
@@ -66,6 +67,17 @@ pub fn card() {
     css.border_radius(length.px(10)),
 
     css.compose(interactive_box_shadow()),
+  ])
+}
+
+pub fn search_card() {
+  css.class([
+    css.width(length.percent(100)),
+    css.max_width(length.rem(20.0)),
+
+    css.compose(card()),
+    css.compose(layout.column(layout.Start)),
+    css.gap(length.em(0.6)),
   ])
 }
 

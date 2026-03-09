@@ -129,89 +129,117 @@ fn submit(data: UserData, with_token csrf_token: String) {
 }
 
 pub fn view(model: Model, shared: Shared) -> Element(Msg) {
-  h.div(layout.column(layout.Center), [], [
-    case model.user {
-      option.None -> element.none()
-      option.Some(Error(_)) -> {
-        ui.panel(
-          ui.ErrorPanel,
-          True,
-          "An error occured while fetching information about this user.",
-        )
-      }
-      option.Some(Ok(data)) -> {
-        let form = data.form
-        h.form(
-          css.class([
-            css.compose(styles.card()),
-            css.margin(length.px(20)),
-            css.width(length.percent(100)),
-            css.max_width(length.rem(20.0)),
-            css.padding(length.rem(1.0)),
-          ]),
-          [
-            e.on_submit(fn(_) { SubmitForm }),
-          ],
-          [
-            input.generic_(
-              type_: "text",
-              label: "Email",
-              name: "email",
-              value: option.Some(form.email),
-              on_input: fn(email) { UpdateForm(Form(..form, email:)) },
-              is_valid: form.email |> string.contains("@"),
-            ),
+  h.div(
+    css.class([
+      css.compose(layout.column(layout.Center)),
+    ]),
+    [],
+    [
+      case model.user {
+        option.None -> element.none()
+        option.Some(Error(_)) -> {
+          ui.panel(
+            ui.ErrorPanel,
+            True,
+            "An error occured while fetching information about this user.",
+          )
+        }
+        option.Some(Ok(data)) -> {
+          let form = data.form
+          h.form(
+            css.class([
+              css.compose(styles.card()),
+              css.margin(length.px(20)),
+              css.width(length.percent(100)),
+              css.max_width(length.rem(20.0)),
+              css.padding(length.rem(1.0)),
+            ]),
+            [
+              e.on_submit(fn(_) { SubmitForm }),
+            ],
+            [
+              input.generic_(
+                type_: "text",
+                label: "Email",
+                name: "email",
+                value: option.Some(form.email),
+                on_input: fn(email) { UpdateForm(Form(..form, email:)) },
+                is_valid: form.email |> string.contains("@"),
+              ),
 
-            case shared.is_admin(shared) {
-              True ->
-                input.toggle(
-                  label: "Is admin?",
-                  name: "is_admin",
-                  is_checked: form.is_admin,
-                  on_input: fn(is_admin) { UpdateForm(Form(..form, is_admin:)) },
-                )
-              False -> element.none()
-            },
+              case shared.is_admin(shared) {
+                True ->
+                  input.toggle(
+                    label: "Is admin?",
+                    name: "is_admin",
+                    is_checked: form.is_admin,
+                    on_input: fn(is_admin) {
+                      UpdateForm(Form(..form, is_admin:))
+                    },
+                  )
+                False -> element.none()
+              },
 
-            h.div(
-              css.class([
-                css.compose(layout.row(layout.SpaceBetween)),
-                css.margin_top(length.px(4)),
-              ]),
-              [],
-              [
-                button(button.Danger, "Delete", DeleteUser),
-                button.submit(button.Primary, "Update"),
-              ],
-            ),
-          ],
-        )
-      }
-    },
+              h.div(
+                css.class([
+                  css.compose(layout.row(layout.SpaceBetween)),
+                  css.margin_top(length.px(4)),
+                ]),
+                [],
+                [
+                  button(button.Danger, "Delete", DeleteUser),
+                  button.submit(button.Primary, "Update"),
+                ],
+              ),
+            ],
+          )
+        }
+      },
 
-    case model.updated {
-      option.Some(Ok(_)) -> {
-        ui.panel(ui.InfoPanel, True, "Account updated!")
-      }
-      option.Some(Error(error)) -> {
-        ui.panel(ui.ErrorPanel, True, case error {
-          user.InvalidEmail -> "Please provide a valid new email."
-          user.EmailAlreadyUsed ->
-            "The new email you provided is already in use."
-          _ -> "An error occurred. Please try again."
-        })
-      }
-      option.None -> element.none()
-    },
+      h.div(
+        css.class([
+          css.compose(layout.row(layout.End)),
+          css.width(length.percent(100)),
+          css.max_width(length.rem(22.0)),
+        ]),
+        [],
+        [
+          case shared.is_admin(shared) {
+            True ->
+              button.link(
+                button.Primary,
+                text: "Edit all users",
+                to: "/admin/users",
+              )
+            False -> element.none()
+          },
+        ],
+      ),
 
-    case model.delete_error {
-      option.Some(_) ->
-        ui.panel(
-          ui.ErrorPanel,
-          True,
-          "An error occurred while deleting the user. Please try again.",
-        )
-      option.None -> element.none()
-    },
-  ])
+      case model.updated {
+        option.Some(Ok(_)) -> {
+          ui.panel(ui.InfoPanel, True, "Account updated!")
+        }
+        option.Some(Error(error)) -> {
+          ui.panel(ui.ErrorPanel, True, case error {
+            user.InvalidEmail -> "Please provide a valid new email."
+            user.EmailAlreadyUsed ->
+              "The new email you provided is already in use."
+            _ -> "An error occurred. Please try again."
+          })
+        }
+        option.None -> element.none()
+      },
+
+      case model.delete_error {
+        option.Some(_) ->
+          ui.panel(
+            ui.ErrorPanel,
+            True,
+            "An error occurred while deleting the user. Please try again.",
+          )
+        option.None -> element.none()
+      },
+    ],
+  )
 }

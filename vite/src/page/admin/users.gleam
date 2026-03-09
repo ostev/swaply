@@ -14,27 +14,29 @@ import ui
 import ui/button
 import ui/input
 import ui/layout
+import ui/styles
 import ui/table
 import user.{type User}
 
 pub type Model {
   Model(
     page: Int,
-    email_filter: Option(String),
+    filter: user.SearchFilter,
     users: Option(Result(search.Results(User), rsvp.Error)),
   )
 }
 
 pub fn init(shared: Shared) -> #(Model, Effect(Msg)) {
   let page = 0
+  let filter = user.SearchFilter(email: option.None, only_admins: False)
 
   #(
-    Model(page:, email_filter: option.None, users: option.None),
+    Model(page:, filter:, users: option.None),
     effect.batch([
       shared.check_authenticated(shared),
       user.list_all(
         page:,
-        with_email: option.None,
+        with: filter,
         at_timestamp: instant.now(),
         handler: UsersReceived,
       ),
@@ -44,7 +46,7 @@ pub fn init(shared: Shared) -> #(Model, Effect(Msg)) {
 
 pub type Msg {
   UsersReceived(response: Result(search.Results(User), rsvp.Error))
-  UpdateEmailFilter(String)
+  UpdateFilter(user.SearchFilter)
   ChangePage(Int)
 }
 
@@ -54,16 +56,12 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       Model(..model, users: option.Some(response)),
       effect.none(),
     )
-    UpdateEmailFilter(email) -> {
-      let email_filter = case email {
-        "" -> option.None
-        email -> option.Some(email)
-      }
+    UpdateFilter(filter) -> {
       #(
-        Model(..model, email_filter:, page: 0),
+        Model(..model, filter:, page: 0),
         user.list_all(
           page: 0,
-          with_email: email_filter,
+          with: filter,
           at_timestamp: instant.now(),
           handler: UsersReceived,
         ),
@@ -76,7 +74,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
         new_model,
         user.list_all(
           page:,
-          with_email: model.email_filter,
+          with: model.filter,
           at_timestamp: instant.now(),
           handler: UsersReceived,
         ),
@@ -108,22 +106,43 @@ pub fn view(model: Model, shared: Shared) -> Element(Msg) {
               ]),
               [],
               [
-                h.div(
-                  css.class([
-                    css.width(length.percent(100)),
-                    css.max_width(length.rem(25.0)),
-                  ]),
-                  [],
-                  [
-                    input.search(
-                      label: "Email",
-                      name: "email",
-                      placeholder: "Search by email...",
-                      value: model.email_filter |> option.unwrap(""),
-                      on_input: UpdateEmailFilter,
-                    ),
-                  ],
-                ),
+                h.div(styles.search_card(), [], [
+                  input.search(
+                    label: "Email",
+                    name: "email",
+                    placeholder: "Search by email...",
+                    value: model.filter.email |> option.unwrap(""),
+                    on_input: fn(email) {
+                      case email {
+                        "" ->
+                          UpdateFilter(
+                            user.SearchFilter(
+                              ..model.filter,
+                              email: option.None,
+                            ),
+                          )
+                        _ ->
+                          UpdateFilter(
+                            user.SearchFilter(
+                              ..model.filter,
+                              email: option.Some(email),
+                            ),
+                          )
+                      }
+                    },
+                  ),
+
+                  input.toggle(
+                    label: "Only admins?",
+                    name: "only_admins",
+                    is_checked: model.filter.only_admins,
+                    on_input: fn(only_admins) {
+                      UpdateFilter(
+                        user.SearchFilter(..model.filter, only_admins:),
+                      )
+                    },
+                  ),
+                ]),
               ],
             ),
             case model.users {

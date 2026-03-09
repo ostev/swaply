@@ -145,72 +145,61 @@ pub fn view(model: Model, shared: Shared) -> Element(Msg) {
       [
         ui.h2_("Listings"),
 
-        h.div(
-          css.class([
-            css.width(length.percent(100)),
-            css.max_width(length.rem(20.0)),
+        h.div(styles.search_card(), [], [
+          h.input(
+            css.class([
+              css.all("unset"),
+              css.display("block"),
 
-            css.compose(styles.card()),
-            css.compose(layout.column(layout.Start)),
-            css.gap(length.em(0.6)),
-          ]),
-          [],
-          [
-            h.input(
-              css.class([
-                css.all("unset"),
-                css.display("block"),
+              css.padding(length.px(10)),
+              css.background_color(colors.input_background),
+              css.border_color(colors.black),
+              css.border_style("solid"),
+              css.border_width(length.px(1)),
+              css.border_radius(length.px(6)),
+              css.font_size(length.px(16)),
 
-                css.padding(length.px(10)),
-                css.background_color(colors.input_background),
-                css.border_color(colors.black),
-                css.border_style("solid"),
-                css.border_width(length.px(1)),
-                css.border_radius(length.px(6)),
-                css.font_size(length.px(16)),
-
-                css.transition("box-shadow 0.3s"),
-                css.box_shadow("3px 3px 3px " <> colors.input_box_shadow),
-                css.hover([
-                  css.box_shadow("1px 1px 3px " <> colors.input_box_shadow),
-                ]),
-                css.active([
-                  css.box_shadow("0px 0px 2px " <> colors.input_box_shadow),
-                ]),
-
-                css.placeholder([css.color(colors.placeholder_text)]),
-
-                css.font_family("Inter, sans-serif"),
-
-                css.width(length.percent(100)),
-                css.box_sizing("border-box"),
-                css.text_align("center"),
+              css.transition("box-shadow 0.3s"),
+              css.box_shadow("3px 3px 3px " <> colors.input_box_shadow),
+              css.hover([
+                css.box_shadow("1px 1px 3px " <> colors.input_box_shadow),
               ]),
-              [
-                a.value(model.search_query),
-                a.placeholder("Search for listings..."),
-                e.debounce(e.on_input(UpdateSearchQuery), 200),
+              css.active([
+                css.box_shadow("0px 0px 2px " <> colors.input_box_shadow),
+              ]),
 
-                a.aria_label("Search for listings"),
-                a.name("search_listings"),
-              ],
-            ),
+              css.placeholder([css.color(colors.placeholder_text)]),
 
-            case shared.user {
-              user.Authenticated(_) -> {
-                input.toggle(
-                  label: "Only your listings?",
-                  name: "filter_owned",
-                  is_checked: model.filter.only_owned,
-                  on_input: fn(is_checked) {
-                    UpdateFilter(listing.SearchFilter(only_owned: is_checked))
-                  },
-                )
-              }
-              user.Unknown | user.Unauthenticated -> element.none()
-            },
-          ],
-        ),
+              css.font_family("Inter, sans-serif"),
+
+              css.width(length.percent(100)),
+              css.box_sizing("border-box"),
+              css.text_align("center"),
+            ]),
+            [
+              a.value(model.search_query),
+              a.placeholder("Search for listings..."),
+              e.debounce(e.on_input(UpdateSearchQuery), 200),
+
+              a.aria_label("Search for listings"),
+              a.name("search_listings"),
+            ],
+          ),
+
+          case shared.user {
+            user.Authenticated(_) -> {
+              input.toggle(
+                label: "Only your listings?",
+                name: "filter_owned",
+                is_checked: model.filter.only_owned,
+                on_input: fn(is_checked) {
+                  UpdateFilter(listing.SearchFilter(only_owned: is_checked))
+                },
+              )
+            }
+            user.Unknown | user.Unauthenticated -> element.none()
+          },
+        ]),
 
         case model.listings {
           option.Some(Ok(search_result)) -> {

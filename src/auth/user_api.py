@@ -117,11 +117,16 @@ def get_current_user():
 def get_all(current_user: UserData):
     page = int(request.args.get("p", 0))
     email = request.args.get("email", None)
+    only_admins = bool(request.args.get("admins", False))
 
     results_per_page = 20
 
+    admins_expr = "privilege_level = 1" if only_admins else None
+
     where_expr = (
-        " WHERE INSTR(LOWER(email), LOWER(:email)) > 0" if email is not None else ""
+        f" WHERE INSTR(LOWER(email), LOWER(:email)) > 0{" AND " + admins_expr if admins_expr is not None else ""}"
+        if email is not None
+        else f" WHERE {admins_expr}" if admins_expr is not None else ""
     )
     params = {"limit": results_per_page, "offset": page * results_per_page} | (
         {"email": email} if email is not None else {}
