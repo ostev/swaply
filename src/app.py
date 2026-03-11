@@ -12,6 +12,7 @@ from flask_limiter.util import get_remote_address
 
 
 from auth import session
+import auth.admin
 import auth.user_api
 import auth.user
 import auth.session
@@ -95,6 +96,8 @@ globals.db = Database(
     Path(__file__).parent.parent.resolve() / "db" / "db.sqlite3", model.schema
 )
 globals.db.create()
+globals.db.run(listing.create_search_index)
+auth.admin.create_default(secrets_dir)
 
 scheduler = APScheduler()
 scheduler.init_app(app)
@@ -112,137 +115,13 @@ def cleanup_expired_sessions():
         app.logger.info("=== Finished cleaning expired sessions ===")
 
 
-def create_search_index(conn: sqlite3.Connection, cursor: sqlite3.Cursor):
-    cursor.executescript(
-        """
-        CREATE VIRTUAL TABLE IF NOT EXISTS listing_search_index
-            USING fts5(
-                name,
-                tags,
-                description,
-                short_description,
-                location,
-                content="listings",
-                content_rowid="id",
-                tokenize="trigram"
-            );
-
-        CREATE TRIGGER IF NOT EXISTS listing_insert_trigger AFTER INSERT ON listings BEGIN
-            INSERT INTO
-                listing_search_index(
-                    rowid,
-                    name,
-                    tags,
-                    description,
-                    short_description,
-                    location
-                )
-                VALUES (
-                    NEW.id,
-                    NEW.name,
-                    NEW.tags,
-                    NEW.description,
-                    NEW.short_description,
-                    NEW.location
-                );
-        END;
-
-        CREATE TRIGGER IF NOT EXISTS listing_delete_trigger AFTER DELETE ON listings BEGIN
-            INSERT INTO
-                listing_search_index(
-                    listing_search_index,
-                    rowid,
-                    name,
-                    tags,
-                    description,
-                    short_description,
-                    location
-                )
-                VALUES (
-                    "delete",
-                    OLD.id,
-                    OLD.name,
-                    OLD.tags,
-                    OLD.description,
-                    OLD.short_description,
-                    OLD.location
-                );
-        END;
-
-        CREATE TRIGGER IF NOT EXISTS listing_update_trigger AFTER UPDATE ON listings BEGIN
-            INSERT INTO
-                listing_search_index(
-                    listing_search_index,
-                    rowid,
-                    name,
-                    tags,
-                    description,
-                    short_description,
-                    location
-                )
-                VALUES (
-                    "delete",
-                    OLD.id,
-                    OLD.name,
-                    OLD.tags,
-                    OLD.description,
-                    OLD.short_description,
-                    OLD.location
-                );
-
-            INSERT INTO
-                listing_search_index(
-                    rowid,
-                    name,
-                    tags,
-                    description,
-                    short_description,
-                    location
-                )
-                VALUES (
-                    NEW.id,
-                    NEW.name,
-                    NEW.tags,
-                    NEW.description,
-                    NEW.short_description,
-                    NEW.location
-                );
-        END;
-        """
-    )
-    conn.commit()
-
-
-globals.db.run(create_search_index)
 app.config["VITE_FOLDER_PATH"] = Path(__file__).parent.parent.resolve() / "vite"
 vite = Vite(app)
-
-
-def create_default_admin():
-    default_admin_path = secrets_dir / "admin.toml"
-
-    with open(default_admin_path, "rb") as file:
-        admin_details = tomllib.load(file)
-
-        email = str(admin_details["email"])
-        name = str(admin_details["name"])
-        password = str(admin_details["password"])
-
-    if (
-        globals.db.run(
-            lambda conn, cursor: cursor.execute(
-                "SELECT COUNT(id) FROM users WHERE privilege_level = 1"
-            ).fetchone()
-        )[0]
-        == 0
-    ):
-        auth.user.create(email, name, password, is_admin=True)
-
-
-create_default_admin()
 
 
 @app.route("/", defaults={"path": ""})
 @app.route("/<path:path>")
 def client_routed(path):
+    # Non-API routing is handled on the client side, so we just render
+    # a single template that loads our frontend code.
     return render_template("index.jinja")
