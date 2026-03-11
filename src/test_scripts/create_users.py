@@ -1,3 +1,8 @@
+"""
+Performs load testing by creating a load of users very quickly.
+Can be used to quickly test database performance or admin features.
+"""
+
 from pathlib import Path
 import random
 import secrets
@@ -23,7 +28,7 @@ for i in range(1000):
             "email": fake.email(),
             "password": secrets.token_urlsafe(random.randint(8, 300)),
         },
-        headers={"X-CSRF-Token": csrf_header_value}
+        headers={"X-CSRF-Token": csrf_header_value},
     )
 
     if response.status_code != 201:

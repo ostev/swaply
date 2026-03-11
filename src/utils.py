@@ -41,6 +41,9 @@ def load_data(filename) -> set[str]:
 
 
 def get_secret(path: pathlib.Path, num_bytes: int = 16) -> str:
+    """
+    Retrieves a secret key from a file or generates it if it doesn't exist.
+    """
     try:
         with open(path, "r") as file:
             return file.read()

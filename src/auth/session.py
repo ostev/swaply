@@ -24,7 +24,9 @@ class Session:
 
 
 def register(user_id: int, expiry_days: int = 3) -> str:
-
+    """
+    Creates a new session for a given user ID
+    """
     expiry_datetime = datetime.now(UTC) + timedelta(expiry_days)
 
     session_id = uuid4().bytes
@@ -58,6 +60,9 @@ def register(user_id: int, expiry_days: int = 3) -> str:
 
 
 def get_user_id() -> int | None:
+    """
+    Authenticates the current user's session
+    """
     if "auth_session_id" in session and "auth_token" in session:
         session_id = bytes(session["auth_session_id"])
         token = bytes(session["auth_token"])
@@ -105,6 +110,9 @@ def get_user_id() -> int | None:
 
 
 def logout():
+    """
+    Deletes the current user's session
+    """
     session.pop("auth_token", None)
     session_id = session.pop("auth_session_id", None)
 
@@ -118,6 +126,10 @@ def logout():
 
 
 def protected(route):
+    """
+    Checks for authentication and will error if not present
+    """
+
     @wraps(route)
     def protected_route(*args, **kwargs):
         user_id = get_user_id()
@@ -131,6 +143,10 @@ def protected(route):
 
 
 def authenticated(route):
+    """
+    Checks for authentication, but won't return an error if not present
+    """
+
     @wraps(route)
     def protected_route(*args, **kwargs):
         user_id = get_user_id()

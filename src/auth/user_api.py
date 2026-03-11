@@ -98,6 +98,9 @@ user_api = Blueprint("user", __name__, url_prefix=API_PREFIX + "/user")
 
 @user_api.route("/current")
 def get_current_user():
+    """
+    Retrieves information about the current user
+    """
     user_id = auth.session.get_user_id()
 
     if user_id is None:
@@ -115,6 +118,9 @@ def get_current_user():
 @user_api.route("/")
 @admin_only
 def get_all(current_user: UserData):
+    """
+    Searches for existing users
+    """
     page = int(request.args.get("p", 0))
     email = request.args.get("email", None)
     only_admins = bool(request.args.get("admins", False))
@@ -168,6 +174,9 @@ class UserResult(aenum.Enum):  # type: ignore
 @user_api.route("/<user_id>")
 @protected_with_user
 def get_user(current_user: UserData, user_id: str):
+    """
+    Retrieves the details of an existing user
+    """
     id = int(user_id)
 
     if current_user.id == id or current_user.is_admin:
@@ -184,6 +193,9 @@ def get_user(current_user: UserData, user_id: str):
 @user_api.route("/<user_id>", methods=["DELETE"])
 @protected_with_user
 def delete_user(current_user: UserData, user_id: str):
+    """
+    Delete the account of an existing user
+    """
     id = int(user_id)
 
     if current_user.id == id or current_user.is_admin:
@@ -220,6 +232,9 @@ class UpdateUserError(aenum.Enum):  # type: ignore
 @user_api.route("/<user_id>", methods=["PATCH"])
 @protected_with_user
 def update_user(current_user: UserData, user_id: str):
+    """
+    Update the account details of an existing user
+    """
     id = int(user_id)
 
     if not (current_user.id == id or current_user.is_admin):

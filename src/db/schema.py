@@ -194,6 +194,9 @@ def table[T: type[Table]](schema: T) -> T:
 
 
 def _table_to_sql_schema(named_table) -> str:
+    """
+    Converts a table schema class into an SQL creation schema.
+    """
     primary_key_schema: NamedPrimaryKey = named_table._primary_key(named_table)
 
     columns = [
@@ -211,12 +214,22 @@ def _table_to_sql_schema(named_table) -> str:
 
 
 def _table_to_create_query(table: type[Table]) -> str:
+    """
+    Converts a table schema class into an SQL creation query.
+    """
     return "CREATE TABLE IF NOT EXISTS " + _table_to_sql_schema(table) + ";"
 
 
 class Schema:
+    """
+    Represents all the tables in the application.
+    """
+
     def __init__(self, tables: list[type[Table]]):
         self.tables = tables
 
     def to_create_query(self) -> str:
+        """
+        Transforms the scehma into an SQL creation query.
+        """
         return "\n".join([_table_to_create_query(table) for table in self.tables])

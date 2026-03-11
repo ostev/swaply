@@ -29,6 +29,9 @@ class LoginResult(aenum.Enum):  # type: ignore
 
 @auth_api.route("/login", methods=["POST"])
 def login():
+    """
+    Creates a new session for an existing user
+    """
     email = request.json["email"]
     password = request.json["password"]
 
@@ -81,6 +84,9 @@ MIN_PASSWORD_LENGTH = 8
 
 @auth_api.route("/signup", methods=["POST"])
 def signup():
+    """
+    Creates an account and a session for a new user
+    """
     email = str(request.json["email"])
     name = str(request.json["name"])
     password = str(request.json["password"])

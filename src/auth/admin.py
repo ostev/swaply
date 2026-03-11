@@ -6,6 +6,10 @@ import globals
 
 
 def create_default(secrets_dir: Path):
+    """
+    Creates the default admin account using the credentials stored
+    in a secrets file.
+    """
     default_admin_path = secrets_dir / "admin.toml"
 
     with open(default_admin_path, "rb") as file:
