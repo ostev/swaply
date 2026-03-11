@@ -5,6 +5,7 @@ import json
 from multiprocessing import Value
 from sqlite3 import Connection, Cursor
 import timeit
+from typing import Any, Optional
 import aenum
 from flask import Blueprint, current_app, request
 
@@ -73,9 +74,119 @@ class ListingResult(aenum.Enum):  # type: ignore
     DATE_IN_PAST = 422
 
 
+def create_search_index(conn: Connection, cursor: Cursor):
+    """
+    Initialises the SQLite full-text search table for listings, with triggers to update it
+    if the backing listings table changes.
+    """
+
+    cursor.executescript(
+        """
+        CREATE VIRTUAL TABLE IF NOT EXISTS listing_search_index
+            USING fts5(
+                name,
+                tags,
+                description,
+                short_description,
+                location,
+                content="listings",
+                content_rowid="id",
+                tokenize="trigram"
+            );
+
+        CREATE TRIGGER IF NOT EXISTS listing_insert_trigger AFTER INSERT ON listings BEGIN
+            INSERT INTO
+                listing_search_index(
+                    rowid,
+                    name,
+                    tags,
+                    description,
+                    short_description,
+                    location
+                )
+                VALUES (
+                    NEW.id,
+                    NEW.name,
+                    NEW.tags,
+                    NEW.description,
+                    NEW.short_description,
+                    NEW.location
+                );
+        END;
+
+        CREATE TRIGGER IF NOT EXISTS listing_delete_trigger AFTER DELETE ON listings BEGIN
+            INSERT INTO
+                listing_search_index(
+                    listing_search_index,
+                    rowid,
+                    name,
+                    tags,
+                    description,
+                    short_description,
+                    location
+                )
+                VALUES (
+                    "delete",
+                    OLD.id,
+                    OLD.name,
+                    OLD.tags,
+                    OLD.description,
+                    OLD.short_description,
+                    OLD.location
+                );
+        END;
+
+        CREATE TRIGGER IF NOT EXISTS listing_update_trigger AFTER UPDATE ON listings BEGIN
+            INSERT INTO
+                listing_search_index(
+                    listing_search_index,
+                    rowid,
+                    name,
+                    tags,
+                    description,
+                    short_description,
+                    location
+                )
+                VALUES (
+                    "delete",
+                    OLD.id,
+                    OLD.name,
+                    OLD.tags,
+                    OLD.description,
+                    OLD.short_description,
+                    OLD.location
+                );
+
+            INSERT INTO
+                listing_search_index(
+                    rowid,
+                    name,
+                    tags,
+                    description,
+                    short_description,
+                    location
+                )
+                VALUES (
+                    NEW.id,
+                    NEW.name,
+                    NEW.tags,
+                    NEW.description,
+                    NEW.short_description,
+                    NEW.location
+                );
+        END;
+        """
+    )
+    conn.commit()
+
+
 @listing_api.route("/search")
 @authenticated
 def search_listings(user_id: int | None):
+    """
+    Searches for a listing by a set of filters.
+    """
+
     search_query = request.args.get("q", "")
     page = int(request.args.get("p", 0))
     filter_owned = request.args.get("filter_owned", "false").lower() == "true"
@@ -141,56 +252,75 @@ def search_listings(user_id: int | None):
     listings = []
 
     for listing in listing_tuples:
-        (
-            id,
-            name,
-            seller_id,
-            date,
-            is_published,
-            tags,
-            short_description,
-            description,
-            location,
-        ) = listing
-
-        tickets = [
-            {
-                "name": str(ticket_name),
-                "price": float(ticket_price),
-                "quantity": int(ticket_quantity),
-            }
-            for ticket_name, ticket_price, ticket_quantity in globals.db.retrieve_all(
-                [Item.name, Item.price, Item.quantity],
-                Item.listing,
-                id,
-            )
-        ]
-
-        (seller_email, seller_name) = globals.db.retrieve([User.email, User.name], User.id, seller_id)  # type: ignore
-
-        listings.append(
-            {
-                "id": str(id),
-                "name": str(name),
-                "seller": {
-                    "id": str(seller_id),
-                    "email": str(seller_email),
-                    "name": seller_name,
-                },
-                "date": datetime.fromisoformat(date).isoformat(),
-                "is_published": bool(is_published),
-                "tags": tags_from_csv(tags),
-                "items": tickets,
-                "short_description": str(short_description),
-                "description": str(description),
-                "location": str(location),
-            }
-        )
+        # This loop transforms the results from the relational database in a
+        # structured, document-oriented JSON format.
+        if (parsed := parse_listing(listing, check_date=False)) is not None:
+            listings.append(parsed)
 
     return {"listings": listings, "number_of_pages": count // results_per_page}
 
 
+def parse_listing(listing, check_date: bool) -> Optional[dict[str, Any]]:
+    (
+        id,
+        name,
+        seller_id,
+        date,
+        is_published,
+        tags,
+        short_description,
+        description,
+        location,
+    ) = listing
+
+    parsed_date = datetime.fromisoformat(date).astimezone(UTC)
+
+    if check_date and parsed_date <= datetime.now(UTC):
+        error(ListingResult.UNAUTHORISED)
+
+    tickets = [
+        {
+            "name": str(ticket_name),
+            "price": float(ticket_price),
+            "quantity": int(ticket_quantity),
+        }
+        for ticket_name, ticket_price, ticket_quantity in globals.db.retrieve_all(
+            [Item.name, Item.price, Item.quantity],
+            Item.listing,
+            id,
+        )
+    ]
+
+    seller_columns = globals.db.retrieve([User.email, User.name], User.id, seller_id)
+
+    if seller_columns is None:
+        return None
+
+    (seller_email, seller_name) = seller_columns
+
+    return {
+        "id": str(id),
+        "name": str(name),
+        "seller": {
+            "id": str(seller_id),
+            "email": str(seller_email),
+            "name": seller_name,
+        },
+        "date": datetime.fromisoformat(date).isoformat(),
+        "is_published": bool(is_published),
+        "tags": tags_from_csv(tags),
+        "items": tickets,
+        "short_description": str(short_description),
+        "description": str(description),
+        "location": str(location),
+    }
+
+
 def tags_from_csv(tag_string: str) -> list[str]:
+    """
+    Utility function to convert the list of tags as stored as comma-seperated
+    values in the database to a list of strings.
+    """
     return [
         stripped_tag
         for tag in str(tag_string).split(",")
@@ -199,6 +329,9 @@ def tags_from_csv(tag_string: str) -> list[str]:
 
 
 def validate_item(item):
+    """
+    Checks whether an item being sold meets the minimum requirements.
+    """
     name = str(item["name"]).strip()
     price = float(item["price"])
     quantity = int(item["quantity"])
@@ -216,10 +349,16 @@ def validate_item(item):
 
 
 def get_items() -> list[tuple[str, float, int]]:
+    """
+    Get the items from the JSON request body
+    """
     return [validate_item(item) for item in request.json.get("items", [])]
 
 
 def insert_items(cursor: Cursor, listing_id: int, items: list[tuple[str, float, int]]):
+    """
+    Insert items into the database
+    """
     cursor.executemany(
         "INSERT INTO items (listing, name, price, quantity) VALUES (?, ?, ?, ?)",
         [(listing_id,) + ticket_type for ticket_type in items],
@@ -227,9 +366,12 @@ def insert_items(cursor: Cursor, listing_id: int, items: list[tuple[str, float, 
 
 
 def validate_listing_fields(is_unique: bool):
+    """
+    Validate and parse a listing JSON body
+    """
     name = str(request.json["name"]).strip()
     if len(name) < 3 or len(name) > 30:
-        return result(ListingResult.INVALID_NAME)
+        error(ListingResult.INVALID_NAME)
 
     if is_unique and globals.db.run(
         lambda _, cursor: cursor.execute(
@@ -237,17 +379,17 @@ def validate_listing_fields(is_unique: bool):
         ).fetchone()
         is not None
     ):
-        return result(ListingResult.NAME_ALREADY_USED)
+        error(ListingResult.NAME_ALREADY_USED)
 
     date = datetime.fromisoformat(str(request.json["date"])).astimezone(UTC)
 
     if date <= datetime.now(UTC):
-        return result(ListingResult.DATE_IN_PAST)
+        error(ListingResult.DATE_IN_PAST)
 
     is_published = bool(request.json.get("is_published", False))
 
     if len(raw_tags := request.json.get("tags", [])) > 6:
-        return result(ListingResult.TOO_MANY_TAGS)
+        error(ListingResult.TOO_MANY_TAGS)
     else:
         tags = [str(tag) for tag in raw_tags]
         tag_string = ",".join(tags)
@@ -255,17 +397,17 @@ def validate_listing_fields(is_unique: bool):
     short_description = str(request.json["short_description"]).strip()
 
     if len(short_description) < 3 or len(short_description) > 300:
-        return result(ListingResult.INVALID_SHORT_DESCRIPTION)
+        error(ListingResult.INVALID_SHORT_DESCRIPTION)
 
     description = str(request.json["description"]).strip()
 
     if len(description) < 3 or len(description) > 10_000:
-        return result(ListingResult.INVALID_DESCRIPTION)
+        error(ListingResult.INVALID_DESCRIPTION)
 
     location = str(request.json["location"]).strip()
 
     if len(location) < 3 or len(location) > 200:
-        return result(ListingResult.INVALID_LOCATION)
+        error(ListingResult.INVALID_LOCATION)
 
     return {
         "name": name,
@@ -273,7 +415,7 @@ def validate_listing_fields(is_unique: bool):
         "short_description": short_description,
         "description": description,
         "is_published": is_published,
-        "tags": tag_string,
+        "tags": tag_string,  # type: ignore
         "location": location,
     }
 
@@ -281,11 +423,11 @@ def validate_listing_fields(is_unique: bool):
 @listing_api.route("/", methods=["POST"])
 @protected
 def create_listing(user_id: int):
+    """
+    Creates a listing for the authenticated user with the given fields.
+    """
+
     fields = validate_listing_fields(is_unique=True)
-
-    if isinstance(fields, tuple):
-        return fields
-
     items = get_items()
 
     if len(items) > 20:
@@ -318,66 +460,34 @@ def create_listing(user_id: int):
 @listing_api.route("/<listing_id>", methods=["GET"])
 @authenticated
 def get_listing(user_id: int | None, listing_id: int):
-    maybe_listing = globals.db.retrieve(
-        [
-            Listing.name,
-            Listing.seller,
-            Listing.date,
-            Listing.is_published,
-            Listing.tags,
-            Listing.short_description,
-            Listing.description,
-            Listing.location,
-        ],
-        Listing.id,
-        listing_id,
-    )
+    """
+    Retrieves a listing from the database
+    """
+
+    def retrieve_listing(conn: Connection, cursor: Cursor):
+        return cursor.execute(
+            f"""
+            SELECT
+                listings.id,
+                listings.name,
+                listings.seller,
+                listings.date,
+                listings.is_published,
+                listings.tags,
+                listings.short_description,
+                listings.description,
+                listings.location
+            FROM listing_search_index
+            WHERE listings.id = ? AND ({"listings.seller = ? OR " if user_id is not None else ""}is_published = 1)
+        """,
+            (listing_id, user_id),
+        ).fetchone()
+
+    maybe_listing = globals.db.run(retrieve_listing)
 
     if maybe_listing is not None:
-        (
-            name,
-            seller_id,
-            date,
-            is_published,
-            tag_string,
-            short_description,
-            description,
-            location,
-        ) = maybe_listing
-
-        parsed_date = datetime.fromisoformat(date).astimezone(UTC)
-
-        if parsed_date <= datetime.now(UTC):
-            return result(ListingResult.UNAUTHORISED)
-
-        items = [
-            {"name": str(name), "price": float(price), "quantity": int(quantity)}
-            for (name, price, quantity) in globals.db.retrieve_all(
-                [Item.name, Item.price, Item.quantity],
-                Item.listing,
-                listing_id,
-            )
-        ]
-
-        (seller_email, seller_name) = globals.db.retrieve([User.email, User.name], User.id, seller_id)  # type: ignore
-
-        if is_published or (user_id is not None and int(seller_id) == user_id):
-            return {
-                "id": str(listing_id),
-                "name": str(name),
-                "seller": {
-                    "id": str(seller_id),
-                    "email": str(seller_email),
-                    "name": str(seller_name),
-                },
-                "date": parsed_date.isoformat(),
-                "is_published": bool(is_published),
-                "tags": tags_from_csv(tag_string),
-                "short_description": str(short_description),
-                "description": str(description),
-                "location": str(location),
-                "items": items,
-            }
+        if (parsed := parse_listing(maybe_listing, check_date=True)) is not None:
+            return parsed
         else:
             return result(ListingResult.UNAUTHORISED)
     else:
@@ -387,6 +497,9 @@ def get_listing(user_id: int | None, listing_id: int):
 @listing_api.route("/<listing_id>", methods=["PATCH"])
 @protected_with_user
 def update_listing(user: UserData, listing_id: str):
+    """
+    Update an existing listing
+    """
     listing_id_parsed = int(listing_id)
 
     listing_details = globals.db.retrieve(
@@ -426,7 +539,7 @@ def update_listing(user: UserData, listing_id: str):
 
     if user.is_admin:
         current_app.logger.info(
-            f"Admin with ID {user.id} is edited listing with ID {listing_id_parsed}"
+            f"Admin with ID {user.id} edited listing with ID {listing_id_parsed}"
         )
 
     globals.db.run(update_listing)
@@ -437,6 +550,9 @@ def update_listing(user: UserData, listing_id: str):
 @listing_api.route("/<listing_id>", methods=["DELETE"])
 @protected_with_user
 def delete_listing(user: UserData, listing_id: str):
+    """
+    Delete an existing listing
+    """
     listing_id_parsed = int(listing_id)
 
     seller = globals.db.retrieve([Listing.seller], Listing.id, listing_id_parsed)
