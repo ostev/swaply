@@ -477,7 +477,7 @@ def get_listing(user_id: int | None, listing_id: int):
                 listings.short_description,
                 listings.description,
                 listings.location
-            FROM listing_search_index
+            FROM listings
             WHERE listings.id = ? AND ({"listings.seller = ? OR " if user_id is not None else ""}is_published = 1)
         """,
             (listing_id, user_id),
