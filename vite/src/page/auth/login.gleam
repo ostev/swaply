@@ -1,4 +1,5 @@
 import api
+import extra/url
 import gleam/dynamic/decode
 import gleam/http
 import gleam/json
@@ -20,6 +21,7 @@ import ui/button
 import ui/input
 import ui/layout
 import ui/styles
+import user
 
 pub type Model {
   Model(origin: Uri, form: Form, error: Option(rsvp.Error))
@@ -38,8 +40,8 @@ pub fn init(origin: Uri) -> #(Model, Effect(msg)) {
 
 pub type Msg {
   LoginResponseReceived(Result(LoginResponse, rsvp.Error))
-  UpdatedEmail(String)
-  UpdatedPassword(String)
+  UpdateEmail(String)
+  UpdatePassword(String)
   SubmitForm
 }
 
@@ -59,28 +61,40 @@ fn login_response_decoder() -> decode.Decoder(LoginResponse) {
   }
 }
 
-pub fn update(shared: Shared, model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
+pub fn update(
+  shared: Shared,
+  model: Model,
+  msg: Msg,
+) -> #(Model, Shared, Effect(Msg)) {
   case msg {
     LoginResponseReceived(Ok(_)) -> #(
       model,
-      modem.push(model.origin.path, model.origin.query, model.origin.fragment),
+      shared.Shared(..shared, user: user.Unknown),
+      modem.push(
+        url.replace_empty_with_root(model.origin.path),
+        model.origin.query,
+        model.origin.fragment,
+      ),
     )
     LoginResponseReceived(Error(error)) -> #(
       Model(..model, error: option.Some(error)),
+      shared,
       effect.none(),
     )
 
-    UpdatedEmail(new_email) -> #(
+    UpdateEmail(new_email) -> #(
       Model(..model, form: Form(..model.form, email: new_email)),
+      shared,
       effect.none(),
     )
-    UpdatedPassword(new_password) -> #(
+    UpdatePassword(new_password) -> #(
       Model(..model, form: Form(..model.form, password: new_password)),
+      shared,
       effect.none(),
     )
 
     SubmitForm -> {
-      #(model, login(model.form, with_token: shared.csrf_token))
+      #(model, shared, login(model.form, with_token: shared.csrf_token))
     }
   }
 }
@@ -125,7 +139,7 @@ pub fn view(model: Model) -> Element(Msg) {
             label: "Email",
             name: "email",
             value: option.Some(model.form.email),
-            on_input: UpdatedEmail,
+            on_input: UpdateEmail,
             is_valid: model.form.email |> string.contains("@"),
           ),
           input.generic(
@@ -134,7 +148,7 @@ pub fn view(model: Model) -> Element(Msg) {
             label: "Password",
             name: "password",
             value: option.Some(model.form.password),
-            on_input: UpdatedPassword,
+            on_input: UpdatePassword,
             is_valid: string.length(model.form.password) >= 8,
           ),
           button.submit(button.Primary, "Login"),

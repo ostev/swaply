@@ -5,6 +5,7 @@ from flask import Blueprint, current_app, request
 from email_validator import EmailNotValidError, validate_email
 
 from auth.hasher import ArgonHasher
+import auth.user
 from auth.user import User
 import auth.session
 
@@ -68,6 +69,7 @@ class SignupResult(aenum.Enum):  # type: ignore
     SUCCESS = 201
     INVALID_PASSWORD = 422
     INVALID_EMAIL = 422
+    INVALID_NAME = 422
     EMAIL_ALREADY_USED = 422
     PASSWORD_IS_COMMON = 422
     PASSWORD_CONTAINS_EMAIL = 422
@@ -75,31 +77,6 @@ class SignupResult(aenum.Enum):  # type: ignore
 
 
 MIN_PASSWORD_LENGTH = 8
-
-
-def create_user(email: str, name: str, password: str, is_admin: bool) -> int:
-    hashed_password = ArgonHasher().hash(password)
-
-    def insert_user(conn: Connection, cursor: Cursor):
-        cursor.execute(
-            """
-            INSERT INTO users (email, name, hashed_password, privilege_level)
-            VALUES (?, ?, ?, ?)
-            RETURNING id
-            """,
-            (email, name, hashed_password, int(is_admin)),
-        )
-
-        user_id_tuple = cursor.fetchone()
-
-        if user_id_tuple is None:
-            raise ValueError("Failed to create user")
-        user_id = user_id_tuple[0]
-
-        conn.commit()
-        return user_id
-
-    return globals.db.run(insert_user)
 
 
 @auth_api.route("/signup", methods=["POST"])
@@ -118,6 +95,9 @@ def signup():
     if len(password) < MIN_PASSWORD_LENGTH:
         return result(SignupResult.INVALID_PASSWORD)
 
+    if len(name.strip()) < 2:
+        return result(SignupResult.INVALID_NAME)
+
     lowercase_password = password.lower()
     if lowercase_password in words:
         return result(SignupResult.PASSWORD_IS_WORD)
@@ -127,7 +107,7 @@ def signup():
     if globals.db.contains(User.email, normalized_email):
         return result(SignupResult.EMAIL_ALREADY_USED)
 
-    user_id = create_user(normalized_email, name, password, is_admin=False)
+    user_id = auth.user.create(normalized_email, name, password, is_admin=False)
 
     auth.session.register(user_id)
 

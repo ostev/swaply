@@ -9,7 +9,7 @@ from email_validator import EmailNotValidError, validate_email
 from utils import check_sql_identifier, result
 import aenum
 from api import API_PREFIX
-from flask import Blueprint, request
+from flask import Blueprint, current_app, request
 
 
 @dataclass
@@ -117,10 +117,17 @@ def get_current_user():
 def get_all(current_user: UserData):
     page = int(request.args.get("p", 0))
     email = request.args.get("email", None)
+    only_admins = bool(request.args.get("admins", False))
 
     results_per_page = 20
 
-    where_expr = " WHERE INSTR(LOWER(email), LOWER(:email)) > 0" if email is not None else ""
+    admins_expr = "privilege_level = 1" if only_admins else None
+
+    where_expr = (
+        f" WHERE INSTR(LOWER(email), LOWER(:email)) > 0{" AND " + admins_expr if admins_expr is not None else ""}"
+        if email is not None
+        else f" WHERE {admins_expr}" if admins_expr is not None else ""
+    )
     params = {"limit": results_per_page, "offset": page * results_per_page} | (
         {"email": email} if email is not None else {}
     )
@@ -129,14 +136,14 @@ def get_all(current_user: UserData):
         users = cursor.execute(
             f"SELECT id, email, name, privilege_level FROM users{where_expr} LIMIT :limit OFFSET :offset",
             params,
-            ).fetchall() 
+        ).fetchall()
         count = cursor.execute(
-                f"""
+            f"""
                 SELECT COUNT(users.id)
                 FROM users{where_expr}
                 """,
-                params,
-            ).fetchone()[0]
+            params,
+        ).fetchone()[0]
 
         return (users, count)
 
@@ -182,12 +189,20 @@ def delete_user(current_user: UserData, user_id: str):
     if current_user.id == id or current_user.is_admin:
 
         def run_delete_user(conn: Connection, cursor: Cursor):
+            listing_ids = cursor.execute(
+                "SELECT id FROM listings WHERE seller = ?", (id,)
+            ).fetchall()
+            cursor.executemany("DELETE FROM items WHERE listing = ?", listing_ids)
             cursor.execute("DELETE FROM listings WHERE seller = ?", (id,))
             cursor.execute("DELETE FROM sessions WHERE user_id = ?", (id,))
             cursor.execute("DELETE FROM users WHERE id = ?", (id,))
             conn.commit()
 
         globals.db.run(run_delete_user)
+
+        current_app.logger.info(
+            f"User with ID {id} was deleted by user with ID {current_user.id}."
+        )
 
         return "", 204
     else:
@@ -225,12 +240,17 @@ def update_user(current_user: UserData, user_id: str):
     except EmailNotValidError:
         return result(UpdateUserError.INVALID_EMAIL)
 
-    if globals.db.contains(User.email, email):
+    id_with_email = globals.db.retrieve([User.id], User.email, email)
+    if id_with_email is not None and id_with_email != id:
         return result(UpdateUserError.EMAIL_ALREADY_USED)
 
     params = (
         {"id": id}
-        | ({"privilege_level": int(is_admin)} if is_admin is not None else {})
+        | (
+            {"privilege_level": int(is_admin)}
+            if is_admin is not None and current_user.is_admin
+            else {}
+        )
         | ({"email": email} if email is not None else {})
     )
 
@@ -241,6 +261,11 @@ def update_user(current_user: UserData, user_id: str):
     def run_update_user(conn: Connection, cursor: Cursor):
         cursor.execute(f"UPDATE users SET {columns} WHERE id = :id", params)
         conn.commit()
+
+    if current_user.is_admin:
+        current_app.logger.info(
+            f"Admin with ID {current_user.id} updated the user account with ID {id}."
+        )
 
     globals.db.run(run_update_user)
 

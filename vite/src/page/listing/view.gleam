@@ -51,7 +51,7 @@ pub type Msg {
   ListingReceived(Result(Listing, rsvp.Error))
   SetDeleteModal(Option(DeleteModal))
   Delete
-  DeletedResponseReceived(Result(Nil, rsvp.Error))
+  DeleteResponseReceived(Result(Nil, rsvp.Error))
 }
 
 @external(javascript, "./dialog.mjs", "set_dialog_visibility")
@@ -97,14 +97,14 @@ pub fn update(shared: Shared, model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
         option.Some(Ok(listing)) ->
           listing.delete(
             listing.id,
-            DeletedResponseReceived,
+            DeleteResponseReceived,
             with_token: shared.csrf_token,
           )
           |> result.unwrap(effect.none())
         _ -> effect.none()
       })
     }
-    DeletedResponseReceived(response) -> {
+    DeleteResponseReceived(response) -> {
       case response {
         Ok(_) -> #(model, modem.push("/", option.None, option.None))
         Error(error) -> #(
@@ -265,7 +265,9 @@ pub fn view(model: Model, shared: Shared) -> Element(Msg) {
     [
       case shared.user, model.listing {
         user.Authenticated(user), option.Some(Ok(listing))
-          if user.is_admin && listing.is_published
+          if user.is_admin
+          && listing.is_published
+          && listing.seller.id != user.id
         -> {
           ui.panel(
             ui.InfoPanel,

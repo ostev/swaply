@@ -59,8 +59,12 @@ pub fn get(
   )
 }
 
+pub type SearchFilter {
+  SearchFilter(email: Option(String), only_admins: Bool)
+}
+
 pub fn list_all(
-  with_email email_filter: Option(String),
+  with filter: SearchFilter,
   page page: Int,
   at_timestamp timestamp: tempo.Instant,
   handler handler: fn(Result(search.Results(User), rsvp.Error)) -> msg,
@@ -75,13 +79,21 @@ pub fn list_all(
   api.get(
     api_root
       <> "?"
-      <> uri.query_to_string([
-      #("p", int.to_string(page)),
-      ..case email_filter {
-        option.Some(email) -> [#("email", email)]
-        option.None -> []
-      }
-    ]),
+      <> uri.query_to_string(
+      [
+        #("p", int.to_string(page)),
+      ]
+      |> list.append(
+        case filter.email {
+          option.Some(email) -> [#("email", email)]
+          option.None -> []
+        }
+        |> list.append(case filter.only_admins {
+          True -> [#("admins", "true")]
+          False -> []
+        }),
+      ),
+    ),
     rsvp.expect_json(results_decoder, handler),
   )
 }
@@ -93,7 +105,7 @@ pub fn delete(
 ) -> Result(Effect(msg), Nil) {
   api.send(
     body: json.object([]),
-    to: api_root <> uri.percent_encode(id),
+    to: api_root <> "/" <> uri.percent_encode(id),
     with: http.Delete,
     handler: rsvp.expect_ok_response(fn(response) {
       response
@@ -141,7 +153,7 @@ pub fn update(
 
   api.send(
     body:,
-    to: api_root <> uri.percent_encode(id),
+    to: api_root <> "/" <> uri.percent_encode(id),
     with: http.Patch,
     with_token: csrf_token,
     handler: rsvp.expect_json(decoder(), fn(result) {

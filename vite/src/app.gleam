@@ -13,11 +13,11 @@ import page/admin/users as manage_users
 import page/auth
 import page/auth/login
 import page/auth/sign_up
-import page/edit_user
 import page/home
 import page/listing/edit as edit_listing
 import page/listing/view as view_listing
 import page/not_found
+import page/user/edit as edit_user
 import phosphor
 import rsvp
 import shared.{type Shared, Shared}
@@ -159,6 +159,20 @@ fn update_with(
   )
 }
 
+fn update_with_shared(
+  init_result: #(page_model, Shared, Effect(page_msg)),
+  to_page: fn(page_model) -> Page,
+  to_msg: fn(page_msg) -> Msg,
+  model: Model,
+) -> #(Model, Effect(Msg)) {
+  let #(page_model, shared, page_effect) = init_result
+
+  #(
+    Model(..model, page: to_page(page_model), shared:),
+    page_effect |> effect.map(to_msg),
+  )
+}
+
 fn update_page_with(
   init_result: #(page_model, Effect(page_msg)),
   to_page: fn(page_model) -> Page,
@@ -174,7 +188,7 @@ type Msg {
 
   UrlChanged(Uri)
   CurrentUserReceived(Result(User, rsvp.Error))
-  UserRequestedLogout
+  Logout
   LogoutResponseReceived(Result(Response(String), rsvp.Error))
   GotHomeMsg(home.Msg)
   GotNotFoundMsg(not_found.Msg)
@@ -235,9 +249,9 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
 
       #(
         Model(
-          ..model,
           page:,
           shared: Shared(..model.shared, current_url: new_url),
+          nav: nav.Closed,
         ),
         effect.batch([page_effect, user.get_current_user(CurrentUserReceived)]),
       )
@@ -262,7 +276,7 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       )
     }
 
-    UserRequestedLogout, _ -> {
+    Logout, _ -> {
       #(
         model,
         logout(model.shared.csrf_token)
@@ -305,11 +319,11 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
 
     GotLoginMsg(sub_msg), Login(sub_model) ->
       login.update(model.shared, sub_model, sub_msg)
-      |> update_with(Login, GotLoginMsg, model)
+      |> update_with_shared(Login, GotLoginMsg, model)
 
     GotSignUpMsg(sub_msg), SignUp(sub_model) ->
       sign_up.update(model.shared, sub_model, sub_msg)
-      |> update_with(SignUp, GotSignUpMsg, model)
+      |> update_with_shared(SignUp, GotSignUpMsg, model)
 
     GotCreateListingMsg(sub_msg), CreateListing(sub_model) ->
       edit_listing.update(model.shared, sub_model, sub_msg)
@@ -365,7 +379,7 @@ fn view_page(page: Page, shared: Shared) {
       |> element.map(GotViewListingMsg)
 
     EditUser(sub_model) ->
-      edit_user.view(sub_model)
+      edit_user.view(sub_model, shared)
       |> element.map(GotEditUserMsg)
 
     ManageUsers(sub_model) ->
@@ -433,7 +447,7 @@ fn nav(model: Model) -> Element(Msg) {
 
           css.transition("max-height 0.5s ease-in-out"),
           css.max_height_(case model.nav {
-            nav.Open -> "5.5rem"
+            nav.Open -> "8rem"
             nav.Closed -> "0"
           }),
 
@@ -468,12 +482,17 @@ fn nav(model: Model) -> Element(Msg) {
 fn auth_nav(shared: Shared) -> Element(Msg) {
   element.fragment([
     case shared.is_admin(shared) {
-      True -> button.link(button.Primary, "Manage users", to: "/admin/users")
+      True -> button.link(button.Secondary, "Manage users", to: "/admin/users")
       False -> element.none()
     },
     ..case shared.user {
-      user.Authenticated(_) -> [
-        button(button.Primary, "Log out", UserRequestedLogout),
+      user.Authenticated(user) -> [
+        button.link(
+          button.Primary,
+          text: "Settings",
+          to: "/user/" <> uri.percent_encode(user.id) <> "/edit",
+        ),
+        button(button.Primary, "Log out", Logout),
       ]
       user.Unauthenticated | user.Unknown -> [
         button.link(button.Primary, text: "Login", to: "/login"),
@@ -576,6 +595,6 @@ fn view(model: Model, stylesheet: sketch.StyleSheet) -> Element(Msg) {
 
   h.div_([], [
     nav(model),
-    h.div_([], [view_page(model.page, model.shared)]),
+    h.main_([], [view_page(model.page, model.shared)]),
   ])
 }

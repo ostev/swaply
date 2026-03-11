@@ -101,15 +101,9 @@ pub fn card_view(
         ],
       ),
 
-      h.div(
-        css.class([
-          width,
-        ]),
-        [],
-        [
-          tags.tags(listing.tags),
-        ],
-      ),
+      h.div(css.class([width, css.margin_bottom(length.px(4))]), [], [
+        tags.tags(listing.tags),
+      ]),
       h.div(
         css.class([css.compose(layout.row(layout.SpaceBetween)), width]),
         [],

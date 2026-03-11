@@ -5,8 +5,6 @@ import gleam/dynamic/decode
 import gleam/http
 import gleam/int
 import gleam/json.{type Json}
-import gleam/list
-import gleam/option.{type Option}
 import gleam/result
 import gleam/string
 import gleam/uri
@@ -16,9 +14,6 @@ import rsvp
 import search
 import seller.{type Seller}
 import tempo.{type DateTime}
-import tempo/datetime
-import tempo/offset
-import tempo/time
 
 pub const api_root = "/listings"
 
@@ -136,11 +131,7 @@ pub fn delete(
 }
 
 pub type SearchFilter {
-  SearchFilter(
-    only_owned: Bool,
-    start_date: Option(tempo.Date),
-    end_date: Option(tempo.Date),
-  )
+  SearchFilter(only_owned: Bool)
 }
 
 pub fn search(
@@ -155,27 +146,6 @@ pub fn search(
       #("q", query),
       #("p", int.to_string(page)),
       #("filter_owned", bool.to_string(filter.only_owned) |> string.lowercase),
-      ..{
-        [
-          filter.start_date
-            |> option.map(fn(date) {
-              #(
-                "start_date",
-                datetime.new(date, time.start_of_day, offset.local())
-                  |> datetime.format(tempo.ISO8601Seconds),
-              )
-            }),
-          filter.end_date
-            |> option.map(fn(date) {
-              #(
-                "end_date",
-                datetime.new(date, time.start_of_day, offset.local())
-                  |> datetime.format(tempo.ISO8601Seconds),
-              )
-            }),
-        ]
-        |> list.filter_map(option.to_result(_, Nil))
-      }
     ])
   let url = api_root <> "/search?" <> query_string
 

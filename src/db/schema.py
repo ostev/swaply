@@ -11,11 +11,17 @@ class Type(Enum):
 
 type ForeignReference = NamedColumn | NamedPrimaryKey
 
+
 class Table(Protocol):
     table_name: str
 
 
 class Column:
+    """
+    Defines a column in a table. This is the type you should use to create columns
+    in your schemas.
+    """
+
     def __init__(self, type: Type):
         self.type = type
         self.is_autoincrement = False
@@ -61,6 +67,10 @@ class Column:
 
 
 class NamedColumn:
+    """
+    An internal class that is used to bind colums to names within a table.
+    """
+
     def __init__(self, name: str, column: Column, table: type[Table]):
         self.name = name
         self.column = column
@@ -78,6 +88,10 @@ class NamedColumn:
 
 
 class PrimaryKey:
+    """
+    Represents a table's primary key
+    """
+
     def __init__(self, type: Type):
         self.type = type
         self.is_autoincrement = False
@@ -100,6 +114,10 @@ class PrimaryKey:
 
 
 class NamedPrimaryKey:
+    """
+    An internal class that is used to bind primary keys to names within a table.
+    """
+
     def __init__(self, name: str, primary_key: PrimaryKey, table: type[Table]):
         self.name = name
         self.column = primary_key
@@ -109,23 +127,27 @@ class NamedPrimaryKey:
         return f"{self.name} {self.column.type.value} PRIMARY KEY{" AUTOINCREMENT" if self.column.is_autoincrement else ""} NOT NULL"
 
 
-
-
-
 def table[T: type[Table]](schema: T) -> T:
+    """
+    Use this as an @decorator on a class with your table schema.
+    """
+
+    # Both of these fields are reserved for internal use
     if getattr(schema, "_primary_key", None) is not None:
         raise ValueError(
-            "The provided table schema cannot contain a field named `primary_key`."
+            "The provided table schema cannot contain a field named `_primary_key`."
         )
 
     if getattr(schema, "_columns", None) is not None:
         raise ValueError(
-            "The provided table schema cannot contain a field named `columns`."
+            "The provided table schema cannot contain a field named `_columns`."
         )
 
+    # Get the list of name-column pairs
     properties = dir(schema)
 
     try:
+        # Find the primary key
         primary_key_name, primary_key = next(
             (
                 (name, value)

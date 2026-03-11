@@ -13,7 +13,7 @@ from auth.session import authenticated, protected
 from auth.user import User
 from auth.user_api import UserData, authenticated_with_user, protected_with_user
 from db.schema import Column, PrimaryKey, table
-from utils import normalise_json_str_array, result
+from utils import error, normalise_json_str_array, result
 import globals
 
 
@@ -61,13 +61,16 @@ class ListingResult(aenum.Enum):  # type: ignore
     NOT_FOUND = 404
     UNAUTHORISED = 401
 
-    INVALID_NAME = 400
-    INVALID_SHORT_DESCRIPTION = 400
-    INVALID_DESCRIPTION = 400
-    INVALID_LOCATION = 400
-    TOO_MANY_TAGS = 400
-    TOO_MANY_ITEMS = 400
-    NAME_ALREADY_USED = 400
+    INVALID_NAME = 422
+    INVALID_SHORT_DESCRIPTION = 422
+    INVALID_DESCRIPTION = 422
+    INVALID_LOCATION = 422
+    INVALID_PRICING = 422
+    INVALID_QUANTITY = 422
+    TOO_MANY_TAGS = 422
+    TOO_MANY_ITEMS = 422
+    NAME_ALREADY_USED = 422
+    DATE_IN_PAST = 422
 
 
 @listing_api.route("/search")
@@ -80,9 +83,9 @@ def search_listings(user_id: int | None):
     results_per_page = 10
 
     is_authorized_expr = (
-        "(listings.is_published = 1 OR seller = :user_id)"
+        "((listings.is_published = 1 AND date > datetime('now')) OR seller = :user_id)"
         if user_id is not None
-        else "listings.is_published = 1"
+        else "(listings.is_published = 1 AND date > datetime('now'))"
     )
 
     filter_expr = (
@@ -195,15 +198,25 @@ def tags_from_csv(tag_string: str) -> list[str]:
     ]
 
 
+def validate_item(item):
+    name = str(item["name"]).strip()
+    price = float(item["price"])
+    quantity = int(item["quantity"])
+
+    if price < 0 or price > 1e6:
+        error(ListingResult.INVALID_PRICING)
+
+    if quantity < 0 or quantity > 1e6:
+        error(ListingResult.INVALID_QUANTITY)
+
+    if len(name) == 0:
+        error(ListingResult.INVALID_NAME)
+
+    return (name, price, quantity)
+
+
 def get_items() -> list[tuple[str, float, int]]:
-    return [
-        (
-            str(ticket_type["name"]),
-            float(ticket_type["price"]),
-            int(ticket_type["quantity"]),
-        )
-        for ticket_type in request.json.get("items", [])
-    ]
+    return [validate_item(item) for item in request.json.get("items", [])]
 
 
 def insert_items(cursor: Cursor, listing_id: int, items: list[tuple[str, float, int]]):
@@ -214,7 +227,7 @@ def insert_items(cursor: Cursor, listing_id: int, items: list[tuple[str, float, 
 
 
 def validate_listing_fields(is_unique: bool):
-    name = str(request.json["name"])
+    name = str(request.json["name"]).strip()
     if len(name) < 3 or len(name) > 30:
         return result(ListingResult.INVALID_NAME)
 
@@ -228,6 +241,9 @@ def validate_listing_fields(is_unique: bool):
 
     date = datetime.fromisoformat(str(request.json["date"])).astimezone(UTC)
 
+    if date <= datetime.now(UTC):
+        return result(ListingResult.DATE_IN_PAST)
+
     is_published = bool(request.json.get("is_published", False))
 
     if len(raw_tags := request.json.get("tags", [])) > 6:
@@ -236,19 +252,19 @@ def validate_listing_fields(is_unique: bool):
         tags = [str(tag) for tag in raw_tags]
         tag_string = ",".join(tags)
 
-    short_description = request.json["short_description"]
+    short_description = str(request.json["short_description"]).strip()
 
     if len(short_description) < 3 or len(short_description) > 300:
         return result(ListingResult.INVALID_SHORT_DESCRIPTION)
 
-    description = request.json["description"]
+    description = str(request.json["description"]).strip()
 
     if len(description) < 3 or len(description) > 10_000:
         return result(ListingResult.INVALID_DESCRIPTION)
 
-    location = request.json["location"]
+    location = str(request.json["location"]).strip()
 
-    if len(location) > 200:
+    if len(location) < 3 or len(location) > 200:
         return result(ListingResult.INVALID_LOCATION)
 
     return {
@@ -329,6 +345,11 @@ def get_listing(user_id: int | None, listing_id: int):
             location,
         ) = maybe_listing
 
+        parsed_date = datetime.fromisoformat(date).astimezone(UTC)
+
+        if parsed_date <= datetime.now(UTC):
+            return result(ListingResult.UNAUTHORISED)
+
         items = [
             {"name": str(name), "price": float(price), "quantity": int(quantity)}
             for (name, price, quantity) in globals.db.retrieve_all(
@@ -349,7 +370,7 @@ def get_listing(user_id: int | None, listing_id: int):
                     "email": str(seller_email),
                     "name": str(seller_name),
                 },
-                "date": datetime.fromisoformat(date).isoformat(),
+                "date": parsed_date.isoformat(),
                 "is_published": bool(is_published),
                 "tags": tags_from_csv(tag_string),
                 "short_description": str(short_description),
@@ -381,14 +402,6 @@ def update_listing(user: UserData, listing_id: str):
     if user.id != seller_id and not (user.is_admin and is_listing_already_published):
         return result(ListingResult.UNAUTHORISED)
 
-    if "name" in request.json:
-        name = str(request.json["name"])
-
-        if len(name) < 3 or len(name) > 30:
-            return result(ListingResult.INVALID_NAME)
-    else:
-        name = None
-
     fields = validate_listing_fields(is_unique=False) | {"id": listing_id}  # type: ignore
 
     if isinstance(fields, tuple):
@@ -411,6 +424,11 @@ def update_listing(user: UserData, listing_id: str):
 
         conn.commit()
 
+    if user.is_admin:
+        current_app.logger.info(
+            f"Admin with ID {user.id} is edited listing with ID {listing_id_parsed}"
+        )
+
     globals.db.run(update_listing)
 
     return {"id": str(listing_id)}
@@ -431,6 +449,10 @@ def delete_listing(user: UserData, listing_id: str):
             conn.commit()
 
         globals.db.run(run_delete)
+
+        current_app.logger.info(
+            f"Listing with ID {listing_id_parsed} was deleted by user with ID {user.id}."
+        )
 
         return result(ListingResult.SUCCESS)
     else:

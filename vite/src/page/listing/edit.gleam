@@ -30,6 +30,7 @@ import tempo/error as tempo_error
 import tempo/offset
 import ui
 import ui/button.{button}
+import ui/fonts
 import ui/input
 import ui/layout
 import ui/listing as listing_ui
@@ -77,12 +78,15 @@ pub type EditError {
 pub type ServerResponse {
   Unauthorised
   InvalidName
+  InvalidPricing
   InvalidDescription
   InvalidShortDescription
+  InvalidQuantity
   InvalidLocation
   TooManyTags
   TooManyItems
   NameAlreadyUsed
+  DateInPast
 }
 
 fn server_response_decoder() -> decode.Decoder(ServerResponse) {
@@ -90,18 +94,21 @@ fn server_response_decoder() -> decode.Decoder(ServerResponse) {
   case variant {
     "unauthorised" -> decode.success(Unauthorised)
     "invalid_name" -> decode.success(InvalidName)
+    "invalid_pricing" -> decode.success(InvalidPricing)
+    "invalid_quantity" -> decode.success(InvalidQuantity)
     "invalid_description" -> decode.success(InvalidDescription)
     "invalid_short_description" -> decode.success(InvalidShortDescription)
     "invalid_location" -> decode.success(InvalidLocation)
     "name_already_used" -> decode.success(NameAlreadyUsed)
     "too_many_tags" -> decode.success(TooManyTags)
     "too_many_items" -> decode.success(TooManyItems)
+    "date_in_past" -> decode.success(DateInPast)
     _ -> decode.failure(Unauthorised, "ServerResponse")
   }
 }
 
 pub fn init(shared_model: Shared, mode: Mode) -> #(Model, Effect(Msg)) {
-  let check_auth = shared.check_authentication(shared_model)
+  let check_auth = shared.check_authenticated(shared_model)
 
   #(
     Model(
@@ -139,19 +146,19 @@ pub type Msg {
   ResponseReceived(Result(String, rsvp.Error))
   PrefillFormResponseReceived(Result(Listing, rsvp.Error))
 
-  UpdatedName(String)
-  UpdatedDate(String)
-  UpdatedTime(String)
-  UpdatedShortDescription(String)
-  UpdatedDescription(String)
-  UpdatedLocation(String)
-  UpdatedIsPublished(Bool)
+  UpdateName(String)
+  UpdateDate(String)
+  UpdateTime(String)
+  UpdateShortDescription(String)
+  UpdateDescription(String)
+  UpdateLocation(String)
+  UpdateIsPublished(Bool)
 
-  CreatedTags(List(String))
-  DeletedTag(String)
-  UpdatedTicketType(listing.ItemInput, index: Int)
-  DeletedTicketType(index: Int)
-  AddedTicketType(listing.ItemInput)
+  CreateTags(List(String))
+  DeleteTag(String)
+  UpdateTicketType(listing.ItemInput, index: Int)
+  DeleteTicketType(index: Int)
+  AddTicketType(listing.ItemInput)
   UpdateCurrentTag(String)
   SubmitForm
   NoOp
@@ -161,17 +168,17 @@ pub fn update(shared: Shared, model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
   case msg {
     NoOp -> #(model, effect.none())
 
-    UpdatedName(name) -> #(
+    UpdateName(name) -> #(
       Model(..model, form: Form(..model.form, name:)),
       effect.none(),
     )
-    UpdatedDate(date) -> {
+    UpdateDate(date) -> {
       #(
         Model(..model, form: Form(..model.form, date: option.Some(date))),
         effect.none(),
       )
     }
-    UpdatedTime(time) -> {
+    UpdateTime(time) -> {
       #(
         Model(..model, form: Form(..model.form, time: option.Some(time))),
         effect.none(),
@@ -180,7 +187,7 @@ pub fn update(shared: Shared, model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
     UpdateCurrentTag(current_tag) -> {
       #(Model(..model, form: Form(..model.form, current_tag:)), effect.none())
     }
-    CreatedTags(new_tags) -> {
+    CreateTags(new_tags) -> {
       case new_tags {
         [] -> {
           #(model, effect.none())
@@ -205,7 +212,7 @@ pub fn update(shared: Shared, model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
         }
       }
     }
-    DeletedTag(tag) -> {
+    DeleteTag(tag) -> {
       let tags = model.form.tags |> set.delete(tag)
 
       #(
@@ -217,7 +224,7 @@ pub fn update(shared: Shared, model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       )
     }
 
-    UpdatedTicketType(item_type, index) -> {
+    UpdateTicketType(item_type, index) -> {
       let items =
         model.form.items
         |> iv.set(index, item_type)
@@ -226,7 +233,7 @@ pub fn update(shared: Shared, model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       #(Model(..model, form: Form(..model.form, items:)), effect.none())
     }
 
-    DeletedTicketType(index) -> {
+    DeleteTicketType(index) -> {
       let items =
         model.form.items
         |> iv.delete(index)
@@ -235,7 +242,7 @@ pub fn update(shared: Shared, model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       #(Model(..model, form: Form(..model.form, items:)), effect.none())
     }
 
-    AddedTicketType(item_type) -> {
+    AddTicketType(item_type) -> {
       let items =
         model.form.items
         |> iv.append(item_type)
@@ -243,22 +250,22 @@ pub fn update(shared: Shared, model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       #(Model(..model, form: Form(..model.form, items:)), effect.none())
     }
 
-    UpdatedShortDescription(short_description) -> {
+    UpdateShortDescription(short_description) -> {
       #(
         Model(..model, form: Form(..model.form, short_description:)),
         effect.none(),
       )
     }
 
-    UpdatedDescription(description) -> {
+    UpdateDescription(description) -> {
       #(Model(..model, form: Form(..model.form, description:)), effect.none())
     }
 
-    UpdatedLocation(location) -> {
+    UpdateLocation(location) -> {
       #(Model(..model, form: Form(..model.form, location:)), effect.none())
     }
 
-    UpdatedIsPublished(is_published) -> {
+    UpdateIsPublished(is_published) -> {
       #(Model(..model, form: Form(..model.form, is_published:)), effect.none())
     }
 
@@ -482,10 +489,6 @@ fn submit(
 }
 
 fn listing_date(model: Model) -> Element(Msg) {
-  let date_is_valid =
-    { model.form.date |> option.map(string.is_empty) |> option.unwrap(True) }
-    || is_date_valid(model.form.date)
-
   h.div_([], [
     h.div(
       css.class([
@@ -501,8 +504,8 @@ fn listing_date(model: Model) -> Element(Msg) {
             label: "Date",
             name: "date",
             value: model.form.date,
-            on_input: UpdatedDate,
-            is_valid: date_is_valid,
+            on_input: UpdateDate,
+            is_valid: is_date_valid(model.form.date),
           ),
         ]),
 
@@ -512,7 +515,7 @@ fn listing_date(model: Model) -> Element(Msg) {
             label: "Time",
             name: "time",
             value: model.form.time,
-            on_input: UpdatedTime,
+            on_input: UpdateTime,
             is_valid: model.form.time
               |> option.map(is_time_valid)
               |> option.unwrap(False),
@@ -539,6 +542,10 @@ fn error_panel(model: Model) -> Element(Msg) {
               case server_response {
                 InvalidName ->
                   "Please provide a name for the listing that is between 3 and 30 characters long."
+                InvalidPricing ->
+                  "One of the items on offer has a price that is lower than $0 or higher than $1 000 000."
+                InvalidQuantity ->
+                  "One of the items on offer has a quantity that is lower than 0 or higher than 1 000 000."
                 InvalidDescription ->
                   "Please provide a description that is between 3 and 10 000 characters long."
                 InvalidShortDescription ->
@@ -548,6 +555,7 @@ fn error_panel(model: Model) -> Element(Msg) {
                 TooManyTags -> "Please provide no more than 6 tags."
                 TooManyItems -> "Please provide no more than 20 items."
                 NameAlreadyUsed -> "A listing with this name already exists."
+                DateInPast -> "The date you provided is in the past."
                 Unauthorised ->
                   "You don't have access to edit this listing. Make sure you're logged in."
               }
@@ -627,7 +635,7 @@ pub fn view(model: Model) -> Element(Msg) {
               name: "title",
               label: "Title",
               value: model.form.name,
-              on_input: UpdatedName,
+              on_input: UpdateName,
             ),
 
             h.div(
@@ -642,7 +650,7 @@ pub fn view(model: Model) -> Element(Msg) {
                     label: "Short description",
                     name: "short_description",
                     value: model.form.short_description,
-                    on_input: UpdatedShortDescription,
+                    on_input: UpdateShortDescription,
                     is_valid: True,
                     height: length.em(4.0),
                   ),
@@ -651,7 +659,7 @@ pub fn view(model: Model) -> Element(Msg) {
                     label: "Description",
                     name: "description",
                     value: model.form.description,
-                    on_input: UpdatedDescription,
+                    on_input: UpdateDescription,
                     is_valid: True,
                     height: length.em(10.0),
                   ),
@@ -662,8 +670,8 @@ pub fn view(model: Model) -> Element(Msg) {
                     sorted_tags: model.form.sorted_tags,
                     value: model.form.current_tag,
                     on_update_value: UpdateCurrentTag,
-                    on_create_tags: CreatedTags,
-                    on_remove_tag: DeletedTag,
+                    on_create_tags: CreateTags,
+                    on_remove_tag: DeleteTag,
                   ),
 
                   input.generic_(
@@ -671,8 +679,9 @@ pub fn view(model: Model) -> Element(Msg) {
                     label: "Pickup location",
                     name: "location",
                     value: option.Some(model.form.location),
-                    on_input: UpdatedLocation,
-                    is_valid: True,
+                    on_input: UpdateLocation,
+                    is_valid: string.length(model.form.location |> string.trim)
+                      > 2,
                   ),
                 ]),
 
@@ -706,12 +715,12 @@ pub fn view(model: Model) -> Element(Msg) {
                                 listing_ui.item_type_input(
                                   item_type,
                                   "item_type_" <> int.to_string(index),
-                                  UpdatedTicketType(_, index:),
+                                  UpdateTicketType(_, index:),
                                 ),
                                 button(
                                   button.Danger,
                                   "Delete",
-                                  DeletedTicketType(index),
+                                  DeleteTicketType(index),
                                 ),
                               ],
                             )
@@ -727,7 +736,7 @@ pub fn view(model: Model) -> Element(Msg) {
                           button(
                             button.Primary,
                             "Add",
-                            AddedTicketType(listing.ItemInput(
+                            AddTicketType(listing.ItemInput(
                               name: "",
                               price: "",
                               quantity: "",
@@ -740,7 +749,24 @@ pub fn view(model: Model) -> Element(Msg) {
                 ]),
 
                 ui.fieldset([
-                  ui.h3(styles.text_center(), "Ending"),
+                  ui.h3(
+                    css.class([
+                      css.compose(styles.text_center()),
+                      css.margin_block_end(length.px(0)),
+                    ]),
+                    "End date",
+                  ),
+                  h.p(
+                    css.class([
+                      fonts.inter(),
+                      fonts.size_md(),
+                      styles.text_italic(),
+                    ]),
+                    [],
+                    [
+                      h.text("When your listing will be hidden"),
+                    ],
+                  ),
                   listing_date(model),
 
                   error_panel(model),
@@ -756,7 +782,7 @@ pub fn view(model: Model) -> Element(Msg) {
                         label: "Published?",
                         name: "is_published",
                         is_checked: model.form.is_published,
-                        on_input: UpdatedIsPublished,
+                        on_input: UpdateIsPublished,
                       ),
 
                       button.submit(button.Primary, case model.mode {

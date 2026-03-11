@@ -1,17 +1,12 @@
-import gleam/float
 import gleam/int
-import gleam/option.{type Option}
-import gleam/result
-import gleam/string
-import lenient_parse
-import lustre/attribute.{type Attribute} as a
+import lustre/attribute as a
 import lustre/element.{type Element}
 import lustre/event as e
 import phosphor
 import sequence
 import sketch/css
 import sketch/css/angle
-import sketch/css/length.{type Length}
+import sketch/css/length
 import sketch/css/transform
 import sketch/lustre/element/html as h
 import ui/button.{button}
@@ -68,6 +63,7 @@ pub fn paginator(
           },
         ]),
         [e.on_click(change_page(page - 1)), a.disabled(is_left_disabled)],
+        "Previous results page",
         phosphor.arrow_left_bold([a.style("font-size", "24px")]),
       ),
       h.ol(
@@ -94,6 +90,7 @@ pub fn paginator(
           },
         ]),
         [e.on_click(change_page(page + 1)), a.disabled(page >= total_pages)],
+        "Next results page",
         phosphor.arrow_right_bold([a.style("font-size", "24px")]),
       ),
     ],
@@ -209,6 +206,8 @@ pub fn panel(role: PanelRole, is_visible: Bool, text: String) {
       css.min_height(length.em(1.5)),
       css.width(length.percent(100)),
       css.margin_block(length.px(8)),
+
+      css.max_width(length.rem(30.0)),
     ]),
     [],
     case is_visible {
