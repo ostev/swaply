@@ -38,6 +38,9 @@ csrf_header_value = get_secret(secrets_dir / "csrf_header_value", num_bytes=16)
 
 @app.context_processor
 def inject_csrf_token():
+    """
+    Adds a variable to Jinja templates with the static CSRF header value
+    """
     return {"csrf_header_value": csrf_header_value}
 
 
@@ -62,27 +65,21 @@ def disallow_csrf():
             abort(400, description="Bad request: expected presence of CSRF header")
 
 
-if app.debug:
-    csp = {
-        "default-src": "'self' http://localhost:3000 ws://localhost:3000",
-        "object-src": "'none'",
-        "style-src": "'self' 'unsafe-inline' https://fonts.googleapis.com",
-        "font-src": "'self' https://fonts.gstatic.com",
-        "worker-src": "'self' blob:",
-    }
-else:
-    csp = {
-        "default-src": "'self'",
-        "object-src": "'none'",
-        "style-src": "'self' 'unsafe-inline' https://fonts.googleapis.com",
-        "font-src": "'self' https://fonts.gstatic.com",
-    }
+csp = {
+    "default-src": "'self'",
+    "object-src": "'none'",
+    "style-src": "'self' 'unsafe-inline' https://fonts.googleapis.com",
+    "font-src": "'self' https://fonts.gstatic.com",
+}
 
-Talisman(
-    app,
-    content_security_policy=csp,
-    frame_options="DENY",
-)
+if not app.debug:
+    # Only enforce CSP if in production. In development, it can cause issues with dev server,
+    # proxies, etc.
+    Talisman(
+        app,
+        content_security_policy=csp,
+        frame_options="DENY",
+    )
 
 globals.db = Database(
     Path(__file__).parent.parent.resolve() / "db" / "db.sqlite3", model.schema
@@ -96,6 +93,9 @@ scheduler.start()
 
 @scheduler.task("interval", id="cleanup_sessions", minutes=20, misfire_grace_time=2000)
 def cleanup_expired_sessions():
+    """
+    Runs periodically to clean the database of expired authentication sessions
+    """
     with scheduler.app.app_context():  # type: ignore
         app.logger.info("=== Cleaning expired sessions ===")
         auth.session.clear_expired()
