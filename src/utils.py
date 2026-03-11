@@ -4,7 +4,7 @@ import re
 import secrets
 from typing import Any
 
-from flask import abort
+from flask import abort, make_response, jsonify
 
 
 def result(result, json_response: dict[str, Any] = {}) -> tuple[dict[str, Any], int]:
@@ -15,7 +15,7 @@ def result(result, json_response: dict[str, Any] = {}) -> tuple[dict[str, Any], 
 
 
 def error(result):
-    abort(int(result.value), {"result": result.name.lower()})
+    abort(make_response(jsonify({"result": result.name.lower()}), int(result.value)))
 
 
 def normalise_json_str_array(input: str) -> str:
