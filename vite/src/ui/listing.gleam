@@ -21,6 +21,7 @@ import ui/layout
 import ui/styles
 import ui/tags
 
+/// A card view that displays an overview of a listing
 pub fn card_view(
   listing: Listing,
   is_editable is_editable: Bool,
@@ -156,25 +157,8 @@ pub fn card_view(
   )
 }
 
-pub fn tag(text: String) -> Element(msg) {
-  h.span(styles.tag(), [], [tag_content(text)])
-}
-
-fn tag_content(text: String) -> Element(msg) {
-  h.div(
-    css.class([
-      css.compose(layout.row(layout.SpaceBetween)),
-      css.gap(length.px(4)),
-    ]),
-    [],
-    [
-      phosphor.tag_regular([]),
-      h.text(text),
-    ],
-  )
-}
-
-pub fn item_type_input(item_type: listing.ItemInput, name: String, on_input) {
+/// A fieldset of input controls for an item in the listing
+pub fn item_input(item_type: listing.ItemInput, name: String, on_input) {
   ui.fieldset([
     input.title(
       css.class([
@@ -224,6 +208,7 @@ pub fn item_type_input(item_type: listing.ItemInput, name: String, on_input) {
   ])
 }
 
+/// A listing pickup location
 pub fn location(text: String) {
   h.span(css.class([styles.detail()]), [], [
     phosphor.house_bold([a.style("font-size", "14px")]),
@@ -231,6 +216,7 @@ pub fn location(text: String) {
   ])
 }
 
+/// A formatted datetime with custom styling
 pub fn datetime_view(datetime: tempo.DateTime) -> Element(msg) {
   let date =
     datetime

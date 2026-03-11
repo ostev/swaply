@@ -103,6 +103,7 @@ pub fn page_url(id: String) -> String {
   "/listing/" <> uri.percent_encode(id)
 }
 
+/// Retrieve a listing from the server
 pub fn get(
   id: String,
   handler: fn(Result(Listing, rsvp.Error)) -> a,
@@ -112,6 +113,7 @@ pub fn get(
   api.get(api_url(id), rsvp_handler)
 }
 
+/// Delete a listing from the server
 pub fn delete(
   id: String,
   handler: fn(Result(Nil, rsvp.Error)) -> msg,
@@ -134,6 +136,7 @@ pub type SearchFilter {
   SearchFilter(only_owned: Bool)
 }
 
+/// Search for listings with a given set of filters
 pub fn search(
   query query: String,
   page page: Int,

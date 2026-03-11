@@ -63,7 +63,7 @@ pub fn interactive_box_shadow() {
 pub fn card() {
   css.class([
     css.padding(length.px(10)),
-    css.background_color(colors.four),
+    css.background_color(colors.tertiary),
     css.border_radius(length.px(10)),
 
     css.compose(interactive_box_shadow()),

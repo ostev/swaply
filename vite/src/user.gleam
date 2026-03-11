@@ -1,6 +1,7 @@
 import api
 import gleam/dynamic/decode
 import gleam/http
+import gleam/http/response.{type Response}
 import gleam/int
 import gleam/json
 import gleam/list
@@ -8,6 +9,7 @@ import gleam/option.{type Option}
 import gleam/result
 import gleam/uri
 import lustre/effect.{type Effect}
+import page/auth
 import rsvp
 import search
 import tempo
@@ -175,5 +177,18 @@ pub fn update(
           )
       }
     }),
+  )
+}
+
+pub fn logout(
+  csrf_token: String,
+  with handler: fn(Result(Response(String), rsvp.Error)) -> msg,
+) -> Effect(msg) {
+  api.send_with_known_url(
+    body: json.object([]),
+    to: auth.api_root <> "/logout",
+    with: http.Post,
+    handler: rsvp.expect_ok_response(handler),
+    with_token: csrf_token,
   )
 }

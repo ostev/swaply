@@ -1,3 +1,7 @@
+//// A link to another page that looks like a button.
+//// A button that performs an action when clicked.
+//// A button with a custom set of attributes. Defaults to `type="button"`.
+
 import lustre/attribute.{type Attribute} as a
 import lustre/element.{type Element}
 import lustre/event as e
@@ -38,10 +42,12 @@ pub fn with_attrs(
   )
 }
 
+/// A form submit button
 pub fn submit(role: Role, text: String) -> Element(msg) {
   button_internal(h.button, [a.type_("submit")], role, text)
 }
 
+/// Provides a customisable button with common styling
 fn button_internal(
   container: fn(css.Class, List(a.Attribute(msg)), List(Element(a))) ->
     Element(msg),
@@ -55,7 +61,7 @@ fn button_internal(
       colors.primary_foreground,
       colors.black,
     )
-    Secondary -> #(colors.secondary_button, colors.four, colors.black)
+    Secondary -> #(colors.secondary_button, colors.tertiary, colors.black)
     Danger -> #(colors.red, colors.red_light, "black")
     Disabled -> #(colors.disabled, colors.disabled, "black")
   }
@@ -120,6 +126,7 @@ fn button_internal(
   )
 }
 
+/// An icon button
 pub fn icon(
   class: css.Class,
   attributes: List(a.Attribute(msg)),

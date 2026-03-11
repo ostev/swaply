@@ -2,6 +2,7 @@ import gleam/order
 import tempo
 import tempo/instant
 
+/// Represents a list of paginated search values
 pub type Results(a) {
   Results(values: List(a), number_of_pages: Int, timestamp: tempo.Instant)
 }

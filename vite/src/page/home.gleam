@@ -1,3 +1,5 @@
+//// Home page with search functionality
+
 import gleam/io
 import gleam/list
 import gleam/option.{type Option}
@@ -57,6 +59,7 @@ pub fn init() -> #(Model, Effect(Msg)) {
   )
 }
 
+/// Perform a search API request to the backend
 fn search(model: Model) -> Effect(Msg) {
   listing.search(
     query: model.search_query,
@@ -113,6 +116,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
           option.Some(Ok(previous)) -> {
             option.Some(case listings_result {
               Ok(listings) -> {
+                // If there were previous results, update them
                 Ok(previous |> search.update(listings))
               }
               Error(error) -> {
@@ -120,12 +124,45 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
               }
             })
           }
+          // Otherwise, just return the new results
           _ -> option.Some(listings_result)
         }),
         effect.none(),
       )
     }
   }
+}
+
+/// Display a card list of search results
+fn listings(
+  search_results: search.Results(Listing),
+  shared: Shared,
+) -> Element(Msg) {
+  keyed.ol(
+    css.class([
+      css.list_style("none"),
+      css.margin_("0"),
+      css.padding_("0"),
+      css.width(length.percent(100)),
+    ]),
+    [],
+    search_results.values
+      |> list.map(fn(listing) {
+        #(
+          listing.id,
+          h.li(css.class([]), [], [
+            listing_ui.card_view(
+              listing,
+              is_editable: shared
+                |> shared.get_user
+                |> option.map(fn(user) { user.id == listing.seller.id })
+                |> option.unwrap(False),
+              on_click: VisitListing(listing.id),
+            ),
+          ]),
+        )
+      }),
+  )
 }
 
 pub fn view(model: Model, shared: Shared) -> Element(Msg) {
@@ -202,40 +239,14 @@ pub fn view(model: Model, shared: Shared) -> Element(Msg) {
         ]),
 
         case model.listings {
-          option.Some(Ok(search_result)) -> {
+          option.Some(Ok(search_results)) -> {
             element.fragment([
-              keyed.ol(
-                css.class([
-                  css.list_style("none"),
-                  css.margin_("0"),
-                  css.padding_("0"),
-                  css.width(length.percent(100)),
-                ]),
-                [],
-                search_result.values
-                  |> list.map(fn(listing) {
-                    #(
-                      listing.id,
-                      h.li(css.class([]), [], [
-                        listing_ui.card_view(
-                          listing,
-                          is_editable: shared
-                            |> shared.get_user
-                            |> option.map(fn(user) {
-                              user.id == listing.seller.id
-                            })
-                            |> option.unwrap(False),
-                          on_click: VisitListing(listing.id),
-                        ),
-                      ]),
-                    )
-                  }),
-              ),
+              listings(search_results, shared),
 
               h.div_([], [
                 ui.paginator(
                   page: model.page,
-                  of: search_result.number_of_pages,
+                  of: search_results.number_of_pages,
                   with: ChangePage,
                 ),
               ]),

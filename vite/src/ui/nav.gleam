@@ -5,6 +5,7 @@ import sketch/css
 import sketch/css/length
 import sketch/lustre/element/html as h
 
+/// A hamburger menu icon
 fn hamburger() -> Element(msg) {
   // The SVG code in the string in this function is modified from https://codepen.io/ainalem/pen/wvKOEMV
   // Here is the original MIT license:
@@ -45,6 +46,7 @@ fn hamburger() -> Element(msg) {
   )
 }
 
+/// An animated hamburger menu button.
 pub fn menu_button(state: State, on_click: msg) -> Element(msg) {
   h.button(
     css.class([
@@ -73,6 +75,7 @@ pub fn menu_button(state: State, on_click: msg) -> Element(msg) {
   )
 }
 
+/// Represents whether a navigation menu is open or closed.
 pub type State {
   Open
   Closed

@@ -7,6 +7,8 @@ import rsvp
 
 pub const prefix = "/api/v1"
 
+/// Sends an API with a known valid URL. If it's invalid, this function
+/// will panic.
 pub fn send_with_known_url(
   body body: Json,
   to relative_url: String,
@@ -20,6 +22,8 @@ pub fn send_with_known_url(
   })
 }
 
+/// Send an API request with an unknown URL. If the URL is invalid and
+/// can't be parsed, this will return an `Error`.
 pub fn send(
   body body: Json,
   to relative_url: String,
@@ -42,6 +46,7 @@ pub fn send(
   }
 }
 
+/// Sends an API get request.
 pub fn get(to relative_url: String, handler handler: rsvp.Handler(msg)) {
   rsvp.get(prefix <> relative_url, handler)
 }

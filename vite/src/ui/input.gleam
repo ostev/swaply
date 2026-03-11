@@ -1,6 +1,7 @@
+//// Contains a set of input components.
+
 import gleam/bool
 import gleam/float
-import gleam/int
 import gleam/option.{type Option}
 import gleam/result
 import gleam/string
@@ -24,6 +25,7 @@ fn error_icon() {
   ])
 }
 
+/// A form label that can have an error icon next to it.
 fn validated_label(is_valid: Bool, name: String, label: String) {
   h.div(
     css.class([
@@ -50,6 +52,7 @@ fn validated_label(is_valid: Bool, name: String, label: String) {
   )
 }
 
+/// A generic input with a custom `type` and custom styling.
 pub fn generic(
   class: css.Class,
   type_ type_: String,
@@ -108,6 +111,7 @@ pub fn generic(
   )
 }
 
+/// A generic input with a custom `type`.
 pub fn generic_(
   type_ type_: String,
   name name: String,
@@ -119,6 +123,7 @@ pub fn generic_(
   generic(css.class([]), type_, name, label, value, on_input, is_valid)
 }
 
+/// A search input control.
 pub fn search(
   name name: String,
   label label: String,
@@ -167,6 +172,7 @@ pub fn search(
   )
 }
 
+/// A toggle input control that can be checked on and off.
 pub fn toggle(
   label label: String,
   name name: String,
@@ -280,6 +286,7 @@ pub fn toggle(
   )
 }
 
+/// A validated numeric input control.
 pub fn number(
   name name: String,
   label label: String,
@@ -343,14 +350,19 @@ pub fn number(
           a.aria_invalid(is_invalid |> bool.to_string |> string.lowercase),
 
           e.on_input(fn(text) {
-            let trimmed_text = string.trim(text)
+            case is_invalid {
+              True -> on_input(text, option.None)
+              False -> {
+                let trimmed_text = string.trim(text)
 
-            let updated_value = case trimmed_text {
-              "" -> option.None
-              number -> lenient_parse.to_float(number) |> option.from_result
+                let updated_value = case trimmed_text {
+                  "" -> option.None
+                  number -> lenient_parse.to_float(number) |> option.from_result
+                }
+
+                on_input(text, updated_value)
+              }
             }
-
-            on_input(text, updated_value)
           }),
         ],
       ),
@@ -358,6 +370,7 @@ pub fn number(
   )
 }
 
+/// An input control for longer text
 pub fn textarea(
   name name: String,
   label label: String,
@@ -422,23 +435,7 @@ pub fn textarea(
   )
 }
 
-pub fn char_count(chars chars: Int, of of: Int) {
-  h.span(
-    css.class([
-      styles.text_italic(),
-      fonts.inter(),
-      fonts.size_md(),
-
-      css.color(case chars > of {
-        True -> colors.red
-        False -> colors.black
-      }),
-    ]),
-    [],
-    [h.text(int.to_string(chars) <> "/" <> int.to_string(of))],
-  )
-}
-
+/// A text input control with title styling
 pub fn title(
   class: css.Class,
   name name: String,

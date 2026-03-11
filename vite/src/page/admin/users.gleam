@@ -1,3 +1,5 @@
+//// This page contains a searchable list of editable users.
+
 import gleam/list
 import gleam/option.{type Option}
 import gleam/uri
@@ -83,6 +85,28 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
   }
 }
 
+/// Displays a table of users retrieved from the server
+fn user_results(users: search.Results(User)) -> Element(Msg) {
+  table.view(
+    headings: ["ID", "Email", "Name", "Action"],
+    rows: users.values
+      |> list.map(fn(user) {
+        [
+          [h.text(user.id)],
+          [h.text(user.email)],
+          [h.text(user.name)],
+          [
+            button.link(
+              button.Primary,
+              "Edit",
+              "/user/" <> uri.percent_encode(user.id) <> "/edit",
+            ),
+          ],
+        ]
+      }),
+  )
+}
+
 pub fn view(model: Model, shared: Shared) -> Element(Msg) {
   h.div(layout.column(layout.Center), [], [
     case shared.is_unknown(shared) || shared.is_admin(shared) {
@@ -148,24 +172,8 @@ pub fn view(model: Model, shared: Shared) -> Element(Msg) {
             case model.users {
               option.Some(Ok(users)) -> {
                 element.fragment([
-                  table.view(
-                    headings: ["ID", "Email", "Name", "Action"],
-                    rows: users.values
-                      |> list.map(fn(user) {
-                        [
-                          [h.text(user.id)],
-                          [h.text(user.email)],
-                          [h.text(user.name)],
-                          [
-                            button.link(
-                              button.Primary,
-                              "Edit",
-                              "/user/" <> uri.percent_encode(user.id) <> "/edit",
-                            ),
-                          ],
-                        ]
-                      }),
-                  ),
+                  user_results(users),
+
                   h.div(css.class([css.margin_top(length.px(24))]), [], [
                     ui.paginator(
                       page: model.page,

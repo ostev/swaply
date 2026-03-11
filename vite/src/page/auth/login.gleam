@@ -1,3 +1,5 @@
+//// Handles user login
+
 import api
 import extra/url
 import gleam/dynamic/decode
@@ -99,6 +101,7 @@ pub fn update(
   }
 }
 
+/// Sends a login request to the server
 fn login(form: Form, with_token csrf_token: String) -> Effect(Msg) {
   let body =
     json.object([

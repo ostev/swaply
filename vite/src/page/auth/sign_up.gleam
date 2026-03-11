@@ -1,3 +1,4 @@
+/// Handles user sign-up
 import api
 import extra/url
 import gleam/dynamic/decode
@@ -117,6 +118,7 @@ pub fn update(
   }
 }
 
+/// Sends a sign-up request to the server
 pub fn signup(form: Form, with_token token: String) {
   let body =
     json.object([

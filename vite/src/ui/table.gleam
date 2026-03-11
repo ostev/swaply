@@ -1,3 +1,5 @@
+/// Contains a set of functions to make dealing with HTML
+/// tables nicer.
 import gleam/int
 import gleam/list
 import lustre/element.{type Element}
@@ -11,6 +13,7 @@ import ui/styles
 pub type Cell(msg) =
   List(Element(msg))
 
+/// Each row contains a list of columns.
 pub type Row(msg) =
   List(Cell(msg))
 
@@ -29,6 +32,8 @@ pub fn heading(text: String) -> Element(msg) {
   )
 }
 
+/// Creates a table from a list of headings and a list of cells in row-major
+/// order.
 pub fn view(headings headings: List(String), rows rows: List(Row(msg))) {
   h.table(
     css.class([

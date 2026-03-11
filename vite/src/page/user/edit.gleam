@@ -17,10 +17,6 @@ import ui/layout
 import ui/styles
 import user.{type User}
 
-pub type UserData {
-  UserData(user: User, form: Form)
-}
-
 pub type Model {
   Model(
     user: Option(Result(UserData, rsvp.Error)),
@@ -29,6 +25,11 @@ pub type Model {
   )
 }
 
+pub type UserData {
+  UserData(user: User, form: Form)
+}
+
+/// Represents the partially-complete form
 pub type Form {
   Form(email: String, is_admin: Bool)
 }
@@ -141,7 +142,7 @@ pub fn view(model: Model, shared: Shared) -> Element(Msg) {
           ui.panel(
             ui.ErrorPanel,
             True,
-            "An error occured while fetching information about this user.",
+            "An error occurred while fetching information about this user.",
           )
         }
         option.Some(Ok(data)) -> {

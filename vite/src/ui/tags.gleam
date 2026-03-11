@@ -16,10 +16,12 @@ import ui/fonts
 import ui/layout
 import ui/styles
 
+/// Sort a set of tags alphabetically.
 pub fn sort(unsorted: Set(String)) -> List(String) {
   unsorted |> set.to_list |> list.sort(string.compare)
 }
 
+/// Displays a list of sorted tags.
 pub fn tags(tags: List(String)) {
   keyed.ul(
     css.class([
@@ -40,6 +42,7 @@ pub fn tags(tags: List(String)) {
   )
 }
 
+/// Displays a tag for a listing
 pub fn tag(text: String) -> Element(msg) {
   h.span(styles.tag(), [], [tag_content(text)])
 }
@@ -58,6 +61,7 @@ fn tag_content(text: String) -> Element(msg) {
   )
 }
 
+/// An editable list of tags.
 pub fn tags_input(
   label label: String,
   name name: String,
@@ -184,6 +188,7 @@ pub fn tags_input(
   ])
 }
 
+/// A button with tag styling. Used for deletion.
 fn tag_button(text: String, on_remove: fn(String) -> msg) -> Element(msg) {
   h.button(
     css.class([

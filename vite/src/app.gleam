@@ -1,7 +1,4 @@
-import api
-import gleam/http
 import gleam/http/response.{type Response}
-import gleam/json
 import gleam/result
 import gleam/uri.{type Uri}
 import lustre
@@ -10,7 +7,6 @@ import lustre/effect.{type Effect}
 import lustre/element.{type Element}
 import modem
 import page/admin/users as manage_users
-import page/auth
 import page/auth/login
 import page/auth/sign_up
 import page/home
@@ -41,6 +37,7 @@ pub fn main() {
   let assert Ok(stylesheet) =
     sketch_lustre.construct(fn(stylesheet) {
       stylesheet
+      // Set the default font to Merriweather
       |> sketch.global(css.global("html, body", [fonts.merriweather()]))
     })
 
@@ -70,6 +67,7 @@ type Page {
   NotFound(not_found.Model)
 }
 
+/// Updates the application state to reflect a URL change
 fn change_page(
   from old_url: Uri,
   to new_url: Uri,
@@ -130,6 +128,7 @@ fn change_page(
   }
 }
 
+/// Parses a percent-encoded URL string into an ID string
 fn parse_percent_encoded_id(
   encoded_id: String,
   f: fn(String) -> #(Page, Effect(Msg)),
@@ -145,6 +144,7 @@ fn parse_percent_encoded_id(
   }
 }
 
+/// Updates the model with a page's update function
 fn update_with(
   init_result: #(page_model, Effect(page_msg)),
   to_page: fn(page_model) -> Page,
@@ -159,6 +159,7 @@ fn update_with(
   )
 }
 
+/// Updates the model and shared model with a page's update function
 fn update_with_shared(
   init_result: #(page_model, Shared, Effect(page_msg)),
   to_page: fn(page_model) -> Page,
@@ -173,6 +174,7 @@ fn update_with_shared(
   )
 }
 
+/// Updates the current page with a page's update function
 fn update_page_with(
   init_result: #(page_model, Effect(page_msg)),
   to_page: fn(page_model) -> Page,
@@ -223,16 +225,6 @@ fn init(_) -> #(Model, Effect(Msg)) {
   )
 }
 
-fn logout(csrf_token: String) {
-  api.send(
-    body: json.object([]),
-    to: auth.api_root <> "/logout",
-    with: http.Post,
-    handler: rsvp.expect_ok_response(LogoutResponseReceived),
-    with_token: csrf_token,
-  )
-}
-
 fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
   case msg, model.page {
     ToggleNav, _ -> {
@@ -277,13 +269,7 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
     }
 
     Logout, _ -> {
-      #(
-        model,
-        logout(model.shared.csrf_token)
-          |> result.lazy_unwrap(fn() {
-            panic as "Logout URL failed to parse. This shouldn't happen."
-          }),
-      )
+      #(model, user.logout(model.shared.csrf_token, LogoutResponseReceived))
     }
 
     LogoutResponseReceived(Ok(_)), _ -> {

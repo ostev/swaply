@@ -1,10 +1,12 @@
 import gleam/option.{type Option}
 import gleam/result
 import gleam/uri.{type Uri}
-import lustre/effect
+import lustre/effect.{type Effect}
 import modem
 import user.{type User}
 
+/// Represents the shared model state between all pages. Contains the
+/// current URL, the current user, and the CSRF header value.
 pub type Shared {
   Shared(current_url: Uri, user: user.Status, csrf_token: String)
 }
@@ -24,14 +26,17 @@ pub fn new(url: Uri) -> Result(Shared, InitError) {
   Ok(Shared(current_url: url, user: user.Unknown, csrf_token:))
 }
 
-pub fn check_authenticated(shared: Shared) {
+/// Checks whether a the user is authenticated, redirecting if they aren't.
+pub fn check_authenticated(shared: Shared) -> Effect(msg) {
   case shared.user {
     user.Unknown | user.Authenticated(_) -> effect.none()
     user.Unauthenticated -> modem.push("/login", option.None, option.None)
   }
 }
 
-pub fn check_unauthenticated(shared: Shared) {
+/// Checks whether a the user is unauthenticated, redirecting if they **are**
+/// authenticated.
+pub fn check_unauthenticated(shared: Shared) -> Effect(msg) {
   case shared.user {
     user.Unknown | user.Unauthenticated -> effect.none()
     user.Authenticated(_) -> modem.push("/", option.None, option.None)

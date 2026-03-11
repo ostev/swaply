@@ -1,3 +1,5 @@
+//// Contains the layout for the client-side-routed 404 page
+
 import lustre/effect.{type Effect}
 import lustre/element.{type Element}
 import sketch/css

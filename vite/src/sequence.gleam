@@ -2,86 +2,100 @@ import gleam/int
 import gleam/list
 import gleam/result
 
+/// Represents a potentially-infinite sequence of terms, each
+/// created by a generator function.
 pub opaque type Sequence(a) {
-  Series(start: Int, generator: fn(Int) -> Result(a, Nil))
+  Sequence(start: Int, generator: fn(Int) -> Result(a, Nil))
 }
 
+/// Creates a new sequence from a generator function.
 pub fn new(generator: fn(Int) -> Result(a, Nil)) -> Sequence(a) {
-  Series(start: 0, generator:)
+  Sequence(start: 0, generator:)
 }
 
-pub fn with_start(series: Sequence(a), start: Int) -> Sequence(a) {
-  Series(..series, start:)
+/// Changes the start index of a sequence.
+pub fn with_start(sequence: Sequence(a), start: Int) -> Sequence(a) {
+  Sequence(..sequence, start:)
 }
 
-pub fn limit(series: Sequence(a), limit: Int) -> Sequence(a) {
-  Series(..series, generator: fn(index) {
-    case index >= series.start, index <= series.start + limit - 1 {
-      True, True -> series.generator(index)
+/// Makes an infinite sequence finite by adding an end index.
+/// The smallest end index will override any others.
+pub fn limit(sequence: Sequence(a), limit: Int) -> Sequence(a) {
+  Sequence(..sequence, generator: fn(index) {
+    case index >= sequence.start, index <= sequence.start + limit - 1 {
+      True, True -> sequence.generator(index)
       _, _ -> Error(Nil)
     }
   })
 }
 
-pub fn at(series: Sequence(a), index: Int) -> Result(a, Nil) {
-  case index >= series.start {
-    True -> series.generator(index)
+/// Calculates the term at a given index
+pub fn at(sequence: Sequence(a), index: Int) -> Result(a, Nil) {
+  case index >= sequence.start {
+    True -> sequence.generator(index)
     False -> Error(Nil)
   }
 }
 
-pub fn before(series: Sequence(a), index: Int) -> Result(a, Nil) {
-  series |> at(index - 1)
+/// Finds the term before a given index
+pub fn before(sequence: Sequence(a), index: Int) -> Result(a, Nil) {
+  sequence |> at(index - 1)
 }
 
-pub fn after(series: Sequence(a), index: Int) -> Result(a, Nil) {
-  series |> at(index + 1)
+/// Finds the term after a given index
+pub fn after(sequence: Sequence(a), index: Int) -> Result(a, Nil) {
+  sequence |> at(index + 1)
 }
 
-pub fn map(series: Sequence(a), generator: fn(a) -> b) -> Sequence(b) {
-  Series(..series, generator: fn(index) {
-    series
+/// Transforms a sequence into another sequence
+pub fn map(sequence: Sequence(a), generator: fn(a) -> b) -> Sequence(b) {
+  Sequence(..sequence, generator: fn(index) {
+    sequence
     |> at(index)
     |> result.map(generator)
   })
 }
 
+/// Retrieves a window of a sequence with a set size and center>
 pub fn window(
-  series: Sequence(a),
+  sequence: Sequence(a),
   center center: Int,
   size size: Int,
 ) -> Sequence(a) {
-  let left_index = int.max(center - size / 2, series.start)
+  let left_index = int.max(center - size / 2, sequence.start)
   let right_index = left_index + size - 1
 
   let generator = fn(index: Int) {
     case index >= left_index, index <= right_index {
-      True, True -> series.generator(index)
+      True, True -> sequence.generator(index)
       _, _ -> Error(Nil)
     }
   }
 
-  Series(start: left_index, generator:)
+  Sequence(start: left_index, generator:)
 }
 
-pub fn generate(series: Sequence(a)) -> List(a) {
-  series
+/// Transforms a sequence into a list. This will run forever if
+/// the sequence is infinite.
+pub fn generate(sequence: Sequence(a)) -> List(a) {
+  sequence
   |> fold(list.prepend, [])
   |> list.reverse
 }
 
-pub fn fold(series: Sequence(a), fun: fn(b, a) -> b, accumulator: b) -> b {
-  fold_loop(series, fun, accumulator, series.start)
+/// Folds over a sequence with the gi
+pub fn fold(sequence: Sequence(a), fun: fn(b, a) -> b, accumulator: b) -> b {
+  fold_loop(sequence, fun, accumulator, sequence.start)
 }
 
 fn fold_loop(
-  series: Sequence(a),
+  sequence: Sequence(a),
   fun: fn(b, a) -> b,
   accumulator: b,
   index: Int,
 ) -> b {
-  case series.generator(index) {
-    Ok(value) -> fold_loop(series, fun, fun(accumulator, value), index + 1)
+  case sequence.generator(index) {
+    Ok(value) -> fold_loop(sequence, fun, fun(accumulator, value), index + 1)
     Error(_) -> accumulator
   }
 }

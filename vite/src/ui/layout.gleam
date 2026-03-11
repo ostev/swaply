@@ -20,6 +20,7 @@ fn spacing_to_string(spacing: Spacing) -> String {
   }
 }
 
+/// Utility class for horizontal arrangement.
 pub fn row(spacing: Spacing) -> css.Class {
   css.class([
     css.display("flex"),
@@ -29,6 +30,7 @@ pub fn row(spacing: Spacing) -> css.Class {
   ])
 }
 
+/// Utility class for vertical arrangement.
 pub fn column(spacing: Spacing) -> css.Class {
   css.class([
     css.display("flex"),

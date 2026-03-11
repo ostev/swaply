@@ -36,10 +36,6 @@ pub type Model {
   )
 }
 
-pub type DeleteModal {
-  DeleteModal(verify: String, error: Option(rsvp.Error))
-}
-
 pub fn init(listing_id: String) -> #(Model, Effect(Msg)) {
   #(
     Model(listing: option.None, delete_modal: option.None),
@@ -54,9 +50,19 @@ pub type Msg {
   DeleteResponseReceived(Result(Nil, rsvp.Error))
 }
 
-@external(javascript, "./dialog.mjs", "set_dialog_visibility")
-pub fn set_dialog_visibility(id: String, is_visible: Bool) -> Nil
+/// Represents the state of the delete modal
+pub type DeleteModal {
+  DeleteModal(verify: String, error: Option(rsvp.Error))
+}
 
+const delete_modal_id = "delete-modal"
+
+/// Sets the visibility of a model with a given ID.
+@external(javascript, "./dialog.mjs", "set_dialog_visibility")
+fn set_dialog_visibility(id: String, is_visible: Bool) -> Nil
+
+/// Reflect the current state of the delete modal into
+/// imperative DOM changes.
 fn update_delete_modal(
   new new: Option(DeleteModal),
   previous previous: Option(DeleteModal),
@@ -64,10 +70,12 @@ fn update_delete_modal(
   let modal_is_visible = option.is_some(previous)
   case new {
     option.Some(_) if !modal_is_visible -> {
-      set_dialog_visibility("delete_modal", True)
+      // There is not way to toggle the visibility of a modal correctly per the
+      // HTML spec declaratively, so we have to shell out to some JS code.
+      set_dialog_visibility(delete_modal_id, True)
     }
     option.None if modal_is_visible -> {
-      set_dialog_visibility("delete_modal", False)
+      set_dialog_visibility(delete_modal_id, False)
     }
     _ -> {
       Nil
@@ -80,12 +88,15 @@ pub fn update(shared: Shared, model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
     ListingReceived(listing) -> {
       case listing {
         Error(error) -> {
+          // Log the less user-friendly details of the error to the console
+          // if it occurs.
           io.println_error(
             "Error when fetching listing: " <> string.inspect(error),
           )
         }
         Ok(_) -> Nil
       }
+
       #(Model(..model, listing: option.Some(listing)), effect.none())
     }
     SetDeleteModal(delete_modal) -> {
@@ -122,6 +133,7 @@ pub fn update(shared: Shared, model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
   }
 }
 
+/// Displays the details view for a listing
 fn view_listing(listing: Listing) -> Element(Msg) {
   h.div(
     css.class([
@@ -211,6 +223,8 @@ fn view_listing(listing: Listing) -> Element(Msg) {
   )
 }
 
+/// Checks whether the user has correctly typed a string that matches the listing
+/// name into the delete modal.
 fn can_delete(model: Model) -> Bool {
   case model.delete_modal, model.listing {
     option.Some(delete_modal), option.Some(Ok(listing)) ->
@@ -219,6 +233,8 @@ fn can_delete(model: Model) -> Bool {
   }
 }
 
+/// Footer beneath the listing that contains buttons for actions you can
+/// perform.
 fn action_footer(shared: Shared, listing: Listing) -> Element(Msg) {
   case shared.user {
     user.Authenticated(user)
@@ -283,7 +299,7 @@ pub fn view(model: Model, shared: Shared) -> Element(Msg) {
           css.compose(styles.card()),
         ]),
         [
-          a.id("delete_modal"),
+          a.id(delete_modal_id),
           e.advanced(
             "close",
             decode.success(e.handler(SetDeleteModal(option.None), False, False)),
@@ -378,9 +394,7 @@ pub fn view(model: Model, shared: Shared) -> Element(Msg) {
             }
           }
         }
-        option.None -> {
-          [element.none()]
-        }
+        option.None -> []
       }),
     ],
   )

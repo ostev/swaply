@@ -15,6 +15,7 @@ import ui/fonts
 import ui/layout
 import ui/styles
 
+/// A paginator control
 pub fn paginator(
   page page: Int,
   of total_pages: Int,
@@ -97,6 +98,7 @@ pub fn paginator(
   )
 }
 
+/// Represents a fieldset within a form
 pub fn fieldset(children: List(Element(msg))) -> Element(msg) {
   h.fieldset(
     css.class([

@@ -46,6 +46,7 @@ pub type Mode {
   Update(id: String)
 }
 
+/// Represents a partially-complete listing
 pub type Form {
   Form(
     name: String,
@@ -369,6 +370,7 @@ pub fn update(shared: Shared, model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
   }
 }
 
+/// Parses a date string from an input element.
 fn parse_date(
   date_string: String,
 ) -> Result(tempo.Date, tempo_error.DateParseError) {
@@ -376,6 +378,7 @@ fn parse_date(
   |> date.parse(tempo.ISO8601Date)
 }
 
+/// Determines if a given date string is in the future.
 fn is_date_valid(date_string: Option(String)) -> Bool {
   date_string
   |> option.map(parse_date)
@@ -390,6 +393,7 @@ fn is_date_valid(date_string: Option(String)) -> Bool {
   |> option.unwrap(False)
 }
 
+/// Determines if a given time string is parseable.
 fn is_time_valid(time_string: String) -> Bool {
   case extra_time.parse(time_string) {
     Ok(_) -> True
@@ -397,6 +401,7 @@ fn is_time_valid(time_string: String) -> Bool {
   }
 }
 
+/// Creates a datetime from the provided date and time strings
 fn get_datetime(
   date: Option(String),
   time: Option(String),
@@ -422,6 +427,7 @@ fn get_datetime(
   Ok(datetime.new(date, time, offset.local()))
 }
 
+/// Submits the updated edits to the server
 fn submit(
   form: Form,
   mode: Mode,
@@ -488,6 +494,7 @@ fn submit(
   }
 }
 
+/// Displays the end data information for the current listing
 fn listing_date(model: Model) -> Element(Msg) {
   h.div_([], [
     h.div(
@@ -526,6 +533,7 @@ fn listing_date(model: Model) -> Element(Msg) {
   ])
 }
 
+/// Displays the panel for validation errors
 fn error_panel(model: Model) -> Element(Msg) {
   let date_is_valid =
     { model.form.date |> option.map(string.is_empty) |> option.unwrap(True) }
@@ -712,7 +720,7 @@ pub fn view(model: Model) -> Element(Msg) {
                               ]),
                               [],
                               [
-                                listing_ui.item_type_input(
+                                listing_ui.item_input(
                                   item_type,
                                   "item_type_" <> int.to_string(index),
                                   UpdateTicketType(_, index:),

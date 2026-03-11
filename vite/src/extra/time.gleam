@@ -42,6 +42,7 @@ pub type ParseError {
   ParseError(atto.ParseError(Nil, String))
 }
 
+/// Parses a time from a string in the format hh:mm:ss.
 pub fn parse(time: String) {
   case atto.run(parser(), text.new(time), Nil) {
     Ok(result) -> result |> result.map_error(OutOfBoundsError)
@@ -49,6 +50,7 @@ pub fn parse(time: String) {
   }
 }
 
+/// Formats a given time as 24hrs.
 pub fn format_as_24hr(time: tempo.Time) {
   let pad_zeroes = string.pad_start(_, to: 2, with: "0")
 

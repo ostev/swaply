@@ -1,6 +1,7 @@
 import gleam/dynamic/decode
 import tempo/datetime
 
+/// Dynamically decodes a datetime by parsing it.
 pub fn datetime() {
   use raw_string <- decode.then(decode.string)
 

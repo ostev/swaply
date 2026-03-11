@@ -1,5 +1,6 @@
 import gleam/dynamic/decode
 
+/// Represents a listing's seller
 pub type Seller {
   Seller(id: String, name: String, email: String)
 }

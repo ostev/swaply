@@ -1,3 +1,4 @@
+/// Retrieves the CSRF header value from the <meta> tag
 export function get_csrf_token() {
     let token = document.querySelector("meta[name='csrf-header-value']").getAttribute("content");
 
